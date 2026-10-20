@@ -437,6 +437,9 @@ button.av:hover{filter:brightness(.95)}
 .feed-pie{font-size:12px;color:var(--muted);text-align:center;padding:8px;border-top:1px solid var(--line);background:var(--soft)}
 @media (max-width:640px){.feed-scroll{max-height:420px}}
 .inst{margin-bottom:6px}.inst-ios{font-size:12px;opacity:.8;margin-bottom:6px;display:block}
+.xlres{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 12px;font-size:14px}.xlres b{font-family:var(--f-display);font-size:22px;margin-right:4px}
+.xlerr{margin:6px 0 0;padding-left:18px;max-height:200px;overflow:auto;font-size:12.5px}
+a.btn{text-decoration:none;color:inherit}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;z-index:60;font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:calc(100% - 32px)}
 @media (min-width:900px){#toast{bottom:24px}}
 .rep p{margin:0}.rep .btn{align-self:flex-start;margin-top:auto}
@@ -1498,6 +1501,141 @@ function vistaReportes(){
     <p class="small muted">Los reportes se descargan en PDF, listos para imprimir o compartir por WhatsApp. No incluyen cédulas ni teléfonos.</p>`;
 }
 
+/* ===================== Importar desde Excel ===================== */
+const XLSX_SRC='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+let xlsxListo=null;
+function cargarXLSX(){
+  if(window.XLSX) return Promise.resolve();
+  if(xlsxListo) return xlsxListo;
+  xlsxListo=new Promise((ok,mal)=>{const s=document.createElement('script');s.src=XLSX_SRC;s.onload=ok;s.onerror=()=>{xlsxListo=null;mal(new Error('lib'))};document.head.appendChild(s)});
+  return xlsxListo;
+}
+const normTxt=v=>String(v??'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\*/g,'').replace(/\(.*?\)/g,'').trim().toLowerCase().replace(/\s+/g,' ');
+function hojaXL(wb,nombre){const k=Object.keys(wb.Sheets).find(n=>normTxt(n)===normTxt(nombre));return k?wb.Sheets[k]:null}
+function filasXL(ws){
+  if(!ws) return [];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+  if(!rows.length) return [];
+  const head=rows[0].map(normTxt);
+  const out=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];if(!r.some(v=>String(v).trim()!==''))continue;
+    const o={_fila:i+1};head.forEach((h,j)=>{if(h)o[h]=r[j]});out.push(o);
+  }
+  return out;
+}
+function fechaXL(v){
+  if(v===''||v==null) return '';
+  if(v instanceof Date&&!isNaN(v)) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;
+  if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);if(d)return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`}
+  const s=String(v).trim();let m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);if(m)return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  return null;
+}
+const numXL=v=>{const d=String(v??'').replace(/\D/g,'');return d?+d:0};
+function nivelXL(v){const t=normTxt(v);if(!t||t==='todas'||t==='sin categoria')return '';if(t==='principiantes')return 'Sexta';const n=NIVELES.find(x=>normTxt(x)===t);return n===undefined?null:n}
+
+/* Aplica el Excel sobre una copia de los datos y devuelve el resumen; no toca S */
+function procesarExcel(wb,base){
+  const D=JSON.parse(JSON.stringify(base));const cats=D.torneos[0].categorias;
+  const r={jNuevos:0,jAct:0,tNuevos:0,tAct:0,ins:0,errores:[],hojas:0};
+  const err=(h,f,m)=>r.errores.push(`${h}, fila ${f}: ${m}`);
+  const nombreJ=p=>normTxt(p.nombre+' '+p.apellido);
+  const buscarJ=v=>{const t=String(v??'').trim();if(!t)return null;const ci=t.replace(/\D/g,'');
+    if(ci&&ci.length>=5&&/^[\d.\s-]+$/.test(t))return D.jugadores.find(p=>p.cedula===ci)||null;
+    const n=normTxt(t);return D.jugadores.find(p=>nombreJ(p)===n)||D.jugadores.find(p=>normTxt(p.apellido+' '+p.nombre)===n||normTxt(p.apellido+', '+p.nombre)===n)||null};
+  // Jugadores
+  const hJ=hojaXL(wb,'Jugadores');if(hJ)r.hojas++;
+  filasXL(hJ).forEach(f=>{
+    const nombre=String(f['nombre']||'').trim(),apellido=String(f['apellido']||'').trim();
+    if(!nombre||!apellido){err('Jugadores',f._fila,'falta el nombre o el apellido');return}
+    const ram=normTxt(f['rama']);const sexo=/^(damas?|f|femenino|mujer)/.test(ram)?'F':/^(caballeros?|m|masculino|hombre)/.test(ram)?'M':null;
+    const ci=String(f['cedula']??'').replace(/\D/g,'');
+    let p=(ci&&D.jugadores.find(x=>x.cedula===ci))||D.jugadores.find(x=>normTxt(x.nombre+' '+x.apellido)===normTxt(nombre+' '+apellido));
+    if(!p&&!sexo){err('Jugadores',f._fila,'la rama tiene que ser Caballeros o Damas');return}
+    const niv=nivelXL(f['categoria']);if(niv===null){err('Jugadores',f._fila,`categoría "${f['categoria']}" no válida (Primera a Sexta)`);return}
+    const nac=fechaXL(f['fecha de nacimiento']);if(nac===null){err('Jugadores',f._fila,'fecha de nacimiento no válida (usá dd/mm/aaaa)');return}
+    const alt=numXL(f['altura']);if(alt&&(alt<100||alt>230)){err('Jugadores',f._fila,'la altura va en centímetros, por ejemplo 178');return}
+    const mano=normTxt(f['mano habil']);const m=/^d/.test(mano)?'D':/^z/.test(mano)?'Z':'';
+    const d={nombre,apellido};if(ci)d.cedula=ci;if(sexo)d.sexo=sexo;if(String(f['categoria']??'').trim())d.categoria=niv;
+    ['club','telefono'].forEach(k=>{const v=String(f[k]??'').trim();if(v)d[k]=v});if(nac)d.nacimiento=nac;if(alt)d.altura=alt;if(m)d.mano=m;
+    if(p){Object.assign(p,d);delete p.ejemplo;r.jAct++}
+    else{D.jugadores.push({id:uid(),categoria:'',cedula:'',club:'',telefono:'',...d});r.jNuevos++}
+  });
+  // Torneos
+  const hT=hojaXL(wb,'Torneos');if(hT)r.hojas++;
+  filasXL(hT).forEach(f=>{
+    const nombre=String(f['nombre']||'').trim();if(!nombre){err('Torneos',f._fila,'falta el nombre');return}
+    const mo=normTxt(f['modalidad']);const modalidad=/^s/.test(mo)?'S':/^d/.test(mo)?'D':null;
+    const ra=normTxt(f['rama']);const rama=/^(m|caballeros|hombres)/.test(ra)&&!/^mix/.test(ra)?'M':/^(f|damas|mujeres)/.test(ra)?'F':/^mix/.test(ra)?'X':null;
+    let c=cats.find(x=>normTxt(x.nombre)===normTxt(nombre));
+    if(!c&&(!modalidad||!rama)){err('Torneos',f._fila,'modalidad (Singles/Dobles) y rama (Masculino/Femenino/Mixto) son obligatorias');return}
+    if(modalidad==='S'&&rama==='X'){err('Torneos',f._fila,'Mixto es solo para Dobles');return}
+    const niv=nivelXL(f['categoria de jugadores']);if(niv===null){err('Torneos',f._fila,'categoría de jugadores no válida');return}
+    const ini=fechaXL(f['desde']),fin=fechaXL(f['hasta']);if(ini===null||fin===null){err('Torneos',f._fila,'fecha no válida (usá dd/mm/aaaa)');return}
+    if(ini&&fin&&fin<ini){err('Torneos',f._fila,'la fecha "Hasta" es anterior a "Desde"');return}
+    const sets=numXL(f['sets']);const stb=normTxt(f['super tie-break']);
+    const d={nombre};if(ini)d.inicio=ini;if(fin)d.fin=fin;const sede=String(f['sede']??'').trim();if(sede)d.sede=sede;
+    if(sets===3||sets===5)d.sets=sets;if(stb)d.superTB=/^(si|s|yes|x|1|true)/.test(stb);
+    const pc=numXL(f['premio campeon']),pf=numXL(f['premio vicecampeon']);if(pc||pf)d.premios={campeon:pc,finalista:pf};
+    if(c){
+      if(c.inscriptos.length&&((modalidad&&modalidad!==c.modalidad)||(rama&&rama!==c.rama)||(String(f['categoria de jugadores']??'').trim()&&niv!==(c.nivel||'')))){err('Torneos',f._fila,`"${nombre}" ya tiene inscriptos: no se cambió modalidad, rama ni categoría (el resto sí)`)}
+      else{if(modalidad)c.modalidad=modalidad;if(rama)c.rama=rama;if(String(f['categoria de jugadores']??'').trim())c.nivel=niv}
+      Object.assign(c,d);r.tAct++;
+    } else {cats.push({id:uid(),modalidad,rama,nivel:niv||'',sets:3,superTB:true,inscriptos:[],cuadro:null,res:{},...d});r.tNuevos++}
+  });
+  // Inscripciones
+  const hI=hojaXL(wb,'Inscripciones');if(hI)r.hojas++;
+  filasXL(hI).forEach(f=>{
+    const tn=String(f['torneo']||'').trim();const c=cats.find(x=>normTxt(x.nombre)===normTxt(tn));
+    if(!c){err('Inscripciones',f._fila,`no existe el torneo "${tn}"`);return}
+    if(c.cuadro){err('Inscripciones',f._fila,`"${c.nombre}" ya tiene el cuadro generado`);return}
+    const a=buscarJ(f['jugador 1']),b=buscarJ(f['jugador 2']);
+    if(!a){err('Inscripciones',f._fila,`no se encontró el jugador "${f['jugador 1']}"`);return}
+    const apto=p=>(c.rama==='X'||p.sexo===c.rama)&&(!c.nivel||p.categoria===c.nivel);
+    if(c.modalidad==='S'){
+      if(!apto(a)){err('Inscripciones',f._fila,`${a.nombre} ${a.apellido} no corresponde a la rama o categoría del torneo`);return}
+      if(c.inscriptos.some(e=>e.j.includes(a.id)))return;
+      c.inscriptos.push({id:a.id,j:[a.id]});r.ins++;
+    } else {
+      if(!b){err('Inscripciones',f._fila,'en dobles falta el Jugador 2 (o no se encontró)');return}
+      if(a.id===b.id){err('Inscripciones',f._fila,'los dos jugadores son la misma persona');return}
+      if(!apto(a)||!apto(b)){err('Inscripciones',f._fila,'algún jugador no corresponde a la rama o categoría del torneo');return}
+      if(c.rama==='X'&&a.sexo===b.sexo){err('Inscripciones',f._fila,'en mixtos la pareja es una dama y un caballero');return}
+      if(c.inscriptos.some(e=>e.j.includes(a.id)&&e.j.includes(b.id)))return;
+      if(c.inscriptos.some(e=>e.j.includes(a.id)||e.j.includes(b.id))){err('Inscripciones',f._fila,'alguno ya está inscripto en ese torneo con otra pareja');return}
+      c.inscriptos.push({id:uid(),j:[a.id,b.id]});r.ins++;
+    }
+  });
+  return {datos:D,r};
+}
+async function leerExcel(file){
+  ui.xl={estado:'leyendo',nombre:file.name};renderSheet();
+  try{await cargarXLSX()}catch(e){ui.xl={estado:'error',msg:'No se pudo cargar el lector de Excel. Revisá la conexión.'};renderSheet();return}
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});
+    const res=procesarExcel(wb,S||nuevoEstado());
+    if(!res.r.hojas){ui.xl={estado:'error',msg:'El archivo no tiene hojas llamadas Jugadores, Torneos o Inscripciones. Usá la plantilla.'};renderSheet();return}
+    ui.xl={estado:'listo',nombre:file.name,...res};renderSheet();
+  }catch(e){ui.xl={estado:'error',msg:'No se pudo leer el archivo. Tiene que ser .xlsx (Excel).'};renderSheet()}
+}
+function hojaExcel(){
+  const x=ui.xl||{};
+  let cuerpo='';
+  if(x.estado==='leyendo') cuerpo='<div class="note">Leyendo el archivo…</div>';
+  if(x.estado==='error') cuerpo=`<div class="note err">${esc(x.msg)}</div>`;
+  if(x.estado==='listo'){const r=x.r;const nada=!(r.jNuevos+r.jAct+r.tNuevos+r.tAct+r.ins);
+    cuerpo=`<div class="prz"><h3>Resumen de ${esc(x.nombre)}</h3>
+      <div class="xlres"><span><b>${r.jNuevos}</b> jugadores nuevos</span><span><b>${r.jAct}</b> jugadores actualizados</span><span><b>${r.tNuevos}</b> torneos nuevos</span><span><b>${r.tAct}</b> torneos actualizados</span><span><b>${r.ins}</b> inscripciones</span></div>
+      ${r.errores.length?`<div class="note warn"><b>${r.errores.length} fila${r.errores.length===1?'':'s'} con problemas (no se importan):</b><ul class="xlerr">${r.errores.slice(0,30).map(e=>`<li>${esc(e)}</li>`).join('')}${r.errores.length>30?`<li>y ${r.errores.length-30} más…</li>`:''}</ul></div>`:'<div class="note">Todo el archivo está correcto.</div>'}
+      ${nada?'<div class="note">No hay nada para importar.</div>':'<div class="btns"><button class="btn pri" data-act="xl-ok" data-primary>Importar ahora</button></div>'}</div>`}
+  return `<div class="sheet-hd"><h2>Importar desde Excel</h2><button class="x" data-act="cerrar" aria-label="Cerrar">×</button></div>
+    <p class="small muted" style="margin:0">Cargá jugadores, torneos e inscripciones desde una planilla. Si un jugador o torneo ya existe, se actualiza en lugar de duplicarse. Antes de guardar vas a ver un resumen.</p>
+    <div class="btns"><a class="btn sm pdf" href="plantilla-cuadro-tenis.xlsx" download>${ICO_PDF}Descargar plantilla</a><button class="btn sm" data-act="xl-elegir">Elegir archivo Excel…</button></div>
+    <input type="file" id="f-xl" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+    ${cuerpo}`;
+}
+
 /* ---- Torneos ---- */
 function vistaCategorias(){
   const t=T();
@@ -1508,7 +1646,7 @@ function vistaCategorias(){
   const grupos=[['curso','En curso'],['prox','Próximos'],['sin','Sin fecha'],['fin','Finalizados']];
   const html=grupos.map(([k,l])=>{const xs=t.categorias.filter(c=>estadoTorneo(c,hoy)===k).sort((a,b)=>k==='fin'?(b.inicio||'').localeCompare(a.inicio||''):(a.inicio||'').localeCompare(b.inicio||''));
     return xs.length?`<section class="sec"><h3>${l} · ${xs.length}</h3><div class="list">${xs.map(c=>filaTorneo(c)).join('')}</div></section>`:''}).join('');
-  return `${encabezado('Torneos',{sb:`${t.categorias.length} torneo${t.categorias.length===1?'':'s'} del club`,acc:(t.categorias.some(c=>c.cuadro)?'<button class="btn sm pdf" data-act="rep-llave" data-id="all">'+ICO_PDF+'Descargar llaves (PDF)</button>':'')+(puedeEditar?'<button class="btn pri" data-act="nueva-cat">Nuevo torneo</button>':'')})}
+  return `${encabezado('Torneos',{sb:`${t.categorias.length} torneo${t.categorias.length===1?'':'s'} del club`,acc:(t.categorias.some(c=>c.cuadro)?'<button class="btn sm pdf" data-act="rep-llave" data-id="all">'+ICO_PDF+'Descargar llaves (PDF)</button>':'')+(puedeEditar?'<button class="btn sm" data-act="xl-abrir">Importar Excel</button><button class="btn pri" data-act="nueva-cat">Nuevo torneo</button>':'')})}
     ${html||`<div class="panel muted">Todavía no hay torneos. Cada torneo tiene su nombre, por ejemplo "Apertura Singles Damas" o "Clausura Dobles Mixtos".${puedeEditar?' Creá el primero para inscribir jugadores.':''}</div>`}`;
 }
 function detalleTorneo(t,c){
@@ -1597,7 +1735,7 @@ function vistaJugadores(){
   const nEj=S.jugadores.filter(p=>p.ejemplo).length;
   return `<section class="sec">
     <div class="sec-hd"><h2>Jugadores <span class="muted num" style="font-size:18px">${S.jugadores.length}</span></h2>
-      <div class="btns">${puedeEditar?`<button class="btn pri" data-act="nuevo-jug">Agregar jugador</button>
+      <div class="btns">${puedeEditar?`<button class="btn sm" data-act="xl-abrir">Importar Excel</button><button class="btn pri" data-act="nuevo-jug">Agregar jugador</button>
         ${nEj?`<button class="btn danger ${ui.armado==='quitar-ej'?'arm':''}" data-act="arm" data-w="quitar-ej">${ui.armado==='quitar-ej'?'Tocá de nuevo para quitarlos':'Quitar jugadores de ejemplo ('+nEj+')'}</button>`:'<button class="btn" data-act="jug-ejemplo">Cargar jugadores de ejemplo</button>'}`:''}</div></div>
     ${ui.msg&&!ui.sheet?`<div class="note warn">${esc(ui.msg)}</div>`:''}
     <div class="filters">
@@ -1822,6 +1960,7 @@ function renderSheet(){
     ${js.length?`<div class="field"><label for="r-jug">Jugador</label><select id="r-jug">${js.map(p=>`<option value="${p.id}">${esc(p.apellido)}, ${esc(p.nombre)}</option>`).join('')}</select></div>
     <div class="btns"><button class="btn pri" data-act="rep-jug-sel" data-primary>${ICO_PDF}Descargar PDF</button></div>`:'<div class="note warn">Ningún jugador coincide con los filtros de la lista.</div>'}`;
   }
+  if(s.t==='excel'){h=hojaExcel()}
   if(s.t==='noticia'){
     h=`<div class="sheet-hd"><h2>Publicar noticia</h2>${cerrarBtn}</div>
     <div class="field"><label for="n-tit">Título</label><input type="text" id="n-tit" placeholder="Ej.: Cambio de horario por lluvia"></div>
@@ -1879,6 +2018,10 @@ document.addEventListener('click',ev=>{
     case 'rep-jug-elegir':abrir({t:'repjug'});break;
     case 'foto-jug':document.getElementById('f-avatar')?.click();break;
     case 'quitar-foto-jug':{const p=jug(S,ui.jug);if(p&&p.foto){if(p.foto.a&&assetsApi)assetsApi.delete(p.foto.a).catch(()=>{});delete p.foto;cambiar()}break}
+    case 'xl-abrir':ui.xl=null;abrir({t:'excel'});break;
+    case 'xl-elegir':document.getElementById('f-xl')?.click();break;
+    case 'xl-ok':{if(!ui.xl||!ui.xl.datos)break;const r=ui.xl.r;S=ui.xl.datos;ui.xl=null;ui.sheet=null;
+      toast(`Importado: ${r.jNuevos+r.jAct} jugadores, ${r.tNuevos+r.tAct} torneos y ${r.ins} inscripciones.`,5000);cambiar();break}
     case 'ftorneo':ui.ft=t.dataset.k;render();break;
     case 'nuevo-jug':abrir({t:'jug'});break;
     case 'edit-jug':abrir({t:'jug',id:t.dataset.id});break;
@@ -2039,6 +2182,7 @@ document.addEventListener('change',ev=>{
   if(t.id==='l-logo'&&t.files[0]){const f=t.files[0];t.value='';reducir(f,192).then(cv=>{let d=cv.toDataURL('image/png');if(d.length>150000)d=cv.toDataURL('image/jpeg',.88);ui.logoPend=d;const im=document.getElementById('l-logo-prev');if(im)im.src=d}).catch(()=>{ui.msg='No se pudo leer esa imagen. Probá con PNG o JPG.';renderSheet()})}
   if(t.id==='f-import'&&t.files[0]){const f=t.files[0];t.value='';f.text().then(txt=>{let j=JSON.parse(txt);if(j&&j.datos)j=j.datos;
     if(!j||!Array.isArray(j.jugadores)||!Array.isArray(j.torneos))throw new Error('formato');ui.importPend=j;ui.armado='importar';renderSheet()}).catch(()=>avisar('Ese archivo no es una copia de datos de Cuadro de Tenis.'))}
+  if(t.id==='f-xl'&&t.files[0]){const f=t.files[0];t.value='';leerExcel(f)}
   if(t.id==='f-avatar'&&t.files[0]){const f=t.files[0];t.value='';subirAvatar(f,ui.jug)}
   if(t.id==='f-fotos'){subirFotos(t.files);t.value=''}
   if(t.id==='p-tipo'){const w=document.getElementById('ganwrap');if(w)w.style.opacity=t.value==='normal'?'.55':'1'}
