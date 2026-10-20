@@ -1,0 +1,17 @@
+{
+  "name": "Cuadro de Tenis",
+  "short_name": "Tenis",
+  "description": "Torneos de tenis del club: cuadros, partidos, ranking y estadísticas.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f5f3",
+  "theme_color": "#13654f",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
