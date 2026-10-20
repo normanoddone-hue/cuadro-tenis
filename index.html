@@ -440,6 +440,9 @@ button.av:hover{filter:brightness(.95)}
 .xlres{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 12px;font-size:14px}.xlres b{font-family:var(--f-display);font-size:22px;margin-right:4px}
 .xlerr{margin:6px 0 0;padding-left:18px;max-height:200px;overflow:auto;font-size:12.5px}
 a.btn{text-decoration:none;color:inherit}
+.flag{width:20px;height:14px;object-fit:cover;border-radius:2px;margin-left:7px;vertical-align:-1px;box-shadow:0 0 0 1px rgba(0,0,0,.12);display:inline-block}
+.mrow .nm{display:flex;align-items:center;min-width:0}.mrow .nmt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.flag.mini{width:16px;height:11px;margin-left:4px;flex:none;vertical-align:-1px}
+.ph h1 .flag.big{width:36px;height:25px;margin-left:12px;vertical-align:3px;border-radius:3px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;z-index:60;font-weight:600;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:calc(100% - 32px)}
 @media (min-width:900px){#toast{bottom:24px}}
 .rep p{margin:0}.rep .btn{align-self:flex-start;margin-top:auto}
@@ -1005,7 +1008,7 @@ function vistaRanking(){
     </div>
     ${filas.length?`<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Jugador</th><th>Pts</th><th>PJ</th><th>PG</th><th>Sets</th><th>Games</th></tr></thead><tbody>
       ${filas.map((f,i)=>{const k=f.pts+'|'+f.s.pg;if(k!==prev){pos=i+1;prev=k}return `<tr class="${pos===1?'pos1':''}"><td>${pos===1?'<span class="ballico"></span>':pos}</td>
-      <td><button class="lnk2" data-act="ver-jug" data-id="${f.p.id}"><b>${esc(nombreCompleto(f.p))}</b></button>${f.p.categoria?` <span class="muted small">${esc(f.p.categoria)}</span>`:''}<br><span class="small muted">${esc(f.det.join(' · '))}</span></td>
+      <td><button class="lnk2" data-act="ver-jug" data-id="${f.p.id}"><b>${esc(nombreCompleto(f.p))}</b>${bandera(f.p.pais)}</button>${f.p.categoria?` <span class="muted small">${esc(f.p.categoria)}</span>`:''}<br><span class="small muted">${esc(f.det.join(' · '))}</span></td>
       <td class="pts">${f.pts}</td><td>${f.s.pj}</td><td>${f.s.pg}</td><td>${f.s.sg}-${f.s.sp}</td><td>${f.s.gg}-${f.s.gp}</td></tr>`}).join('')}
     </tbody></table></div>`:`<div class="panel muted">${cats.length?'Todavía no hay cuadros generados en '+nombreMod.toLowerCase()+'.':'No hay torneos de '+nombreMod.toLowerCase()+(acum?'.':' en este evento.')}</div>`}
     <div class="note">Puntos según la ronda alcanzada: Campeón ${PUNTOS_CAMPEON}, Finalista ${PUNTOS_RONDA[0]}, Semis ${PUNTOS_RONDA[1]}, Cuartos ${PUNTOS_RONDA[2]}, Octavos ${PUNTOS_RONDA[3]}, 16avos ${PUNTOS_RONDA[4]}. En dobles, cada integrante suma los puntos de la pareja. El ranking es global: suma todos los torneos, y los puntos de un torneo en curso son provisorios. El ranking de cada modalidad define los cabezas de serie del evento siguiente. Desempate: partidos ganados, diferencia de sets y de games.</div>`;
@@ -1056,7 +1059,7 @@ function destacados(t){
     return top?{k,l,p:jug(S,top[0]),pts:top[1].pts}:null;
   }).filter(Boolean);
   if(lideres.length) tarjetas.push(`<div class="hcard"><h3>Líderes del ranking</h3>
-    ${lideres.map(x=>`<button class="hrow" data-act="ir-ranking" data-k="${x.k}"><span><b>${esc(nombreCompleto(x.p))}</b><small>${x.l}</small></span><span class="v">${x.pts}<small> pts</small></span></button>`).join('')}</div>`);
+    ${lideres.map(x=>`<button class="hrow" data-act="ir-ranking" data-k="${x.k}"><span><b>${esc(nombreCompleto(x.p))}${bandera(x.p.pais)}</b><small>${x.l}</small></span><span class="v">${x.pts}<small> pts</small></span></button>`).join('')}</div>`);
 
   // datos de todo el club (todos los eventos)
   const st=estadisticas(S,todas);
@@ -1164,6 +1167,12 @@ async function subirAvatar(file,pid){
     toast('Foto actualizada.');cambiar();
   }catch(e){toast('No se pudo subir la foto. Probá con JPG o PNG.')}
 }
+/* ---- Nacionalidad ---- */
+const PAISES=[['py','Paraguay'],['ar','Argentina'],['br','Brasil'],['uy','Uruguay'],['bo','Bolivia'],['cl','Chile'],['pe','Perú'],['co','Colombia'],['ec','Ecuador'],['ve','Venezuela'],['mx','México'],['us','Estados Unidos'],['ca','Canadá'],['cu','Cuba'],['cr','Costa Rica'],['pa','Panamá'],['do','República Dominicana'],['pr','Puerto Rico'],['gt','Guatemala'],['hn','Honduras'],['sv','El Salvador'],['ni','Nicaragua'],['es','España'],['it','Italia'],['fr','Francia'],['de','Alemania'],['pt','Portugal'],['gb','Reino Unido'],['ch','Suiza'],['nl','Países Bajos'],['be','Bélgica'],['at','Austria'],['se','Suecia'],['no','Noruega'],['dk','Dinamarca'],['pl','Polonia'],['cz','República Checa'],['hr','Croacia'],['rs','Serbia'],['gr','Grecia'],['ru','Rusia'],['ua','Ucrania'],['il','Israel'],['lb','Líbano'],['jp','Japón'],['cn','China'],['kr','Corea del Sur'],['tw','Taiwán'],['in','India'],['au','Australia'],['nz','Nueva Zelanda'],['za','Sudáfrica']];
+function paisNombre(c){const x=PAISES.find(p=>p[0]===c);return x?x[1]:''}
+function bandera(c,clase=''){const n=paisNombre(c);return n?`<img class="flag ${clase}" src="https://flagcdn.com/w40/${c}.png" alt="${esc(n)}" title="${esc(n)}" loading="lazy" onerror="this.remove()">`:''}
+function banderasEntrada(c,eid){const e=inscripto(c,eid);if(!e)return '';const v=[...new Set(e.j.map(id=>jug(S,id)?.pais).filter(Boolean))];return v.map(x=>bandera(x,'mini')).join('')}
+function paisDe(v){const t=normTxt(v);if(!t)return '';const x=PAISES.find(([c,n])=>c===t||normTxt(n)===t)||(t==='paraguaya'||t==='paraguayo'?['py']:null);return x?x[0]:null}
 /* ---- Perfil del jugador ---- */
 function datosPerfil(pid){
   const parts=[],ms=[];
@@ -1250,7 +1259,7 @@ function perfilJugador(pid){
 
   const hist=[...ms].reverse();
   return `<button class="back" data-act="volver-jug">‹ Jugadores</button>
-    <div class="ph-perfil">${bloqueAvatar(p)}${encabezado(esc(nombreCompleto(p)),{ey:p.sexo==='F'?'Jugadora':'Jugador',sb:esc([p.club||'Sin club',p.categoria?'Categoría '+p.categoria:'',p.sexo==='F'?'Damas':'Caballeros',edadJug(p)!=null?edadJug(p)+' años':'',p.altura?(p.altura/100).toFixed(2).replace('.',',')+' m':'',p.mano==='D'?(p.sexo==='F'?'Diestra':'Diestro'):p.mano==='Z'?(p.sexo==='F'?'Zurda':'Zurdo'):''].filter(Boolean).join(' · ')),acc:`<button class="btn sm pdf" data-act="rep-jug" data-id="${p.id}">${ICO_PDF}Descargar estadísticas (PDF)</button>`+(puedeEditar?`<button class="btn sm" data-act="edit-jug" data-id="${p.id}">Editar datos</button>`:'')})}</div>
+    <div class="ph-perfil">${bloqueAvatar(p)}${encabezado(esc(nombreCompleto(p))+bandera(p.pais,'big'),{ey:p.sexo==='F'?'Jugadora':'Jugador',sb:esc([paisNombre(p.pais),p.club||'Sin club',p.categoria?'Categoría '+p.categoria:'',p.sexo==='F'?'Damas':'Caballeros',edadJug(p)!=null?edadJug(p)+' años':'',p.altura?(p.altura/100).toFixed(2).replace('.',',')+' m':'',p.mano==='D'?(p.sexo==='F'?'Diestra':'Diestro'):p.mano==='Z'?(p.sexo==='F'?'Zurda':'Zurdo'):''].filter(Boolean).join(' · ')),acc:`<button class="btn sm pdf" data-act="rep-jug" data-id="${p.id}">${ICO_PDF}Descargar estadísticas (PDF)</button>`+(puedeEditar?`<button class="btn sm" data-act="edit-jug" data-id="${p.id}">Editar datos</button>`:'')})}</div>
     <section class="kpis" aria-label="Resumen del jugador">
       <div><b>${st.pj}</b><span>Partidos</span></div>
       <div><b>${st.pg}<small>-${pp}</small></b><span>Ganados y perdidos</span><em>${pct(st.pg,st.pj)} de victorias</em></div>
@@ -1455,7 +1464,8 @@ function repJugador(pid){
     tabla(doc,{startY:y,theme:'plain',styles:{fontSize:9,cellPadding:3},head:[],body:[
       ['Club',pt(p.club||'-'),'Rama',p.sexo==='F'?'Damas':'Caballeros'],
       ['Categoría',pt(p.categoria||'-'),'Edad',e!=null?e+' años':'-'],
-      ['Altura',p.altura?(p.altura/100).toFixed(2).replace('.',',')+' m':'-','Mano hábil',p.mano==='D'?'Diestro':p.mano==='Z'?'Zurdo':'-']],
+      ['Altura',p.altura?(p.altura/100).toFixed(2).replace('.',',')+' m':'-','Mano hábil',p.mano==='D'?'Diestro':p.mano==='Z'?'Zurdo':'-'],
+      ['Nacionalidad',pt(paisNombre(p.pais)||'-'),'','']],
       columnStyles:{0:{fontStyle:'bold',textColor:C_GRIS,cellWidth:70},2:{fontStyle:'bold',textColor:C_GRIS,cellWidth:70}}});
     const pp=st.pj-st.pg,titulos=parts.filter(x=>x.camp).length,finales=parts.filter(x=>x.final).length;
     y=subtitulo(doc,'Resumen',doc.lastAutoTable.finalY+20);
@@ -1556,9 +1566,10 @@ function procesarExcel(wb,base){
     const niv=nivelXL(f['categoria']);if(niv===null){err('Jugadores',f._fila,`categoría "${f['categoria']}" no válida (Primera a Sexta)`);return}
     const nac=fechaXL(f['fecha de nacimiento']);if(nac===null){err('Jugadores',f._fila,'fecha de nacimiento no válida (usá dd/mm/aaaa)');return}
     const alt=numXL(f['altura']);if(alt&&(alt<100||alt>230)){err('Jugadores',f._fila,'la altura va en centímetros, por ejemplo 178');return}
+    const pais=paisDe(f['nacionalidad']);if(pais===null){err('Jugadores',f._fila,`nacionalidad "${f['nacionalidad']}" no reconocida (usá la lista de la plantilla)`);return}
     const mano=normTxt(f['mano habil']);const m=/^d/.test(mano)?'D':/^z/.test(mano)?'Z':'';
     const d={nombre,apellido};if(ci)d.cedula=ci;if(sexo)d.sexo=sexo;if(String(f['categoria']??'').trim())d.categoria=niv;
-    ['club','telefono'].forEach(k=>{const v=String(f[k]??'').trim();if(v)d[k]=v});if(nac)d.nacimiento=nac;if(alt)d.altura=alt;if(m)d.mano=m;
+    ['club','telefono'].forEach(k=>{const v=String(f[k]??'').trim();if(v)d[k]=v});if(nac)d.nacimiento=nac;if(alt)d.altura=alt;if(m)d.mano=m;if(pais)d.pais=pais;
     if(p){Object.assign(p,d);delete p.ejemplo;r.jAct++}
     else{D.jugadores.push({id:uid(),categoria:'',cedula:'',club:'',telefono:'',...d});r.jNuevos++}
   });
@@ -1744,7 +1755,7 @@ function vistaJugadores(){
       <div style="min-width:150px"><select id="fniv" aria-label="Filtrar por categoría"><option value="">Todas las categorías</option>${NIVELES.map(n=>`<option ${ui.fniv===n?'selected':''}>${n}</option>`).join('')}<option value="-" ${ui.fniv==='-'?'selected':''}>Sin categoría</option></select></div>
     </div>
     ${lista.length?`<div class="list">${lista.map(p=>`<button class="rowbtn" data-act="ver-jug" data-id="${p.id}">
-      <span class="n">${avatar(p,32)}${esc(p.apellido)}, ${esc(p.nombre)}${p.ejemplo?' <span class="tag">Ejemplo</span>':''}</span>
+      <span class="n">${avatar(p,32)}${esc(p.apellido)}, ${esc(p.nombre)}${bandera(p.pais)}${p.ejemplo?' <span class="tag">Ejemplo</span>':''}</span>
       <span class="d">${puedeEditar?`C.I. ${esc(fmtCI(p.cedula)||'—')} · `:''}${esc(p.club||'Sin club')}${t&&nCat(p.id)?` · ${nCat(p.id)} torneo${nCat(p.id)===1?'':'s'}`:''}</span>
       <span class="r"><span class="tag ${p.categoria?'g':''}">${esc(p.categoria||'Sin categoría')}</span></span></button>`).join('')}</div>`
       :`<div class="panel muted">${S.jugadores.length?'Ningún jugador coincide con el filtro.':'Agregá a los jugadores con su nombre, cédula, rama, categoría y club. Los jugadores sirven para todos los torneos.'}</div>`}
@@ -1796,7 +1807,7 @@ function seccionCuadro(c,cb){
     const sets=x.estado==='jugado'?(x.res.tipo==='wo'?[]:(x.res.s||[])):[];
     let celdas='';for(let k=0;k<ns;k++){const s=sets[k];if(s&&s[0]!==''&&s[0]!=null){const v=s[i],o=s[1-i];celdas+=`<span class="sc ${+v>+o?'won':''}">${esc(v)}${s[2]!=null?`<sup>${esc(tbDe(s,i))}</sup>`:''}</span>`}else celdas+=`<span class="sc">${k===0&&x.estado==='jugado'&&x.res.tipo==='wo'&&w?'WO':''}</span>`}
     const sd=c.cuadro.sem?.[e];
-    return `<div class="mrow ${w?'w':''}"><span class="sd">${sd||''}</span><span class="nm" title="${esc(etiqueta(S,c,e))}">${esc(etiqueta(S,c,e,true))}</span>${celdas}</div>`;
+    return `<div class="mrow ${w?'w':''}"><span class="sd">${sd||''}</span><span class="nm" title="${esc(etiqueta(S,c,e))}"><span class="nmt">${esc(etiqueta(S,c,e,true))}</span>${banderasEntrada(c,e)}</span>${celdas}</div>`;
   };
   const cols=cb.rondas.map((f,r)=>`<div class="col"><div class="col-h">${nombreRonda(r,cb.R)}</div><div class="col-b">
     ${f.map(x=>{const clic=puedeEditar&&x.estado!=='bye'&&(x.a||x.b);
@@ -1854,6 +1865,7 @@ function renderSheet(){
     <div class="field"><label for="f-mano">Mano hábil</label><select id="f-mano"><option value="">Sin dato</option><option value="D" ${p.mano==='D'?'selected':''}>Diestro</option><option value="Z" ${p.mano==='Z'?'selected':''}>Zurdo</option></select></div>
     <div class="field"><label for="f-sexo">Rama</label><select id="f-sexo"><option value="M" ${p.sexo==='M'?'selected':''}>Caballeros</option><option value="F" ${p.sexo==='F'?'selected':''}>Damas</option></select></div>
     <div class="field"><label for="f-cat">Categoría</label><select id="f-cat"><option value="">Sin categoría</option>${NIVELES.map(n=>`<option ${p.categoria===n?'selected':''}>${n}</option>`).join('')}</select></div>
+    <div class="field"><label for="f-pais">Nacionalidad</label><select id="f-pais"><option value="">Sin dato</option>${PAISES.map(([c,n])=>`<option value="${c}" ${(s.id?p.pais:(p.pais||'py'))===c?'selected':''}>${n}</option>`).join('')}</select></div>
     <div class="field"><label for="f-club">Club</label><input type="text" id="f-club" value="${esc(p.club)}"></div>
     <div class="field"><label for="f-tel">Teléfono</label><input type="text" id="f-tel" inputmode="tel" value="${esc(p.telefono)}"></div></div>
     ${err}
@@ -2092,7 +2104,7 @@ document.addEventListener('click',ev=>{
         S.torneos.push(nt);elegirTorneo(nt.id);ui.tab='resumen'}
       ui.sheet=null;ui.msg=null;cambiar();break}
     case 'guardar-jug':{
-      const d={nombre:val('f-nom'),apellido:val('f-ape'),cedula:val('f-ci').replace(/\D/g,''),sexo:val('f-sexo'),categoria:val('f-cat'),club:val('f-club'),telefono:val('f-tel'),nacimiento:val('f-nac'),altura:val('f-alt')?+val('f-alt'):'',mano:val('f-mano')};
+      const d={nombre:val('f-nom'),apellido:val('f-ape'),cedula:val('f-ci').replace(/\D/g,''),sexo:val('f-sexo'),categoria:val('f-cat'),club:val('f-club'),telefono:val('f-tel'),pais:val('f-pais'),nacimiento:val('f-nac'),altura:val('f-alt')?+val('f-alt'):'',mano:val('f-mano')};
       if(d.nacimiento&&(d.nacimiento>hoyISO()||edadDe(d.nacimiento)>100)){avisar('Revisá la fecha de nacimiento.');break}
       if(d.altura!==''&&(d.altura<100||d.altura>230)){avisar('La altura va en centímetros, por ejemplo 178.');break}
       if(!d.nombre||!d.apellido){avisar('Completá el nombre y el apellido.');break}
