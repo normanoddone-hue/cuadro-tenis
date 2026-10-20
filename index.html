@@ -1736,7 +1736,7 @@ function vistaJugadores(){
   return `<section class="sec">
     <div class="sec-hd"><h2>Jugadores <span class="muted num" style="font-size:18px">${S.jugadores.length}</span></h2>
       <div class="btns">${puedeEditar?`<button class="btn sm" data-act="xl-abrir">Importar Excel</button><button class="btn pri" data-act="nuevo-jug">Agregar jugador</button>
-        ${nEj?`<button class="btn danger ${ui.armado==='quitar-ej'?'arm':''}" data-act="arm" data-w="quitar-ej">${ui.armado==='quitar-ej'?'Tocá de nuevo para quitarlos':'Quitar jugadores de ejemplo ('+nEj+')'}</button>`:'<button class="btn" data-act="jug-ejemplo">Cargar jugadores de ejemplo</button>'}`:''}</div></div>
+        ${nEj?`<button class="btn danger ${ui.armado==='quitar-ej'?'arm':''}" data-act="arm" data-w="quitar-ej">${ui.armado==='quitar-ej'?'Tocá de nuevo para quitarlos':'Quitar jugadores de ejemplo ('+nEj+')'}</button>`:''}`:''}</div></div>
     ${ui.msg&&!ui.sheet?`<div class="note warn">${esc(ui.msg)}</div>`:''}
     <div class="filters">
       <div style="flex:1;min-width:180px"><input type="search" id="q" placeholder="Buscar por nombre, cédula o club" value="${esc(ui.q)}" aria-label="Buscar jugador"></div>
