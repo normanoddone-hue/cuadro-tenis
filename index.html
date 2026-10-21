@@ -1548,11 +1548,14 @@ function destacados(t){
   const todas=S.torneos.flatMap(e=>e.categorias);
   const lideres=MODALIDADES.map(([k,l])=>{
     const st=estadisticas(S,todas.filter(c=>claveMod(c)===k));
-    const top=Object.entries(st).filter(([,s])=>s.pts>0).sort((a,b)=>b[1].pts-a[1].pts||b[1].pg-a[1].pg)[0];
-    return top?{k,l,p:jug(S,top[0]),pts:top[1].pts}:null;
+    const orden=Object.entries(st).filter(([,s])=>s.pts>0).sort((a,b)=>b[1].pts-a[1].pts||b[1].pg-a[1].pg);const top=orden[0];
+    if(!top) return null;
+    // En dobles se muestra la pareja: los que empatan arriba (normalmente los dos compañeros)
+    const ps=k[0]==='D'?orden.filter(([,s])=>s.pts===top[1].pts&&s.pg===top[1].pg).slice(0,2).map(([id])=>jug(S,id)):[jug(S,top[0])];
+    return {k,l,ps,p:ps[0],pts:top[1].pts};
   }).filter(Boolean);
   if(lideres.length) tarjetas.push(`<div class="hcard"><h3>Líderes del ranking</h3>
-    ${lideres.map(x=>`<button class="hrow" data-act="ir-ranking" data-k="${x.k}"><span><b>${esc(nombreCompleto(x.p))}${bandera(x.p.pais)}</b><small>${x.l}</small></span><span class="v">${x.pts}<small> pts</small></span></button>`).join('')}</div>`);
+    ${lideres.map(x=>`<button class="hrow" data-act="ir-ranking" data-k="${x.k}"><span><b>${x.ps.map(p=>esc(x.ps.length>1?p.apellido:nombreCompleto(p))+bandera(p.pais)).join(' / ')}</b><small>${x.l}${x.ps.length>1?' · pareja':''}</small></span><span class="v">${x.pts}<small> pts</small></span></button>`).join('')}</div>`);
 
   // datos de todo el club (todos los eventos)
   const st=estadisticas(S,todas);
