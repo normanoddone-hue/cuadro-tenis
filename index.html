@@ -2271,7 +2271,9 @@ function seccionInscriptos(t,c,cb){
   } else {
     cuerpo=n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>';
   }
-  return `${!cb&&!c.grupos&&puedeEditar?seccionSolicitudes(c):''}<div class="panel sec"><div class="sec-hd"><h3>Inscriptos · ${n} ${D?'parejas':'jugadores'}</h3>
+  const aviso=puedeEditar&&cb&&!c.grupos&&c.formato==='grupos'?`<div class="note warn">Elegiste <b>fase de grupos</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "Armar grupos".</div>`
+    :puedeEditar&&cb&&c.online?`<div class="note">La inscripción online está activada, pero el cuadro ya está armado: el botón "Quiero anotarme" solo aparece mientras no hay cuadro.</div>`:'';
+  return `${aviso}${!cb&&!c.grupos&&puedeEditar?seccionSolicitudes(c):''}<div class="panel sec"><div class="sec-hd"><h3>Inscriptos · ${n} ${D?'parejas':'jugadores'}</h3>
     ${cb&&puedeEditar?`<button class="btn danger ${ui.armado==='rehacer'?'arm':''}" data-act="arm" data-w="rehacer">${ui.armado==='rehacer'?'Tocá de nuevo: se borran los resultados':'Rehacer cuadro'}</button>`:''}</div>${cuerpo}</div>`;
 }
 function seccionGrupos(c){
@@ -2396,7 +2398,8 @@ function renderSheet(){
     <div class="field"><label for="c-fmt">Cómo se juega</label><select id="c-fmt"><option value="elim" ${c.formato!=='grupos'?'selected':''}>Eliminación directa</option><option value="grupos" ${c.formato==='grupos'?'selected':''}>Fase de grupos y después cuadro</option></select></div>
     <div class="field"><label for="c-gtam">Tamaño de cada grupo</label><select id="c-gtam">${[3,4,5].map(v=>`<option value="${v}" ${(c.gtam||4)===v?'selected':''}>${v} ${c.modalidad==='D'?'parejas':'jugadores'}</option>`).join('')}</select></div>
     <div class="field"><label for="c-gpas">Pasan al cuadro</label><select id="c-gpas"><option value="1" ${c.gpasan===1?'selected':''}>El primero de cada grupo</option><option value="2" ${(c.gpasan||2)===2?'selected':''}>Los 2 primeros</option></select></div></div>
-    <span class="small muted">El tamaño de grupo y cuántos pasan se usan solo con fase de grupos.</span></div>
+    <span class="small muted">El tamaño de grupo y cuántos pasan se usan solo con fase de grupos.</span>
+    ${s.id&&(c.cuadro||c.grupos)?`<div class="note warn">Este torneo ya tiene ${c.grupos?'los grupos':'el cuadro'} armado. El formato y la inscripción online se aplican <b>antes</b> de armarlo: para cambiarlos, guardá y después tocá "${c.grupos?'Deshacer grupos':'Rehacer cuadro'}" (se borran sus resultados).</div>`:''}</div>
     <label class="check"><input type="checkbox" id="c-online" ${c.online?'checked':''}> Inscripción online abierta: los jugadores pueden pedir anotarse desde la app</label>
     <label class="check"><input type="checkbox" id="c-tb" ${c.superTB?'checked':''}> El 3.er set se juega como súper tie-break a 10</label>
     ${bloq?'<span class="small muted">La modalidad, la rama y la categoría de jugadores se pueden cambiar cuando no hay inscriptos.</span>':''}
