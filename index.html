@@ -657,6 +657,34 @@ body.tv-on{overflow:hidden}
 .camp-av .camp-foto+.camp-foto{margin-left:-14px}
 .tit-p{display:flex!important;flex-direction:row!important;align-items:center;gap:10px}
 .tit-p>span:last-child{display:flex;flex-direction:column;min-width:0}
+
+/* Formulario de torneo por pasos */
+.paso{display:flex;flex-direction:column;gap:10px}
+.paso h3{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px}
+.paso .pn{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--court);color:#fff;font-size:12px;letter-spacing:0}
+.fmt-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:560px){.fmt-cards{grid-template-columns:1fr}.fmt-card{display:grid;grid-template-columns:56px 1fr;column-gap:12px;row-gap:2px;align-items:center;padding:10px 12px}.fmt-card .fmt-ico{grid-row:1/span 2}}
+.fmt-card{position:relative;display:flex;flex-direction:column;gap:4px;padding:12px;border:2px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;transition:border-color .15s,background .15s}
+.fmt-card input{position:absolute;opacity:0;pointer-events:none}
+.fmt-card b{font-size:15px}
+.fmt-card small{font-size:12px;color:var(--muted);line-height:1.35}
+.fmt-ico svg{width:56px;height:36px;fill:none;stroke:var(--court);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.fmt-card:has(input:checked){border-color:var(--court);background:color-mix(in srgb,var(--ball) 28%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--ball) 60%,transparent)}
+.fmt-card:has(input:focus-visible){outline:2px solid var(--court);outline-offset:2px}
+.fmt-card:has(input:disabled){opacity:.55;cursor:not-allowed}
+.fmt-card:has(input:disabled:checked){opacity:1}
+.opts{display:flex;gap:6px;flex-wrap:wrap}
+.opt{position:relative;cursor:pointer}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt span{display:inline-flex;align-items:center;min-height:38px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14px}
+.opt input:checked+span{background:var(--court);color:#fff;border-color:var(--court)}
+.opt input:focus-visible+span{outline:2px solid var(--court);outline-offset:2px}
+.opt input:disabled+span{opacity:.45;cursor:not-allowed}
+.opt input:disabled:checked+span{opacity:1}
+details.mas{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface)}
+details.mas summary{cursor:pointer;font-weight:700;font-size:14px}
+details.mas[open]{display:flex;flex-direction:column;gap:12px}
+details.mas[open] summary{margin-bottom:4px}
 </style>
 
 <div class="app">
@@ -2423,32 +2451,47 @@ function renderSheet(){
     ${err}
     <div class="btns"><button class="btn pri" data-act="guardar-jug">Guardar</button>${s.id?`<button class="btn danger ${ui.armado==='del-jug'?'arm':''}" data-act="arm" data-w="del-jug">${ui.armado==='del-jug'?'Tocá de nuevo para eliminar':'Eliminar'}</button>`:''}</div>`;
   }
-  if(s.t==='cat'){const c=s.id?T().categorias.find(x=>x.id===s.id):{nombre:'',modalidad:'S',rama:'M',nivel:'',sets:3,superTB:true};const bloq=!!(s.id&&c.inscriptos.length);
+  if(s.t==='cat'){const c=s.id?T().categorias.find(x=>x.id===s.id):{nombre:'',modalidad:'S',rama:'M',nivel:'',sets:3,superTB:true,formato:'elim'};const bloq=!!(s.id&&c.inscriptos.length);
+    const fmt=c.formato||'elim';const armado=!!(s.id&&(c.cuadro||c.grupos));
+    const D=c.modalidad==='D';
+    const card=(v,tit,txt,svg)=>`<label class="fmt-card"><input type="radio" name="c-fmt" value="${v}" ${fmt===v?'checked':''} ${armado?'disabled':''}><span class="fmt-ico" aria-hidden="true">${svg}</span><b>${tit}</b><small>${txt}</small></label>`;
+    const chip=(name,v,l,on,dis)=>`<label class="opt"><input type="radio" name="${name}" value="${v}" ${on?'checked':''} ${dis?'disabled':''}><span>${l}</span></label>`;
+    const icoLlave='<svg viewBox="0 0 64 40"><path d="M4 4h12v8h8M4 20h12v-8M4 22h12v8h8M4 38h12v-8M24 12h10v9h8M24 30h10v-9M42 21h18"/></svg>';
+    const icoRR='<svg viewBox="0 0 64 40"><circle cx="12" cy="10" r="5"/><circle cx="52" cy="10" r="5"/><circle cx="12" cy="32" r="5"/><circle cx="52" cy="32" r="5"/><path d="M17 10h30M17 32h30M12 15v12M52 15v12M16 13l32 16M16 29l32-16"/></svg>';
+    const icoGr='<svg viewBox="0 0 64 40"><rect x="3" y="4" width="18" height="14" rx="3"/><rect x="3" y="22" width="18" height="14" rx="3"/><path d="M21 11h12v9h10M21 29h12v-9M43 20h18"/></svg>';
     h=`<div class="sheet-hd"><h2>${s.id?'Editar torneo':'Nuevo torneo'}</h2>${cerrarBtn}</div>
-    <div class="field"><label for="c-nom">Nombre del torneo</label><input type="text" id="c-nom" placeholder="Ej.: Apertura Singles Caballeros Tercera" value="${esc(c.nombre)}"></div>
-    <div class="grid2"><div class="field"><label for="c-ini">Desde</label><input type="date" id="c-ini" value="${esc(c.inicio||'')}"></div>
-    <div class="field"><label for="c-fin">Hasta</label><input type="date" id="c-fin" value="${esc(c.fin||'')}"></div>
-    <div class="field"><label for="c-sede">Sede</label><input type="text" id="c-sede" value="${esc(c.sede||'')}" placeholder="Ej.: Asunción"></div></div>
-    <div class="grid2"><div class="field"><label for="c-mod">Modalidad</label><select id="c-mod" ${bloq?'disabled':''}><option value="S" ${c.modalidad==='S'?'selected':''}>Singles</option><option value="D" ${c.modalidad==='D'?'selected':''}>Dobles</option></select></div>
-    <div class="field"><label for="c-rama">Rama</label><select id="c-rama" ${bloq?'disabled':''}><option value="M" ${c.rama==='M'?'selected':''}>Masculino</option><option value="F" ${c.rama==='F'?'selected':''}>Femenino</option><option value="X" ${c.rama==='X'?'selected':''}>Mixto</option></select></div>
-    <div class="field"><label for="c-niv">Categoría de jugadores</label><select id="c-niv" ${bloq?'disabled':''}><option value="">Todas</option>${NIVELES.map(n=>`<option ${c.nivel===n?'selected':''}>${n}</option>`).join('')}</select></div>
-    <div class="field"><label for="c-sets">Formato</label><select id="c-sets"><option value="3" ${c.sets===3?'selected':''}>Al mejor de 3 sets</option><option value="5" ${c.sets===5?'selected':''}>Al mejor de 5 sets</option></select></div>
+    <div class="paso"><h3><span class="pn">1</span>¿Cómo se juega?</h3>
+      <div class="fmt-cards">
+        ${card('elim','Llaves','Eliminación directa: el que pierde queda afuera.',icoLlave)}
+        ${card('rr','Round robin','Todos contra todos. Gana el primero de la tabla. Ideal de 3 a 8.',icoRR)}
+        ${card('grupos','Grupos y llaves','Grupos de todos contra todos; los mejores pasan a las llaves.',icoGr)}
+      </div>
+      <div class="grid2" id="gopts" ${fmt==='grupos'?'':'hidden'}>
+        <div class="field"><label for="c-gtam">Tamaño de cada grupo</label><select id="c-gtam">${[3,4,5].map(v=>`<option value="${v}" ${(c.gtam||4)===v?'selected':''}>${v} por grupo</option>`).join('')}</select></div>
+        <div class="field"><label for="c-gpas">Pasan a las llaves</label><select id="c-gpas"><option value="1" ${c.gpasan===1?'selected':''}>El primero de cada grupo</option><option value="2" ${(c.gpasan||2)===2?'selected':''}>Los 2 primeros</option></select></div></div>
+      ${armado?`<div class="note warn">Este torneo ya tiene ${c.grupos?(esRR(c)?'el round robin':'los grupos'):'el cuadro'} armado, por eso el formato no se puede cambiar. Para cambiarlo, primero tocá "${c.grupos?(esRR(c)?'Deshacer round robin':'Deshacer grupos'):'Rehacer cuadro'}" (se borran sus resultados).</div>`:''}
     </div>
-    <div class="prz"><h3>Premios</h3><div class="grid2">
-    <div class="field"><label for="c-pc">Premio campeón (Gs.)</label><input type="text" inputmode="numeric" id="c-pc" value="${esc(fmtCI(c.premios?.campeon))}" placeholder="Ej.: 1.000.000"></div>
-    <div class="field"><label for="c-pf">Premio vicecampeón (Gs.)</label><input type="text" inputmode="numeric" id="c-pf" value="${esc(fmtCI(c.premios?.finalista))}" placeholder="Ej.: 500.000"></div></div>
-    <span class="small muted">Dejalos vacíos si el torneo no tiene premio en efectivo. Se suman a "Entregados en premios" cuando el torneo tiene campeón.</span></div>
-    <div class="prz"><h3>Formato</h3><div class="grid2">
-    <div class="field"><label for="c-fmt">Cómo se juega</label><select id="c-fmt"><option value="elim" ${!c.formato||c.formato==='elim'?'selected':''}>Llaves (eliminación directa)</option><option value="rr" ${c.formato==='rr'?'selected':''}>Round robin (todos contra todos)</option><option value="grupos" ${c.formato==='grupos'?'selected':''}>Grupos y después llaves</option></select></div>
-    <div class="field"><label for="c-gtam">Tamaño de cada grupo</label><select id="c-gtam">${[3,4,5].map(v=>`<option value="${v}" ${(c.gtam||4)===v?'selected':''}>${v} ${c.modalidad==='D'?'parejas':'jugadores'}</option>`).join('')}</select></div>
-    <div class="field"><label for="c-gpas">Pasan al cuadro</label><select id="c-gpas"><option value="1" ${c.gpasan===1?'selected':''}>El primero de cada grupo</option><option value="2" ${(c.gpasan||2)===2?'selected':''}>Los 2 primeros</option></select></div></div>
-    <span class="small muted">El tamaño de grupo y cuántos pasan se usan solo con "Grupos y después llaves".</span>
-    ${s.id&&(c.cuadro||c.grupos)?`<div class="note warn">Este torneo ya tiene ${c.grupos?'los grupos':'el cuadro'} armado. El formato y la inscripción online se aplican <b>antes</b> de armarlo: para cambiarlos, guardá y después tocá "${c.grupos?'Deshacer grupos':'Rehacer cuadro'}" (se borran sus resultados).</div>`:''}</div>
-    <label class="check"><input type="checkbox" id="c-online" ${c.online?'checked':''}> Inscripción online abierta: los jugadores pueden pedir anotarse desde la app</label>
-    <label class="check"><input type="checkbox" id="c-tb" ${c.superTB?'checked':''}> El 3.er set se juega como súper tie-break a 10</label>
-    ${bloq?'<span class="small muted">La modalidad, la rama y la categoría de jugadores se pueden cambiar cuando no hay inscriptos.</span>':''}
+    <div class="paso"><h3><span class="pn">2</span>¿Quiénes juegan?</h3>
+      <div class="opts" role="radiogroup" aria-label="Modalidad">${chip('c-mod','S','Singles',!D,bloq)}${chip('c-mod','D','Dobles',D,bloq)}</div>
+      <div class="opts" role="radiogroup" aria-label="Rama">${chip('c-rama','M','Caballeros',c.rama==='M',bloq)}${chip('c-rama','F','Damas',c.rama==='F',bloq)}${chip('c-rama','X','Mixto',c.rama==='X',bloq||!D)}</div>
+      <div class="field"><label for="c-niv">Categoría de los jugadores</label><select id="c-niv" ${bloq?'disabled':''}><option value="">Todas las categorías</option>${NIVELES.map(n=>`<option ${c.nivel===n?'selected':''}>${n}</option>`).join('')}</select></div>
+      ${bloq?'<span class="small muted">Ya hay inscriptos: la modalidad, la rama y la categoría quedan fijas.</span>':''}
+    </div>
+    <div class="paso"><h3><span class="pn">3</span>Nombre y fechas</h3>
+      <div class="field"><label for="c-nom">Nombre del torneo</label><input type="text" id="c-nom" value="${esc(c.nombre)}" ${s.id?'':'data-auto="1"'} placeholder="Ej.: Apertura Singles Caballeros"></div>
+      <div class="grid2"><div class="field"><label for="c-ini">Desde</label><input type="date" id="c-ini" value="${esc(c.inicio||'')}"></div>
+      <div class="field"><label for="c-fin">Hasta</label><input type="date" id="c-fin" value="${esc(c.fin||'')}"></div>
+      <div class="field"><label for="c-sede">Sede</label><input type="text" id="c-sede" value="${esc(c.sede||'')}" placeholder="Ej.: Asunción"></div></div>
+    </div>
+    <details class="mas" ${s.id&&(c.premios?.campeon||c.online)?'open':''}><summary>Más opciones: premios, sets e inscripción online</summary>
+      <div class="grid2"><div class="field"><label for="c-sets">Partidos</label><select id="c-sets"><option value="3" ${c.sets===3?'selected':''}>Al mejor de 3 sets</option><option value="5" ${c.sets===5?'selected':''}>Al mejor de 5 sets</option></select></div>
+      <div class="field"><label for="c-pc">Premio campeón (Gs.)</label><input type="text" inputmode="numeric" id="c-pc" value="${esc(fmtCI(c.premios?.campeon))}" placeholder="Ej.: 1.000.000"></div>
+      <div class="field"><label for="c-pf">Premio vicecampeón (Gs.)</label><input type="text" inputmode="numeric" id="c-pf" value="${esc(fmtCI(c.premios?.finalista))}" placeholder="Ej.: 500.000"></div></div>
+      <label class="check"><input type="checkbox" id="c-tb" ${c.superTB?'checked':''}> El 3.er set se juega como súper tie-break a 10</label>
+      <label class="check"><input type="checkbox" id="c-online" ${c.online?'checked':''}> Inscripción online: los jugadores pueden pedir anotarse desde la app</label>
+    </details>
     ${err}
-    <div class="btns"><button class="btn pri" data-act="guardar-cat">Guardar</button>${s.id?`<button class="btn danger ${ui.armado==='del-cat'?'arm':''}" data-act="arm" data-w="del-cat">${ui.armado==='del-cat'?'Tocá de nuevo para eliminar':'Eliminar torneo'}</button>`:''}</div>`;
+    <div class="btns"><button class="btn pri" data-act="guardar-cat">${s.id?'Guardar':'Crear torneo'}</button>${s.id?`<button class="btn danger ${ui.armado==='del-cat'?'arm':''}" data-act="arm" data-w="del-cat">${ui.armado==='del-cat'?'Tocá de nuevo para eliminar':'Eliminar torneo'}</button>`:''}</div>`;
   }
   if(s.t==='torneos'){const act=T();
     h=`<div class="sheet-hd"><h2>Eventos</h2>${cerrarBtn}</div>
@@ -2596,6 +2639,7 @@ function renderSheet(){
 }
 
 /* ===================== Acciones ===================== */
+function radioVal(n){return document.querySelector(`input[name="${n}"]:checked`)?.value||''}
 function val(id){const e=document.getElementById(id);return e?e.value.trim():''}
 function abrir(sheet){ui.logoPend=undefined;ui.sheet=sheet;ui.msg=null;ui.armado=null;render();setTimeout(()=>{const f=document.querySelector('.sheet input:not([disabled]),.sheet select');if(f&&window.innerWidth>640)f.focus()},30)}
 function cerrar(){ui.sheet=null;ui.msg=null;ui.armado=null;render()}
@@ -2648,7 +2692,7 @@ document.addEventListener('click',ev=>{
     case 'nuevo-jug':abrir({t:'jug'});break;
     case 'edit-jug':abrir({t:'jug',id:t.dataset.id});break;
     case 'jug-ejemplo':cargarJugadoresEjemplo();ui.msg=null;cambiar();break;
-    case 'nueva-cat':abrir({t:'cat'});break;
+    case 'nueva-cat':abrir({t:'cat'});setTimeout(()=>{const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido()},40);break;
     case 'edit-cat':abrir({t:'cat',id:t.dataset.id});break;
     case 'volver':ui.cat=null;render();window.scrollTo({top:0});break;
     case 'sub':ui.sub=t.dataset.k;ui.armado=null;ui.msg=null;render();break;
@@ -2772,13 +2816,15 @@ document.addEventListener('click',ev=>{
       else S.jugadores.push({id:uid(),...d});
       ui.sheet=null;ui.msg=null;cambiar();break}
     case 'guardar-cat':{
-      const d={nombre:val('c-nom'),inicio:val('c-ini'),fin:val('c-fin'),sede:val('c-sede'),sets:+val('c-sets'),superTB:document.getElementById('c-tb').checked,formato:val('c-fmt')||'elim',gtam:+val('c-gtam')||4,gpasan:+val('c-gpas')||2,online:!!document.getElementById('c-online')?.checked,premios:{campeon:+val('c-pc').replace(/\D/g,'')||0,finalista:+val('c-pf').replace(/\D/g,'')||0}};
-      const mod=document.getElementById('c-mod'),ram=document.getElementById('c-rama'),niv=document.getElementById('c-niv');
+      const d={nombre:val('c-nom'),inicio:val('c-ini'),fin:val('c-fin'),sede:val('c-sede'),sets:+val('c-sets'),superTB:document.getElementById('c-tb').checked,formato:radioVal('c-fmt')||'elim',gtam:+val('c-gtam')||4,gpasan:+val('c-gpas')||2,online:!!document.getElementById('c-online')?.checked,premios:{campeon:+val('c-pc').replace(/\D/g,'')||0,finalista:+val('c-pf').replace(/\D/g,'')||0}};
+      const bloq=!!document.querySelector('input[name=c-mod]:disabled');const mod={value:radioVal('c-mod')||'S',disabled:bloq},ram={value:radioVal('c-rama')||'M'},niv=document.getElementById('c-niv');
       if(!d.nombre){avisar('Poné un nombre al torneo.');break}
+      if(document.querySelector('input[name=c-fmt]:disabled')){const c0=T().categorias.find(x=>x.id===ui.sheet.id);if(c0)d.formato=c0.formato||'elim'}
       if(d.inicio&&d.fin&&d.fin<d.inicio){avisar('La fecha de cierre es anterior a la de inicio.');break}
       if(!mod.disabled&&mod.value==='S'&&ram.value==='X'){avisar('En singles elegí masculino o femenino. Mixto es solo para dobles.');break}
       if(ui.sheet.id){const c=T().categorias.find(x=>x.id===ui.sheet.id);Object.assign(c,d);if(!mod.disabled){c.modalidad=mod.value;c.rama=ram.value;c.nivel=niv.value}}
-      else{const c={id:uid(),...d,modalidad:mod.value,rama:ram.value,nivel:niv.value,inscriptos:[],cuadro:null,res:{}};T().categorias.push(c);ui.cat=c.id;ui.tab='categorias'}
+      else{const c={id:uid(),...d,modalidad:mod.value,rama:ram.value,nivel:niv.value,inscriptos:[],cuadro:null,res:{}};T().categorias.push(c);ui.cat=c.id;ui.tab='categorias';ui.sub='insc';
+        toast(`Torneo creado. Ahora inscribí ${c.modalidad==='D'?'a las parejas':'a los jugadores'} y tocá "${d.formato==='rr'?'Armar round robin':d.formato==='grupos'?'Armar grupos':'Generar cuadro'}".`,6000)}
       ui.sheet=null;ui.msg=null;cambiar();break}
     case 'insc-todos':{const c=cat();elegibles(S,c).forEach(p=>{if(!c.inscriptos.some(e=>e.id===p.id))c.inscriptos.push({id:p.id,j:[p.id]})});cambiar();break}
     case 'insc-ninguno':cat().inscriptos=[];cambiar();break;
@@ -3018,6 +3064,7 @@ document.addEventListener('change',ev=>{
     if(t.checked){if(!c.inscriptos.some(e=>e.id===pid))c.inscriptos.push({id:pid,j:[pid]})}else c.inscriptos=c.inscriptos.filter(e=>e.id!==pid);
     const y=window.scrollY;cambiar();window.scrollTo({top:y});}
   if(t.id==='modoCuadro')ui.modoCuadro=t.value;
+  if(t.id==='c-niv'){const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido()}
   if(t.id==='sp-logo'&&t.files[0]){const f=t.files[0];t.value='';reducir(f,240).then(cv=>{let d=cv.toDataURL('image/png');if(d.length>120000)d=cv.toDataURL('image/jpeg',.86);ui.spLogo=d;const im=document.getElementById('sp-prev');if(im){im.src=d;im.hidden=false}}).catch(()=>avisar('No se pudo leer esa imagen. Probá con PNG o JPG.'))}
   if(t.id==='g-dia'&&t.value){ui.gdia=t.value;render()}
   if(t.id==='g-nc'){const n=Math.max(1,Math.min(30,+t.value||4));S.canchas=Array.from({length:n},(_,i)=>String(i+1));cambiar()}
@@ -3034,7 +3081,18 @@ document.addEventListener('change',ev=>{
   if(t.id==='f-fotos'){subirFotos(t.files);t.value=''}
   if(t.id==='p-tipo'){const w=document.getElementById('ganwrap');if(w)w.style.opacity=t.value==='normal'?'.55':'1'}
 });
+function nombreSugerido(){
+  const mod=radioVal('c-mod'),ram=radioVal('c-rama'),niv=val('c-niv'),fmt=radioVal('c-fmt');
+  const r=mod==='D'?{M:'Caballeros',F:'Damas',X:'Mixtos'}[ram]:{M:'Caballeros',F:'Damas',X:''}[ram];
+  return [mod==='D'?'Dobles':'Singles',r,niv,fmt==='rr'?'(round robin)':''].filter(Boolean).join(' ');
+}
+document.addEventListener('change',ev=>{const t=ev.target;if(!t.name||!/^c-(fmt|mod|rama)$/.test(t.name))return;
+  if(t.name==='c-fmt'){const g=document.getElementById('gopts');if(g)g.hidden=t.value!=='grupos'}
+  if(t.name==='c-mod'){const x=document.querySelector('input[name=c-rama][value=X]');if(x){x.disabled=t.value==='S';if(t.value==='S'&&x.checked){x.checked=false;document.querySelector('input[name=c-rama][value=M]').checked=true}}}
+  const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido();
+});
 document.addEventListener('input',ev=>{
+  if(ev.target.id==='c-nom')delete ev.target.dataset.auto;
   if(/^s-[01]-\d$/.test(ev.target.id||''))syncTB();
   if(ev.target.id==='c-pc'||ev.target.id==='c-pf'){const el=ev.target,fin=el.value.length-el.selectionStart;el.value=fmtCI(el.value);const pos=Math.max(0,el.value.length-fin);try{el.setSelectionRange(pos,pos)}catch(e){}}
   if(ev.target.id==='f-nac'){const e=edadDe(ev.target.value),el=document.getElementById('f-edad');if(el)el.textContent=e!=null?'Edad: '+e+' años':'La edad se calcula sola'}
