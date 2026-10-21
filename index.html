@@ -838,6 +838,7 @@ function armarRR(c){
   c.cuadro=null;c.res={};delete c.cons;return true;
 }
 function empezo(c){const hay=r=>Object.values(r||{}).some(x=>x&&x.g);return hay(c.res)||hay(c.grupos?.res)||hay(c.cons?.res)}
+function desarmar(c){if(empezo(c)||!(c.cuadro||c.grupos))return;const g=!!c.grupos;c.cuadro=null;c.res={};delete c.grupos;delete c.cons;toast(`Cambiaron los inscriptos: se deshizo ${g?'el round robin':'el cuadro'}. Volvé a armarlo cuando termines.`,5000)}
 function esRR(c){return !!c.grupos?.rr}
 /* Campeón de cualquier formato: llave o round robin terminado */
 function campeonDe(c){if(esRR(c)) return gruposCompletos(c)?tablaGrupo(c,0)[0].e:null;return calcularCuadro(c)?.campeon||null}
@@ -2349,17 +2350,19 @@ function seccionInscriptos(t,c,cb){
   const lista=[...c.inscriptos].sort((a,b)=>pts(b)-pts(a)||etiqueta(S,c,a.id).localeCompare(etiqueta(S,c,b.id)));
   const etNivel=p=>p?.categoria?` <span class="muted small">${esc(p.categoria)}</span>`:'';
   let cuerpo='';
-  if(!cb&&!c.grupos&&puedeEditar){
+  const emp=empezo(c);
+  if(!emp&&puedeEditar){
+    if(cb||c.grupos) cuerpo+=`<div class="note">${c.grupos?'El round robin':'El cuadro'} está armado pero sin resultados: podés agregar o quitar inscriptos. Al cambiarlos se deshace y lo volvés a armar.</div>`;
     if(!D){
       const el=elegibles(S,c);
-      cuerpo=el.length?`<div class="btns"><button class="btn" data-act="insc-todos">Inscribir a todos (${el.length})</button>${n?'<button class="btn" data-act="insc-ninguno">Quitar a todos</button>':''}</div>
+      cuerpo+=el.length?`<div class="btns"><button class="btn" data-act="insc-todos">Inscribir a todos (${el.length})</button>${n?'<button class="btn" data-act="insc-ninguno">Quitar a todos</button>':''}</div>
         <div class="cklist">${el.map(p=>`<label class="check"><input type="checkbox" data-act="insc" data-pid="${p.id}" ${c.inscriptos.some(e=>e.id===p.id)?'checked':''}> ${esc(p.apellido)}, ${esc(p.nombre)}${etNivel(p)}</label>`).join('')}</div>`
         :`<div class="note">No hay jugadores ${c.rama==='F'?'damas':c.rama==='M'?'caballeros':''}${c.nivel?' de '+esc(c.nivel):''} cargados. Agregalos en la pestaña Jugadores.</div>`;
     } else {
       const usados=new Set(c.inscriptos.flatMap(e=>e.j));
       const el=elegibles(S,c).filter(p=>!usados.has(p.id));
       const opt=el.map(p=>`<option value="${p.id}">${esc(p.apellido)}, ${esc(p.nombre)}${c.rama==='X'?(p.sexo==='F'?' (D)':' (C)'):''}${p.categoria?' · '+esc(p.categoria):''}</option>`).join('');
-      cuerpo=`<div class="grid2"><div class="field"><label for="pj1">Jugador 1</label><select id="pj1"><option value="">Elegí</option>${opt}</select></div>
+      cuerpo+=`<div class="grid2"><div class="field"><label for="pj1">Jugador 1</label><select id="pj1"><option value="">Elegí</option>${opt}</select></div>
         <div class="field"><label for="pj2">Jugador 2</label><select id="pj2"><option value="">Elegí</option>${opt}</select></div></div>
         <div class="btns"><button class="btn" data-act="add-pareja">Agregar pareja</button></div>
         ${ui.msg?`<div class="note err">${esc(ui.msg)}</div>`:''}
@@ -2375,11 +2378,11 @@ function seccionInscriptos(t,c,cb){
         :`<div class="btns"><button class="btn pri" data-act="generar" ${n<2?'disabled':''}>Generar cuadro</button></div>`}
       <span class="small muted">${c.formato==='rr'?(n<3?'Necesitás al menos 3 inscriptos para un round robin.':`Todos contra todos: ${n*(n-1)/2} partidos. Gana quien termine primero en la tabla (partidos ganados, después el partido entre ellos, sets y games).`):c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para el round robin.':`Round robin: ${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. En cada grupo juegan todos contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`}</span></div>`;
   } else {
-    cuerpo=n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>';
+    cuerpo=(emp&&puedeEditar?`<div class="note">El torneo ya empezó: para cambiar los inscriptos tocá "${c.grupos&&!cb?'Deshacer round robin':'Rehacer cuadro'}" (se borran los resultados).</div>`:'')+(n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>');
   }
   const aviso=puedeEditar&&cb&&!c.grupos&&(c.formato==='grupos'||c.formato==='rr')?`<div class="note warn">Elegiste <b>round robin</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "Armar round robin".</div>`
     :puedeEditar&&cb&&c.online?`<div class="note">La inscripción online está activada, pero el cuadro ya está armado: el botón "Quiero anotarme" solo aparece mientras no hay cuadro.</div>`:'';
-  return `${aviso}${!cb&&!c.grupos&&puedeEditar?seccionSolicitudes(c):''}<div class="panel sec"><div class="sec-hd"><h3>Inscriptos · ${n} ${D?'parejas':'jugadores'}</h3>
+  return `${aviso}${!emp&&puedeEditar?seccionSolicitudes(c):''}<div class="panel sec"><div class="sec-hd"><h3>Inscriptos · ${n} ${D?'parejas':'jugadores'}</h3>
     ${cb&&puedeEditar?`<button class="btn danger ${ui.armado==='rehacer'?'arm':''}" data-act="arm" data-w="rehacer">${ui.armado==='rehacer'?'Tocá de nuevo: se borran los resultados':'Rehacer cuadro'}</button>`:''}</div>${cuerpo}</div>`;
 }
 function seccionGrupos(c){
@@ -2763,7 +2766,7 @@ document.addEventListener('click',ev=>{
       if(a==='sol-ok'){const c=todasCats().find(x=>x.id===cid);const d=r.data||{};
         const p1=jugadorDeSolicitud(d.j1,d.j1.sexo||c.rama);const p2=d.j2?jugadorDeSolicitud(d.j2,d.j2.sexo||c.rama):null;
         const ya=c.inscriptos.some(e=>e.j.includes(p1.id)||(p2&&e.j.includes(p2.id)));
-        if(!ya)c.inscriptos.push(p2?{id:uid(),j:[p1.id,p2.id]}:{id:p1.id,j:[p1.id]});
+        if(!ya){desarmar(c);c.inscriptos.push(p2?{id:uid(),j:[p1.id,p2.id]}:{id:p1.id,j:[p1.id]})}
         toast(ya?'Ya estaba inscripto: se quitó el pedido.':'Inscripción aprobada.');cambiar()}
       sb.from('tenis_solicitudes').delete().eq('id',id).then(({error})=>{if(error){toast('No se pudo quitar el pedido de la lista.');return}solCache[cid]=lista.filter(x=>x.id!==id);renderFondo()});
       break}
@@ -2877,14 +2880,14 @@ document.addEventListener('click',ev=>{
       else{const c={id:uid(),...d,modalidad:mod.value,rama:ram.value,nivel:niv.value,inscriptos:[],cuadro:null,res:{}};T().categorias.push(c);ui.cat=c.id;ui.tab='categorias';ui.sub='insc';
         toast(`Torneo creado. Ahora inscribí ${c.modalidad==='D'?'a las parejas':'a los jugadores'} y tocá "${d.formato==='grupos'||d.formato==='rr'?'Armar round robin':'Generar cuadro'}".`,6000)}
       ui.sheet=null;ui.msg=null;cambiar();break}
-    case 'insc-todos':{const c=cat();elegibles(S,c).forEach(p=>{if(!c.inscriptos.some(e=>e.id===p.id))c.inscriptos.push({id:p.id,j:[p.id]})});cambiar();break}
-    case 'insc-ninguno':cat().inscriptos=[];cambiar();break;
+    case 'insc-todos':{const c=cat();desarmar(c);elegibles(S,c).forEach(p=>{if(!c.inscriptos.some(e=>e.id===p.id))c.inscriptos.push({id:p.id,j:[p.id]})});cambiar();break}
+    case 'insc-ninguno':desarmar(cat());cat().inscriptos=[];cambiar();break;
     case 'add-pareja':{const c=cat();const a1=val('pj1'),a2=val('pj2');
       if(!a1||!a2){ui.msg='Elegí a los dos jugadores.';render();break}
       if(a1===a2){ui.msg='Elegí dos jugadores distintos.';render();break}
       if(c.rama==='X'&&jug(S,a1).sexo===jug(S,a2).sexo){ui.msg='En mixtos la pareja es una dama y un caballero.';render();break}
-      ui.msg=null;c.inscriptos.push({id:uid(),j:[a1,a2]});cambiar();break}
-    case 'del-pareja':{const c=cat();c.inscriptos=c.inscriptos.filter(e=>e.id!==t.dataset.id);cambiar();break}
+      ui.msg=null;desarmar(c);c.inscriptos.push({id:uid(),j:[a1,a2]});cambiar();break}
+    case 'del-pareja':{const c=cat();desarmar(c);c.inscriptos=c.inscriptos.filter(e=>e.id!==t.dataset.id);cambiar();break}
     case 'armar-grupos':{const c=cat();if(!armarGrupos(c,c.gtam||4,c.gpasan||2)){toast('Hacen falta más inscriptos para armar grupos.');break}ui.sub='grupos';cambiar();break}
     case 'desde-grupos':{const c=cat();if(!generarDesdeGrupos(c)){toast('Todavía no hay clasificados.');break}ui.sub='cuadro';cambiar();break}
     case 'armar-rr':{const c=cat();if(!armarRR(c)){toast('Hacen falta al menos 3 inscriptos.');break}ui.sub='grupos';cambiar();break}
@@ -3112,7 +3115,7 @@ function limpiarSiguientes(c){
 }
 document.addEventListener('change',ev=>{
   const t=ev.target;
-  if(t.dataset.act==='insc'){const c=T().categorias.find(x=>x.id===ui.cat);const pid=t.dataset.pid;
+  if(t.dataset.act==='insc'){const c=T().categorias.find(x=>x.id===ui.cat);const pid=t.dataset.pid;desarmar(c);
     if(t.checked){if(!c.inscriptos.some(e=>e.id===pid))c.inscriptos.push({id:pid,j:[pid]})}else c.inscriptos=c.inscriptos.filter(e=>e.id!==pid);
     const y=window.scrollY;cambiar();window.scrollTo({top:y});}
   if(t.id==='modoCuadro')ui.modoCuadro=t.value;
