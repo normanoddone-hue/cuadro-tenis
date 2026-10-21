@@ -702,6 +702,38 @@ details.mas[open] summary{margin-bottom:4px}
 .prev-row i{font-style:normal;color:var(--muted);font-weight:700;font-size:12px}
 .prev-n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--court);color:#fff;font-size:12px;font-weight:700}
 @media (max-width:560px){.prev-row{grid-template-columns:24px 1fr;}.prev-row i{display:none}.prev-row span:last-child{grid-column:2}}
+
+/* ===== Menú lateral prolijo ===== */
+@media (min-width:900px){
+  .side{gap:0;padding:28px 16px 20px;border-right:1px solid rgba(255,255,255,.06)}
+  .side .brand{align-items:center;text-align:center;gap:14px;padding:0 4px 24px;margin-bottom:18px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .side .brand .logo{width:104px;height:104px;border-radius:24px;padding:6px;background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.08),0 10px 24px -8px rgba(0,0,0,.5)}
+  .side .brand span{font-size:23px;line-height:1.05;letter-spacing:.01em;text-wrap:balance}
+  .snav{gap:4px}
+  .snav button{min-height:48px;padding:0 14px;gap:14px;border-radius:12px;font-size:15px;font-weight:600;color:rgba(255,255,255,.82)}
+  .snav button svg.ic{width:22px;height:22px;flex:none}
+  .snav button:hover{background:rgba(255,255,255,.07);color:#fff}
+  .snav button[aria-current="page"]{background:var(--ball);color:var(--ball-ink);box-shadow:0 6px 16px -8px rgba(0,0,0,.45)}
+  .sfoot{opacity:1;padding:18px 0 0;margin-top:auto;border-top:1px solid rgba(255,255,255,.1);gap:12px;font-size:13px}
+}
+.sbtn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.sbtn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3)}
+.sbtn svg.ic{width:17px;height:17px}
+.sbtn.wide{width:100%}
+.sbtn.inst{border-color:color-mix(in srgb,var(--ball) 55%,transparent);color:var(--ball)}
+.adm-card{display:flex;flex-direction:column;gap:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.06)}
+.adm-who{display:flex;align-items:center;gap:10px;min-width:0}
+.adm-av{width:36px;height:36px;border-radius:50%;background:var(--ball);color:var(--ball-ink);display:grid;place-items:center;font-weight:800;flex:none}
+.adm-tx{display:flex;flex-direction:column;min-width:0}
+.adm-tx b{font-size:13px;color:#fff}
+.adm-tx small{font-size:12px;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adm-acc{display:grid;grid-template-columns:1fr 40px;gap:8px}
+.sbtn.ico-only{padding:0;width:40px}
+:root{--side-w:264px}
+.adm-st{display:flex;align-items:center;gap:7px;font-size:12px;color:rgba(255,255,255,.65)}
+.adm-st .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);flex:none}
+.adm-st .dot.ok{background:#7ee08a}
+.adm-st .dot.wait{background:#f0c060}
 </style>
 
 <div class="app">
@@ -1038,7 +1070,7 @@ function T(){
 }
 function elegirTorneo(id){ui.torneo=id;ui.cat=null;try{localStorage.setItem(KEY+':torneo',id)}catch(e){}}
 
-function setStatus(t){statusTxt=t;document.querySelectorAll('.stx').forEach(el=>el.textContent=t)}
+function setStatus(t){statusTxt=t;document.querySelectorAll('.stx').forEach(el=>el.textContent=t||'Sin cambios');document.querySelectorAll('.adm-st .dot').forEach(d=>{d.className='dot '+(/Guardado/.test(t)?'ok':t?'wait':'')})}
 function cambiar(){S.actualizado=new Date().toISOString();ui.armado=null;render();clearTimeout(timer);timer=setTimeout(()=>{timer=null;flush()},500)}
 async function flush(){
   if(!S) return;
@@ -1128,7 +1160,7 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPro
 window.addEventListener('appinstalled',()=>{deferredPrompt=null;toast('App instalada.');try{render()}catch(x){}});
 function esIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.navigator.standalone}
 function installBtn(){
-  if(deferredPrompt) return '<button class="lnk inst" data-act="instalar">'+ICO_PDF+'Instalar app en este dispositivo</button>';
+  if(deferredPrompt) return '<button class="sbtn wide inst" data-act="instalar">'+ICO_PDF+'Instalar app</button>';
   if(esIOS()) return '<span class="inst-ios">Para instalar en iPhone: tocá Compartir y luego “Agregar a inicio”.</span>';
   return '';
 }
@@ -1153,6 +1185,7 @@ const ICO_PDF='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M
 const ICO_SHARE='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 10.8 7.4-4.4M8.3 13.2l7.4 4.4"/></svg>';
 const ICO_STAR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg>';
 const ICO_TV='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M8 21h8M12 17v4"/></svg>';
+const ICO_GEAR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
 const ICO_LOCK='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const ICO_SALIR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/></svg>';
 
@@ -1266,7 +1299,10 @@ function renderShell(){
   const fechas=t?[t.sede,rangoFechas(t)].filter(Boolean).join(' · '):'';
   document.getElementById('side').innerHTML=`${brand}
     ${S?`<nav class="snav" aria-label="Secciones">${SECCIONES.map(([k,l])=>`<button data-act="tab" data-k="${k}" ${ui.tab===k?'aria-current="page"':''}>${ico(k)}${l}</button>`).join('')}</nav>`:''}
-    <div class="sfoot">${installBtn()}${logueado?`<div class="adm"><span>Administrador · ${esc(adminEmail())}</span><div class="btns"><button class="lnk" data-act="login">Club y cuenta</button><button class="lnk" data-act="logout">${ICO_SALIR}Salir</button></div><span class="stx">${esc(statusTxt)}</span></div>`:`<button class="lnk" data-act="login">${ICO_LOCK}Ingresar como administrador</button>`}</div>`;
+    <div class="sfoot">${installBtn()}${logueado?`<div class="adm-card"><div class="adm-who"><span class="adm-av" aria-hidden="true">${esc((adminEmail()[0]||'A').toUpperCase())}</span><span class="adm-tx"><b>Administrador</b><small title="${esc(adminEmail())}">${esc(adminEmail())}</small></span></div>
+      <div class="adm-acc"><button class="sbtn" data-act="login">${ICO_GEAR}Club y cuenta</button><button class="sbtn ico-only" data-act="logout" aria-label="Cerrar sesión" title="Cerrar sesión">${ICO_SALIR}</button></div>
+      <span class="adm-st"><i class="dot ${/Guardado/.test(statusTxt)?'ok':statusTxt?'wait':''}"></i><span class="stx">${esc(statusTxt||'Sin cambios')}</span></span></div>`
+      :`<button class="sbtn wide" data-act="login">${ICO_LOCK}Ingresar como administrador</button>`}</div>`;
   document.getElementById('topbar').innerHTML=`${brand}${S?`<div class="tb-r">${deferredPrompt?'<button class="tbtn" data-act="instalar" aria-label="Instalar app">'+ICO_PDF+'</button>':''}${permisoPlat||logueado?`<button class="tbtn ${logueado?'on':''}" data-act="login" aria-label="${logueado?'Cuenta de administrador':'Ingresar como administrador'}">${ICO_LOCK}</button>`:''}</div>`:''}`;
   const bn=document.getElementById('bnav');
   bn.hidden=!S;
