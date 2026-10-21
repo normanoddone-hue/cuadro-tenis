@@ -694,6 +694,8 @@ details.mas[open] summary{margin-bottom:4px}
 .sp-row{flex:1;min-width:0}
 .sp-tx{min-width:0;flex:1}
 .sp-url{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.ft-sel{max-width:420px}
 </style>
 
 <div class="app">
@@ -2226,11 +2228,11 @@ function vistaPartidos(){
   const vistaSel=`<div class="seg" role="group" aria-label="Vista"><button data-act="pv" data-k="" aria-pressed="${!ui.pv}">Lista</button><button data-act="pv" data-k="grilla" aria-pressed="${ui.pv==='grilla'}">Grilla por cancha</button></div>`;
   if(ui.pv==='grilla') return `${encabezado('Partidos',{sb:esc(sel?sel.nombre:'Todos los torneos')+' · grilla por cancha',acc:'<button class="btn sm pdf" data-act="rep-prog">'+ICO_PDF+'Descargar horarios (PDF)</button>'})}
     ${vistaSel}
-    ${t.categorias.length?`<div class="tchips" role="group" aria-label="Torneo">${chips.map(([k,l])=>`<button class="chip" aria-pressed="${ui.ft===k}" data-act="ftorneo" data-k="${k}">${esc(l)}</button>`).join('')}</div>`:''}
+    ${t.categorias.length?`<div class="field ft-sel"><label for="ft">Torneo</label><select id="ft">${chips.map(([k,l])=>`<option value="${k}" ${ui.ft===k?'selected':''}>${esc(l)}</option>`).join('')}</select></div>`:''}
     ${vistaGrilla(items)}`;
   return `${encabezado('Partidos',{sb:esc(sel?sel.nombre+(sel.inicio?' · '+rangoFechas(sel):''):'Todos los torneos'),acc:'<button class="btn sm pdf" data-act="rep-prog">'+ICO_PDF+'Descargar horarios (PDF)</button>'})}
     ${vistaSel}
-    ${t.categorias.length?`<div class="tchips" role="group" aria-label="Torneo">${chips.map(([k,l])=>`<button class="chip" aria-pressed="${ui.ft===k}" data-act="ftorneo" data-k="${k}">${esc(l)}</button>`).join('')}</div>`:''}
+    ${t.categorias.length?`<div class="field ft-sel"><label for="ft">Torneo</label><select id="ft">${chips.map(([k,l])=>`<option value="${k}" ${ui.ft===k?'selected':''}>${esc(l)}</option>`).join('')}</select></div>`:''}
     <section class="sec"><div class="sec-hd"><h2>Por jugar <span class="ct">${porJugar.length}</span></h2>${espera?`<span class="small muted">${espera} más esperando rival</span>`:''}</div>
       ${porJugar.length?`<div class="list">${grupos.map(g=>`<div class="gh">${esc(g.k)}${/\d\d:\d\d$/.test(g.k)?' hs':''} · ${g.items.length}</div>${g.items.map(itemPartido).join('')}`).join('')}</div>`
         :`<div class="panel muted">${sel&&!sel.cuadro?'Este torneo todavía no tiene cuadro generado.':sel&&calcularCuadro(sel)?.campeon?'Este torneo ya terminó.':'No hay partidos con los dos rivales definidos.'}</div>`}
