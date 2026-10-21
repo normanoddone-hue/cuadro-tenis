@@ -685,6 +685,15 @@ details.mas{border:1px solid var(--line);border-radius:12px;padding:10px 12px;ba
 details.mas summary{cursor:pointer;font-weight:700;font-size:14px}
 details.mas[open]{display:flex;flex-direction:column;gap:12px}
 details.mas[open] summary{margin-bottom:4px}
+
+.sheet>*{flex-shrink:0}
+.sp-list{max-height:min(320px,40vh);overflow-y:scroll;overscroll-behavior:contain;scrollbar-width:auto;scrollbar-color:var(--muted) var(--soft)}
+.sp-list::-webkit-scrollbar{width:10px}.sp-list::-webkit-scrollbar-track{background:var(--soft)}.sp-list::-webkit-scrollbar-thumb{background:var(--muted);border-radius:10px;border:2px solid var(--soft)}
+.sp-pie{font-size:12px;color:var(--muted);text-align:center;margin-top:-6px}
+.sp-list .solrow{flex-wrap:nowrap}
+.sp-row{flex:1;min-width:0}
+.sp-tx{min-width:0;flex:1}
+.sp-url{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 
 <div class="app">
@@ -2579,7 +2588,7 @@ function renderSheet(){
   if(s.t==='excel'){h=hojaExcel()}
   if(s.t==='sponsors'){const sp=S.sponsors||[];
     h=`<div class="sheet-hd"><h2>Auspiciantes</h2>${cerrarBtn}</div>
-    ${sp.length?`<div class="list">${sp.map(x=>`<div class="solrow"><div class="sp-row"><img src="${esc(x.logo)}" alt=""><div><b>${esc(x.nombre)}</b>${x.url?`<div class="small muted">${esc(x.url)}</div>`:''}</div></div><button class="btn sm danger ${ui.armado==='del-sp-'+x.id?'arm':''}" data-act="arm" data-w="del-sp-${x.id}">${ui.armado==='del-sp-'+x.id?'Tocá de nuevo':'Quitar'}</button></div>`).join('')}</div>`:'<div class="note">Todavía no cargaste auspiciantes.</div>'}
+    ${sp.length?`<div class="list sp-list" tabindex="0" aria-label="Auspiciantes cargados">${sp.map(x=>`<div class="solrow"><div class="sp-row"><img src="${esc(x.logo)}" alt=""><div class="sp-tx"><b>${esc(x.nombre)}</b>${x.url?`<div class="small muted sp-url" title="${esc(x.url)}">${esc(x.url)}</div>`:''}</div></div><button class="btn sm danger ${ui.armado==='del-sp-'+x.id?'arm':''}" data-act="arm" data-w="del-sp-${x.id}">${ui.armado==='del-sp-'+x.id?'Tocá de nuevo':'Quitar'}</button></div>`).join('')}</div>${sp.length>4?`<div class="sp-pie">${sp.length} auspiciantes · deslizá para ver todos</div>`:''}`:'<div class="note">Todavía no cargaste auspiciantes.</div>'}
     <div class="prz"><h3>Agregar</h3>
       <div class="logoed"><img id="sp-prev" src="${esc(ui.spLogo||'')}" alt="" ${ui.spLogo?'':'hidden'}><button class="btn sm" data-act="sp-elegir">${ui.spLogo?'Cambiar logo':'Elegir logo'}</button><input type="file" id="sp-logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></div>
       <div class="grid2"><div class="field"><label for="sp-nom">Nombre</label><input type="text" id="sp-nom" placeholder="Ej.: Ferretería Central"></div>
