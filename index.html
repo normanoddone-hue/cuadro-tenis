@@ -534,7 +534,7 @@ input,textarea{caret-color:var(--link)}
 .festejo .fb span{display:block;font-weight:800;text-transform:uppercase;letter-spacing:.12em;font-size:13px;color:var(--ball)}
 .festejo .fb b{display:block;text-transform:uppercase;font-size:clamp(30px,7vw,42px);line-height:1;margin-top:6px}
 @keyframes fb{0%{opacity:0;transform:scale(.7) rotate(-3deg)}14%{opacity:1;transform:scale(1.05) rotate(1deg)}22%{transform:none}85%{opacity:1}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){.match.pop{animation:none}.festejo .fb{animation:fbr 2.4s forwards}@keyframes fbr{0%,85%{opacity:1}100%{opacity:0}}}
+@media (prefers-reduced-motion:reduce){.match.pop{animation:none}}
 
 .festejo.quieto i{animation:none;opacity:1}
 @media (prefers-reduced-motion:reduce){.festejo.quieto{animation:fbr 3s forwards}}
@@ -2279,7 +2279,7 @@ function yaFestejado(k){if(festejados.has(k))return true;try{return localStorage
 function festejarUnaVez(c,cb){const k=c.id+'-'+cb.campeon;if(yaFestejado(k))return;marcarFestejo(k);const n=etiqueta(S,c,cb.campeon);setTimeout(()=>festejo(n),450)}
 function festejo(nombre){
   document.querySelector('.festejo')?.remove();
-  const rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rm=false; // el club pidió el festejo animado siempre
   const d=document.createElement('div');d.className='festejo'+(rm?' quieto':'');d.setAttribute('role','status');
   let bits='';
   for(let i=0;i<54;i++){const b=i%6===0,w=b?14:8+Math.random()*14;
