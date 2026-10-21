@@ -646,6 +646,17 @@ body.tv-on{overflow:hidden}
 
 .bnav button{font-size:10.5px;letter-spacing:-.01em}
 .bnav button .ico{width:40px}
+
+/* Campeones con foto */
+.camprow{grid-template-columns:auto minmax(0,1fr) auto;column-gap:16px;padding:14px 16px}
+.camprow .camp-av{grid-row:1/span 2;grid-column:1;display:flex}
+.camprow .n{grid-column:2;font-size:16px;font-weight:700}
+.camprow .d{grid-column:2}
+.camprow .r{grid-column:3;grid-row:1/span 2}
+.camp-foto{box-shadow:0 0 0 3px var(--ball),0 0 0 4px var(--court)}
+.camp-av .camp-foto+.camp-foto{margin-left:-14px}
+.tit-p{display:flex!important;flex-direction:row!important;align-items:center;gap:10px}
+.tit-p>span:last-child{display:flex;flex-direction:column;min-width:0}
 </style>
 
 <div class="app">
@@ -2993,9 +3004,9 @@ function vistaCampeones(){
   const titulos={};xs.forEach(({c,e})=>inscripto(c,e)?.j.forEach(id=>titulos[id]=(titulos[id]||0)+1));
   const top=Object.entries(titulos).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const anios={};xs.forEach(o=>{const y=(fechaCat(o.c)||'').slice(0,4)||'Sin fecha';(anios[y]=anios[y]||[]).push(o)});
-  return `${top.length&&top[0][1]>1?`<div class="hcard"><h3>Más títulos</h3>${top.map(([id,n])=>{const p=jug(S,id);return `<button class="hrow" data-act="ver-jug" data-id="${id}"><span><b>${esc(nombreCompleto(p))}${bandera(p?.pais)}</b><small>${esc(p?.club||'')}</small></span><span class="v">${n}<small> título${n===1?'':'s'}</small></span></button>`}).join('')}</div>`:''}
+  return `${top.length&&top[0][1]>1?`<div class="hcard"><h3>Más títulos</h3>${top.map(([id,n])=>{const p=jug(S,id);return `<button class="hrow" data-act="ver-jug" data-id="${id}"><span class="tit-p">${avatar(p,40)}<span><b>${esc(nombreCompleto(p))}${bandera(p?.pais)}</b><small>${esc(p?.club||'')}</small></span></span><span class="v">${n}<small> título${n===1?'':'s'}</small></span></button>`}).join('')}</div>`:''}
     ${Object.keys(anios).sort().reverse().map(y=>`<section class="sec"><div class="sec-hd"><h2>${esc(y)} <span class="ct">${anios[y].length}</span></h2></div><div class="list">${anios[y].map(({c,e})=>{
-      return `<button class="rowbtn" data-act="ver-cat" data-id="${c.id}"><span class="n"><span class="ballico"></span> ${esc(etiqueta(S,c,e))}${banderasEntrada(c,e)}</span><span class="d">${esc(c.nombre)} · ${esc(resumenFinal(c))}${c.premios?.campeon?' · Gs. '+fmtCI(c.premios.campeon):''}</span><span class="r"><span class="tag g">${esRR(c)?'Round robin':MODS[c.modalidad]}</span></span></button>`}).join('')}</div></section>`).join('')}`;
+      return `<button class="rowbtn camprow" data-act="ver-cat" data-id="${c.id}"><span class="camp-av">${(inscripto(c,e)?.j||[]).map(id=>avatar(jug(S,id),56,'camp-foto')).join('')}</span><span class="n">${esc(etiqueta(S,c,e))}${banderasEntrada(c,e)}</span><span class="d">${esc(c.nombre)} · ${esc(resumenFinal(c))}${c.premios?.campeon?' · Gs. '+fmtCI(c.premios.campeon):''}</span><span class="r"><span class="tag g">${esRR(c)?'Round robin':MODS[c.modalidad]}</span></span></button>`}).join('')}</div></section>`).join('')}`;
 }
 
 function limpiarSiguientes(c){
