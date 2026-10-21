@@ -696,6 +696,12 @@ details.mas[open] summary{margin-bottom:4px}
 .sp-url{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .ft-sel{max-width:420px}
+
+.prev-list{display:flex;flex-direction:column;gap:6px}
+.prev-row{display:grid;grid-template-columns:28px 1fr auto 1fr;align-items:center;gap:10px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--soft)}
+.prev-row i{font-style:normal;color:var(--muted);font-weight:700;font-size:12px}
+.prev-n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--court);color:#fff;font-size:12px;font-weight:700}
+@media (max-width:560px){.prev-row{grid-template-columns:24px 1fr;}.prev-row i{display:none}.prev-row span:last-child{grid-column:2}}
 </style>
 
 <div class="app">
@@ -734,6 +740,7 @@ function normalizar(d){
   (d.torneos||[]).forEach(t=>t.categorias.forEach(c=>c.nivel=fx(c.nivel)));
   d.noticias=d.noticias||[];
   d.galeria=d.galeria||[];
+  (d.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(c.formato==='rr'){c.formato='grupos';c.gpasan=c.gpasan||2}if(c.grupos&&c.grupos.rr){delete c.grupos.rr;c.grupos.pasan=c.grupos.pasan||2}}));
   // Unificación: ya no hay eventos, cada torneo lleva su fecha y sede
   const evs=d.torneos||[];
   if(!(evs.length===1&&evs[0].id==='club')){
@@ -841,10 +848,11 @@ function resumenFinal(c){
 function gruposCompletos(c){const ps=partidosGrupo(c);return ps.length>0&&ps.every(x=>x.estado==='jugado')}
 function clasificados(c){const pasan=c.grupos.pasan||2;const tabs=c.grupos.lista.map((g,gi)=>tablaGrupo(c,gi));const out=[];
   for(let k=0;k<pasan;k++)tabs.forEach((t,gi)=>{if(t[k])out.push({e:t[k].e,gi,pos:k})});return out}
-function generarDesdeGrupos(c){
-  const cl=clasificados(c);const G=c.grupos.lista.length;const pasan=c.grupos.pasan||2;
+/* Arma la llave con los clasificados (q = {e,gi,pos}); sirve también para la vista previa */
+function planLlave(c,cl){
+  const G=c.grupos.lista.length;const pasan=c.grupos.pasan||2;
   const capas=[];for(let k=0;k<pasan;k++){let capa=cl.filter(q=>q.pos===k);if(k%2===1){const h=Math.ceil(capa.length/2);capa=[...capa.slice(h),...capa.slice(0,h)]}capas.push(capa)}
-  const orden=capas.flat().map(q=>inscripto(c,q.e)).filter(Boolean);if(orden.length<2) return false;
+  const orden=capas.flat().map(q=>({id:q.e}));if(orden.length<2) return null;
   const gi=Object.fromEntries(cl.map(q=>[q.e,q.gi]));
   const ll=armarLlave(orden,Math.min(G,cantSembrados(orden.length),orden.length));
   const M=ll.slots.length/2;
@@ -853,8 +861,25 @@ function generarDesdeGrupos(c){
       for(let m2=0;m2<M;m2++){if(m2===m)continue;const a2=ll.slots[2*m2],b2=ll.slots[2*m2+1];if(!b2||ll.sem[b2])continue;
         if(gi[b2]!==gi[a]&&(!a2||gi[a2]!==gi[b])){ll.slots[2*m+1]=b2;ll.slots[2*m2+1]=b;break}}}
     if(ok)break}
+  return ll;
+}
+function generarDesdeGrupos(c){
+  const ll=planLlave(c,clasificados(c));if(!ll) return false;
   c.cuadro={...ll,modo:'grupos',creado:new Date().toISOString()};c.res={};delete c.cons;
   return true;
+}
+/* Vista previa de las llaves mientras se juega el round robin */
+function previaLlaves(c){
+  const pasan=c.grupos.pasan||2;const tabs=c.grupos.lista.map((g,gi)=>tablaGrupo(c,gi));
+  const cl=[];for(let k=0;k<pasan;k++)tabs.forEach((t,gi)=>{if(t.length>k)cl.push({e:`${gi}-${k}`,gi,pos:k})});
+  const ll=planLlave(c,cl);if(!ll) return '';
+  const R=Math.log2(ll.N);const ronda=nombreRonda(0,R);
+  const lbl=id=>{if(!id) return '<i>Pasa directo (bye)</i>';const [gi,k]=id.split('-').map(Number);const lider=tabs[gi][k];const jugo=partidosGrupo(c).some(x=>x.gi===gi&&x.estado==='jugado');
+    return `<b>${k+1}.º Grupo ${LETRAS[gi]}</b>${jugo&&lider?` <span class="muted small">(hoy: ${esc(etiqueta(S,c,lider.e,true))})</span>`:''}`};
+  const filas=[];for(let m=0;m<ll.slots.length/2;m++)filas.push(`<div class="prev-row"><span class="prev-n">${m+1}</span><span>${lbl(ll.slots[2*m])}</span><i>vs</i><span>${lbl(ll.slots[2*m+1])}</span></div>`);
+  return `<div class="panel sec"><div class="sec-hd"><h3>Llaves · ${ronda}</h3><span class="small muted">Se arman solas cuando termina el round robin</span></div>
+    <div class="small muted">Pasan ${pasan===1?'el primero':'los '+pasan+' primeros'} de cada grupo a las llaves de eliminación directa. Así quedan los cruces:</div>
+    <div class="prev-list">${filas.join('')}</div></div>`;
 }
 
 /* ---- Cuadro de consolación: juegan los que perdieron su primer partido ---- */
@@ -2151,12 +2176,13 @@ function detalleTorneo(t,c){
     <div class="seg" role="group" aria-label="Sección del torneo">
       <button data-act="sub" data-k="insc" aria-pressed="${ui.sub==='insc'}">Inscripción · ${n}</button>
       ${c.grupos?`<button data-act="sub" data-k="grupos" aria-pressed="${ui.sub==='grupos'}">${esRR(c)?'Round robin':'Round robin · '+c.grupos.lista.length+' grupos'}</button>`:''}
-      ${esRR(c)||(c.formato==='rr'&&!cb)?'':`<button data-act="sub" data-k="cuadro" aria-pressed="${ui.sub==='cuadro'}">Cuadro${cb?'':' (sin generar)'}</button>`}
+      ${esRR(c)||(c.formato==='rr'&&!cb)?'':`<button data-act="sub" data-k="cuadro" aria-pressed="${ui.sub==='cuadro'}">${c.formato==='grupos'||c.grupos?'Llaves':'Cuadro'}${cb?'':c.grupos?' (después del round robin)':' (sin generar)'}</button>`}
     </div>
     ${ui.sub==='insc'?seccionInscriptos(t,c,cb)
       :ui.sub==='grupos'&&c.grupos?seccionGrupos(c)
-      :cb?seccionCuadro(c,cb)+seccionConsolacion(c,cb)
-      :`<div class="panel muted">El cuadro todavía no está generado. ${c.grupos?'Se arma con los clasificados cuando terminen los grupos.':puedeEditar?'Inscribí a los jugadores y tocá "Generar cuadro" en Inscripción.':''}</div>`}`;
+      :cb?seccionCuadro(c,cb,c.grupos?'Llaves':'Cuadro')+seccionConsolacion(c,cb)
+      :c.grupos?previaLlaves(c)
+      :`<div class="panel muted">El cuadro todavía no está generado. ${c.formato==='grupos'?'Inscribí a los jugadores y tocá "Armar round robin" en Inscripción. Cuando terminen los grupos se arman las llaves.':puedeEditar?'Inscribí a los jugadores y tocá "Generar cuadro" en Inscripción.':''}</div>`}`;
 }
 
 /* ---- Partidos ---- */
@@ -2363,9 +2389,10 @@ function seccionGrupos(c){
   const cab=`<div class="sec-hd"><h3>Round robin</h3><span class="small muted">${jug} de ${ps.length} partidos${rr?' · todos contra todos, gana el primero de la tabla':` · pasan ${pasan===1?'el primero':'los '+pasan+' primeros'} de cada grupo`}</span></div>`;
   let accion='';
   if(rr&&camp) accion=`<div class="champ rr-champ"><button class="box" data-act="festejar" data-n="${esc(etiqueta(S,c,camp))}" title="Festejar de nuevo"><small>Campeón</small><b><span class="ballico"></span> ${esc(etiqueta(S,c,camp))}</b></button></div>`;
+  if(c.cuadro&&!rr) accion=`<div class="note">El round robin terminó y las llaves ya están armadas. <button class="lnk2" data-act="sub" data-k="cuadro">Ver llaves</button></div>`;
   if(puedeEditar&&!c.cuadro&&!rr){
-    accion=completos?`<div class="note"><b>Terminó el round robin.</b> Ya podés armar el cuadro con los ${clasificados(c).length} clasificados.</div><div class="btns"><button class="btn pri" data-act="desde-grupos">Generar cuadro con los clasificados</button></div>`
-      :`<div class="small muted">Cuando se jueguen todos los partidos del round robin vas a poder generar el cuadro con los clasificados.</div>`;
+    accion=completos?`<div class="note"><b>Terminó el round robin.</b> Armá las llaves con los ${clasificados(c).length} clasificados.</div><div class="btns"><button class="btn pri" data-act="desde-grupos">Armar llaves</button></div>`
+      :`<div class="small muted">Cuando se jueguen todos los partidos del round robin, las llaves se arman solas con los clasificados.</div>`;
   }
   const grupos=G.lista.map((g,gi)=>{const tab=tablaGrupo(c,gi);const mis=ps.filter(x=>x.gi===gi);
     return `<div class="grp"><div class="grp-hd"><h3>${rr?'Tabla':'Grupo '+LETRAS[gi]}</h3><span class="small muted">${mis.filter(x=>x.estado==='jugado').length}/${mis.length} jugados</span></div>
@@ -2373,7 +2400,7 @@ function seccionGrupos(c){
       ${tab.map((o,i)=>`<tr class="${(rr?(camp&&i===0):i<pasan)?'clasif':''}"><td><span class="rk">${i+1}</span></td><td class="gnm"><b>${esc(etiqueta(S,c,o.e))}</b>${banderasEntrada(c,o.e)}</td><td>${o.pj}</td><td>${o.pg}</td><td>${o.sg}-${o.sp}</td><td>${o.gg}-${o.gp}</td></tr>`).join('')}
       </tbody></table></div>
       <div class="list">${mis.map(x=>itemPartido({c,x,cb:null,z:'grupo'})).join('')}</div></div>`}).join('');
-  return `<div class="sec">${cab}${accion}<div class="grps">${grupos}</div>
+  return `<div class="sec">${cab}${accion}<div class="grps">${grupos}</div>${!c.cuadro&&!rr?previaLlaves(c):''}
     ${puedeEditar&&!c.cuadro&&!ps.some(x=>x.estado==='jugado')?`<div class="btns"><button class="btn danger ${ui.armado==='rehacer-grupos'?'arm':''}" data-act="arm" data-w="rehacer-grupos">${ui.armado==='rehacer-grupos'?'Tocá de nuevo para deshacerlo':'Deshacer round robin'}</button></div>`:''}</div>`;
 }
 function seccionConsolacion(c,cb){
@@ -2894,7 +2921,8 @@ document.addEventListener('click',ev=>{
       } else {g=val('p-gan');if(!g){avisar('Elegí quién gana por '+(tipo==='wo'?'W.O.':'retiro')+'.');return}}
       R[x.key]={s:tipo==='wo'?[]:s,g,tipo,...base,t:Date.now()};
       if(P.z!=='grupo')limpiarSiguientes(P.L);ui.sheet=null;ui.msg=null;
-      if(P.z==='grupo'&&esRR(c)&&gruposCompletos(c)){const cp=campeonDe(c);marcarFestejo(c.id+'-'+cp);setTimeout(()=>festejo(etiqueta(S,c,cp)),120)}
+      if(P.z==='grupo'&&!esRR(c)&&!c.cuadro&&gruposCompletos(c)&&generarDesdeGrupos(c)){ui.sub='cuadro';setTimeout(()=>toast('Terminó el round robin: ya están armadas las llaves con los clasificados.',6000),200)}
+      else if(P.z==='grupo'&&esRR(c)&&gruposCompletos(c)){const cp=campeonDe(c);marcarFestejo(c.id+'-'+cp);setTimeout(()=>festejo(etiqueta(S,c,cp)),120)}
       else if(P.final){marcarFestejo(c.id+'-'+g);setTimeout(()=>festejo(etiqueta(S,c,g)),120)} else {ui.pop=P.z+x.key;setTimeout(()=>{ui.pop=null},1500)}
       cambiar();break}
     case 'borrar-res':{const P=ctxPartido(ui.sheet.c,ui.sheet.z,ui.sheet.k);if(!P){cerrar();break}const r=P.res[ui.sheet.k]||{};P.res[ui.sheet.k]={cancha:r.cancha||'',hora:r.hora||'',dia:r.dia||''};if(P.z!=='grupo')limpiarSiguientes(P.L);ui.sheet=null;cambiar();break}
