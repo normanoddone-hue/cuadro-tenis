@@ -837,6 +837,7 @@ function armarRR(c){
   c.grupos={lista:[ordenRanking(S,c,c.inscriptos).map(e=>e.id)],pasan:0,rr:true,res:{},creado:new Date().toISOString()};
   c.cuadro=null;c.res={};delete c.cons;return true;
 }
+function empezo(c){const hay=r=>Object.values(r||{}).some(x=>x&&x.g);return hay(c.res)||hay(c.grupos?.res)||hay(c.cons?.res)}
 function esRR(c){return !!c.grupos?.rr}
 /* Campeón de cualquier formato: llave o round robin terminado */
 function campeonDe(c){if(esRR(c)) return gruposCompletos(c)?tablaGrupo(c,0)[0].e:null;return calcularCuadro(c)?.campeon||null}
@@ -2489,8 +2490,8 @@ function renderSheet(){
     ${err}
     <div class="btns"><button class="btn pri" data-act="guardar-jug">Guardar</button>${s.id?`<button class="btn danger ${ui.armado==='del-jug'?'arm':''}" data-act="arm" data-w="del-jug">${ui.armado==='del-jug'?'Tocá de nuevo para eliminar':'Eliminar'}</button>`:''}</div>`;
   }
-  if(s.t==='cat'){const c=s.id?T().categorias.find(x=>x.id===s.id):{nombre:'',modalidad:'S',rama:'M',nivel:'',sets:3,superTB:true,formato:'elim'};const bloq=!!(s.id&&c.inscriptos.length);
-    const fmt=c.formato||'elim';const armado=!!(s.id&&(c.cuadro||c.grupos));
+  if(s.t==='cat'){const c=s.id?T().categorias.find(x=>x.id===s.id):{nombre:'',modalidad:'S',rama:'M',nivel:'',sets:3,superTB:true,formato:'elim'};const emp=!!(s.id&&empezo(c));const bloq=emp;
+    const fmt=c.formato||'elim';const armado=emp;const yaArmado=!!(s.id&&!emp&&(c.cuadro||c.grupos));
     const D=c.modalidad==='D';
     const card=(v,tit,txt,svg)=>`<label class="fmt-card"><input type="radio" name="c-fmt" value="${v}" ${fmt===v?'checked':''} ${armado?'disabled':''}><span class="fmt-ico" aria-hidden="true">${svg}</span><b>${tit}</b><small>${txt}</small></label>`;
     const chip=(name,v,l,on,dis)=>`<label class="opt"><input type="radio" name="${name}" value="${v}" ${on?'checked':''} ${dis?'disabled':''}><span>${l}</span></label>`;
@@ -2507,13 +2508,14 @@ function renderSheet(){
       <div class="grid2" id="gopts" ${fmt==='grupos'?'':'hidden'}>
         <div class="field"><label for="c-gtam">Tamaño de cada grupo</label><select id="c-gtam">${[3,4,5].map(v=>`<option value="${v}" ${(c.gtam||4)===v?'selected':''}>${v} por grupo</option>`).join('')}</select></div>
         <div class="field"><label for="c-gpas">Pasan a las llaves</label><select id="c-gpas"><option value="1" ${c.gpasan===1?'selected':''}>El primero de cada grupo</option><option value="2" ${(c.gpasan||2)===2?'selected':''}>Los 2 primeros</option></select></div></div>
-      ${armado?`<div class="note warn">Este torneo ya tiene ${c.grupos?'el round robin':'el cuadro'} armado, por eso el formato no se puede cambiar. Para cambiarlo, primero tocá "${c.grupos?'Deshacer round robin':'Rehacer cuadro'}" (se borran sus resultados).</div>`:''}
+      ${emp?`<div class="note warn">El torneo ya empezó (hay resultados cargados): el formato, la modalidad, la rama y la categoría quedan fijos. El resto lo podés cambiar.</div>`
+        :yaArmado?`<div class="note">${c.grupos?'El round robin':'El cuadro'} ya está armado pero sin resultados. Si cambiás el formato o quiénes juegan, se deshace y lo volvés a armar.</div>`:''}
     </div>
     <div class="paso"><h3><span class="pn">2</span>¿Quiénes juegan?</h3>
       <div class="opts" role="radiogroup" aria-label="Modalidad">${chip('c-mod','S','Singles',!D,bloq)}${chip('c-mod','D','Dobles',D,bloq)}</div>
       <div class="opts" role="radiogroup" aria-label="Rama">${chip('c-rama','M','Caballeros',c.rama==='M',bloq)}${chip('c-rama','F','Damas',c.rama==='F',bloq)}${chip('c-rama','X','Mixto',c.rama==='X',bloq||!D)}</div>
       <div class="field"><label for="c-niv">Categoría de los jugadores</label><select id="c-niv" ${bloq?'disabled':''}><option value="">Todas las categorías</option>${NIVELES.map(n=>`<option ${c.nivel===n?'selected':''}>${n}</option>`).join('')}</select></div>
-      ${bloq?'<span class="small muted">Ya hay inscriptos: la modalidad, la rama y la categoría quedan fijas.</span>':''}
+      ${!emp&&s.id&&c.inscriptos.length?'<span class="small muted">Si cambiás la modalidad, la rama o la categoría, se quitan los inscriptos que ya no correspondan.</span>':''}
     </div>
     <div class="paso"><h3><span class="pn">3</span>Nombre y fechas</h3>
       <div class="field"><label for="c-nom">Nombre del torneo</label><input type="text" id="c-nom" value="${esc(c.nombre)}" ${s.id?'':'data-auto="1"'} placeholder="Ej.: Apertura Singles Caballeros"></div>
@@ -2860,7 +2862,18 @@ document.addEventListener('click',ev=>{
       if(document.querySelector('input[name=c-fmt]:disabled')){const c0=T().categorias.find(x=>x.id===ui.sheet.id);if(c0)d.formato=c0.formato||'elim'}
       if(d.inicio&&d.fin&&d.fin<d.inicio){avisar('La fecha de cierre es anterior a la de inicio.');break}
       if(!mod.disabled&&mod.value==='S'&&ram.value==='X'){avisar('En singles elegí masculino o femenino. Mixto es solo para dobles.');break}
-      if(ui.sheet.id){const c=T().categorias.find(x=>x.id===ui.sheet.id);Object.assign(c,d);if(!mod.disabled){c.modalidad=mod.value;c.rama=ram.value;c.nivel=niv.value}}
+      if(ui.sheet.id){const c=T().categorias.find(x=>x.id===ui.sheet.id);
+        const antes={formato:c.formato||'elim',gtam:c.gtam||4,gpasan:c.gpasan||2,modalidad:c.modalidad,rama:c.rama,nivel:c.nivel||''};
+        Object.assign(c,d);const avisos=[];
+        if(!mod.disabled){c.modalidad=mod.value;c.rama=ram.value;c.nivel=niv.value;
+          const cambioQuien=antes.modalidad!==c.modalidad||antes.rama!==c.rama||antes.nivel!==(c.nivel||'');
+          if(cambioQuien&&c.inscriptos.length){const n0=c.inscriptos.length;
+            if(antes.modalidad!==c.modalidad)c.inscriptos=[];
+            else{const ok=new Set(elegibles(S,c).map(p=>p.id));c.inscriptos=c.inscriptos.filter(e=>e.j.every(id=>ok.has(id))&&(c.rama!=='X'||e.j.length<2||jug(S,e.j[0])?.sexo!==jug(S,e.j[1])?.sexo))}
+            const q=n0-c.inscriptos.length;if(q)avisos.push(`se quitaron ${q} inscripto${q===1?'':'s'} que ya no correspondían`)}
+          const cambioFmt=antes.formato!==c.formato||(c.formato==='grupos'&&(antes.gtam!==c.gtam||antes.gpasan!==c.gpasan));
+          if((cambioFmt||cambioQuien)&&(c.cuadro||c.grupos)&&!empezo(c)){c.cuadro=null;c.res={};delete c.grupos;delete c.cons;ui.sub='insc';avisos.push(`se deshizo ${antes.formato==='grupos'?'el round robin':'el cuadro'} para volver a armarlo`)}}
+        toast('Torneo guardado'+(avisos.length?': '+avisos.join(' y ')+'.':'.'),avisos.length?6000:2500)}
       else{const c={id:uid(),...d,modalidad:mod.value,rama:ram.value,nivel:niv.value,inscriptos:[],cuadro:null,res:{}};T().categorias.push(c);ui.cat=c.id;ui.tab='categorias';ui.sub='insc';
         toast(`Torneo creado. Ahora inscribí ${c.modalidad==='D'?'a las parejas':'a los jugadores'} y tocá "${d.formato==='grupos'||d.formato==='rr'?'Armar round robin':'Generar cuadro'}".`,6000)}
       ui.sheet=null;ui.msg=null;cambiar();break}
