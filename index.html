@@ -404,7 +404,7 @@ tbody tr:hover td{background:color-mix(in srgb,var(--soft) 55%,transparent)}
 .topbar{padding-block:8px;box-shadow:0 1px 0 rgba(0,0,0,.08)}
 .topbar .brand{font-size:19px}
 .tbtn{width:40px;height:40px}
-.bnav{grid-template-columns:repeat(5,1fr);box-shadow:0 -1px 0 var(--line)}
+.bnav{grid-template-columns:repeat(6,1fr);box-shadow:0 -1px 0 var(--line)}
 .bnav button{min-height:56px}
 /* hoja/modal */
 .sheet{border-radius:18px 18px 0 0;gap:16px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -543,6 +543,7 @@ input,textarea{caret-color:var(--link)}
 
 /* Grupos y consolación */
 .grps{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:16px}
+.rr-champ{width:auto;max-width:360px}
 .grp{display:flex;flex-direction:column;gap:10px;min-width:0}
 .grp-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .grp-hd h3{font-family:"Barlow Condensed",var(--f-body);font-style:italic;font-weight:800;font-size:22px;color:var(--ink);letter-spacing:.02em}
@@ -642,6 +643,9 @@ body.tv-on{overflow:hidden}
 .tv-dots{display:flex;gap:.4em}.tv-dots i{width:.6em;height:.6em;border-radius:50%;background:rgba(255,255,255,.3)}.tv-dots i.on{background:var(--ball)}
 .tv-sp{display:flex;align-items:center;gap:.8em;font-size:.7em;opacity:.95}.tv-sp span{text-transform:uppercase;letter-spacing:.1em;opacity:.7}
 .tv-sp img{height:2.6em;max-width:7em;object-fit:contain;background:#fff;border-radius:.3em;padding:.2em .4em}
+
+.bnav button{font-size:10.5px;letter-spacing:-.01em}
+.bnav button .ico{width:40px}
 </style>
 
 <div class="app">
@@ -757,7 +761,7 @@ function partidosGrupo(c){
   const G=c.grupos;if(!G) return [];const out=[];
   G.lista.forEach((g,gi)=>{for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++){
     const key=`g${gi}-${i}-${j}`;const res=G.res[key];const a=g[i],b=g[j];
-    const x={key,gi,r:-1,m:0,a,b,res:null,g:null,estado:'pendiente',grupo:LETRAS[gi]};
+    const x={key,gi,r:-1,m:0,a,b,res:null,g:null,estado:'pendiente',grupo:LETRAS[gi],rr:!!G.rr};
     if(res&&(res.g===a||res.g===b)){x.res=res;x.g=res.g;x.estado='jugado'}
     else if(res&&(res.cancha||res.hora||res.dia)) x.res={cancha:res.cancha,hora:res.hora,dia:res.dia};
     out.push(x)}});
@@ -769,6 +773,20 @@ function tablaGrupo(c,gi){
     if(x.res.tipo!=='wo')(x.res.s||[]).forEach(([p,q])=>{if(p===''||p==null)return;p=+p;q=+q;A.gg+=p;A.gp+=q;B.gg+=q;B.gp+=p;if(p>q){A.sg++;B.sp++}else if(q>p){B.sg++;A.sp++}})});
   const dueloGano=(u,v)=>{const x=partidosGrupo(c).find(y=>y.estado==='jugado'&&((y.a===u&&y.b===v)||(y.a===v&&y.b===u)));return x?(x.g===u?-1:1):0};
   return st.sort((a,b)=>b.pg-a.pg||dueloGano(a.e,b.e)||(b.sg-b.sp)-(a.sg-a.sp)||(b.gg-b.gp)-(a.gg-a.gp)||etiqueta(S,c,a.e).localeCompare(etiqueta(S,c,b.e)));
+}
+const PUNTOS_RR=[100,70,45,25];
+function armarRR(c){
+  const n=c.inscriptos.length;if(n<3) return false;
+  c.grupos={lista:[ordenRanking(S,c,c.inscriptos).map(e=>e.id)],pasan:0,rr:true,res:{},creado:new Date().toISOString()};
+  c.cuadro=null;c.res={};delete c.cons;return true;
+}
+function esRR(c){return !!c.grupos?.rr}
+/* Campeón de cualquier formato: llave o round robin terminado */
+function campeonDe(c){if(esRR(c)) return gruposCompletos(c)?tablaGrupo(c,0)[0].e:null;return calcularCuadro(c)?.campeon||null}
+function resumenFinal(c){
+  if(esRR(c)){const t=tablaGrupo(c,0)[0];return `round robin · ${t.pg} de ${t.pj} ganados`}
+  const cb=calcularCuadro(c);if(!cb) return '';const f=cb.rondas[cb.R-1][0];const riv=f.g===f.a?f.b:f.a;
+  return `final ${marcadorDe(f)} a ${etiqueta(S,c,riv)}`;
 }
 function gruposCompletos(c){const ps=partidosGrupo(c);return ps.length>0&&ps.every(x=>x.estado==='jugado')}
 function clasificados(c){const pasan=c.grupos.pasan||2;const tabs=c.grupos.lista.map((g,gi)=>tablaGrupo(c,gi));const out=[];
@@ -803,12 +821,12 @@ function armarConsolacion(c){
   c.cons={cuadro:{...armarLlave(orden,0),creado:new Date().toISOString()},res:{}};
   return true;
 }
-function rondaDe(x,cb,corto){return x.grupo?'Grupo '+x.grupo:(x.cons?'Consolación · ':'')+nombreRonda(x.r,cb.R,corto)}
+function rondaDe(x,cb,corto){return x.grupo?(x.rr?'Round robin':'Grupo '+x.grupo):(x.cons?'Consolación · ':'')+nombreRonda(x.r,cb.R,corto)}
 /* Contexto de un partido para la hoja de resultado y la grilla: cuadro principal, consolación o grupo */
 function ctxPartido(cid,z,k){
   const c=T().categorias.find(x=>x.id===cid);if(!c) return null;
   if(z==='grupo'){const x=partidosGrupo(c).find(p=>p.key===k);if(!x) return null;
-    return {c,L:c,x,cb:null,z,res:c.grupos.res,titulo:'Grupo '+x.grupo,final:false,despues:false}}
+    return {c,L:c,x,cb:null,z,res:c.grupos.res,titulo:x.rr?'Round robin':'Grupo '+x.grupo,final:false,despues:false}}
   const L=llaveDe(c,z);const cb=calcularCuadro(L);if(!cb) return null;const [r,m]=k.split('-').map(Number);const x=cb.rondas[r]?.[m];if(!x) return null;
   if(z==='cons')x.cons=true;
   return {c,L,x,cb,z:z||'',res:L.res,titulo:(z==='cons'?'Consolación · ':'')+nombreRonda(r,cb.R),final:!z&&r===cb.R-1,
@@ -872,7 +890,9 @@ function estadisticas(S,categorias){
         e.j.forEach(pid=>{const s=get(pid);s.pts+=p;s.cats[cat.id]={p,etiq,nombre:cat.nombre,mod:cat.modalidad}});
       });
     }
-    if(cat.grupos) cat.grupos.lista.flat().forEach(eid=>{if(eid in alcanzo)return;const e=inscripto(cat,eid);if(!e)return;
+    if(esRR(cat)){const tab=tablaGrupo(cat,0);const fin=gruposCompletos(cat);tab.forEach((o,i)=>{const e=inscripto(cat,o.e);if(!e)return;const p=PUNTOS_RR[i]??15;
+      const etiq=fin&&i===0?'Campeón':fin&&i===1?'Finalista':`${i+1}.º round robin`;e.j.forEach(pid=>{const s=get(pid);s.pts+=p;s.cats[cat.id]={p,etiq,nombre:cat.nombre,mod:cat.modalidad}})})}
+    else if(cat.grupos) cat.grupos.lista.flat().forEach(eid=>{if(eid in alcanzo)return;const e=inscripto(cat,eid);if(!e)return;
       e.j.forEach(pid=>{const s=get(pid);s.pts+=PUNTOS_GRUPO;s.cats[cat.id]={p:PUNTOS_GRUPO,etiq:'Fase de grupos',nombre:cat.nombre,mod:cat.modalidad}})});
   });
   return st;
@@ -1070,7 +1090,7 @@ function vistaVacia(){
 /* ---- Cifras del club y galería ---- */
 function premiosEntregados(){
   let gs=0,n=0;
-  S.torneos.forEach(e=>e.categorias.forEach(c=>{const cb=calcularCuadro(c);if(!cb||!cb.campeon||!c.premios)return;
+  S.torneos.forEach(e=>e.categorias.forEach(c=>{if(!campeonDe(c)||!c.premios)return;
     const v=(+c.premios.campeon||0)+(+c.premios.finalista||0);if(v){gs+=v;n++}}));
   return {gs,n};
 }
@@ -1083,7 +1103,7 @@ function resumenClub(){
   const pr=premiosEntregados();
   return `<section class="kpis club" aria-label="El club en números">
     <div><b>${S.jugadores.length}</b><span>Jugadores registrados</span><em>${(()=>{const h=S.jugadores.filter(p=>p.sexo!=='F').length,m=S.jugadores.length-h;return `${h} ${h===1?'hombre':'hombres'} · ${m} ${m===1?'mujer':'mujeres'}`})()}</em></div>
-    <div><b>${nT}</b><span>Torneos creados</span><em>${(()=>{const fin=S.torneos.reduce((a,e)=>a+e.categorias.filter(c=>calcularCuadro(c)?.campeon).length,0);return `${fin} finalizado${fin===1?'':'s'} · ${nT-fin} en curso`})()}</em></div>
+    <div><b>${nT}</b><span>Torneos creados</span><em>${(()=>{const fin=S.torneos.reduce((a,e)=>a+e.categorias.filter(c=>campeonDe(c)).length,0);return `${fin} finalizado${fin===1?'':'s'} · ${nT-fin} en curso`})()}</em></div>
     <div class="gsk"><b>Gs. ${fmtCI(pr.gs)||0}</b><span>Entregados en premios</span><em>${pr.n} torneo${pr.n===1?'':'s'} con premio pagado</em></div>
   </section>`;
 }
@@ -1145,9 +1165,10 @@ const ICONOS={
   reportes:'<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
   partidos:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
   jugadores:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c1.8.7 3 2.4 3.5 5.2"/>',
-  ranking:'<path d="M4 20v-8h4v8M10 20V5h4v15M16 20v-5h4v5"/>'
+  ranking:'<path d="M4 20v-8h4v8M10 20V5h4v15M16 20v-5h4v5"/>',
+  campeones:'<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 3 3.5M17 6h2.5a2.5 2.5 0 0 1-3 3.5M12 14v3M8.5 20h7M9.5 17h5v3h-5z"/>'
 };
-const SECCIONES=[['resumen','Inicio'],['categorias','Torneos'],['partidos','Partidos'],['jugadores','Jugadores'],['ranking','Ranking']];
+const SECCIONES=[['resumen','Inicio'],['categorias','Torneos'],['partidos','Partidos'],['jugadores','Jugadores'],['ranking','Ranking'],['campeones','Campeones']];
 const ico=k=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[k]}</svg>`;
 
 function render(){
@@ -1158,7 +1179,7 @@ function render(){
   if(!cargado){m.innerHTML='<div class="sk" style="height:96px" aria-label="Cargando"></div><div class="sk" style="height:220px"></div><div class="sk" style="height:160px"></div>';return}
   if(!S){m.innerHTML=vistaVacia();renderSheet();return}
   if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
-  const v={resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
+  const v={campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
   m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'');
   renderSheet();
 }
@@ -1198,7 +1219,9 @@ const porRecientes=(p,q)=>(q.x.res?.t||0)-(p.x.res?.t||0)||q.x.r-p.x.r;
 
 /* ---- Inicio ---- */
 function filaTorneo(c,ev){
-  const {cb,jg,tot}=progresoTorneo(c);let st='Sin cuadro · inscribí jugadores',on=false;
+  let {cb,jg,tot}=progresoTorneo(c);let st='Sin cuadro · inscribí jugadores',on=false;
+  if(!cb&&c.grupos){const ps=partidosGrupo(c);jg=ps.filter(x=>x.estado==='jugado').length;tot=ps.length;const cp=campeonDe(c);
+    if(cp){st=`<span class="ballico"></span> Campeón: ${esc(etiqueta(S,c,cp))}`;on=true}else st=(esRR(c)?'Round robin':'Fase de grupos')+` · ${jg}/${tot}`}
   if(cb){if(cb.campeon){st=`<span class="ballico"></span> Campeón: ${esc(etiqueta(S,c,cb.campeon))}`;on=true}
     else{let r=-1;cb.rondas.forEach((f,i)=>{if(r<0&&f.some(x=>x.estado==='pendiente'))r=i});st=r>=0?`En juego · ${nombreRonda(r,cb.R)}`:'Esperando resultados'}}
   if(estadoTorneo(c,hoyISO())==='prox'){const d=Math.round((Date.parse(c.inicio)-Date.parse(hoyISO()))/86400000);st=`Próximo · empieza ${d===1?'mañana':'en '+d+' días'}`;on=false}
@@ -1207,7 +1230,7 @@ function filaTorneo(c,ev){
     <span class="nm">${esc(c.nombre)}${ev?` <span class="small muted" style="font-weight:500">· ${esc(ev.nombre)}</span>`:''}</span>
     <span class="tags"><span class="tag g">${MODS[c.modalidad]}</span><span class="tag">${RAMAS[c.rama]}</span>${c.nivel?`<span class="tag">${esc(c.nivel)}</span>`:''}<span class="tag">${c.inscriptos.length} ${c.modalidad==='D'?'parejas':'jug.'}</span></span>
     <span class="st ${on?'on':''}">${st}${cb&&!cb.campeon?` · ${jg}/${tot}`:''}${c.inicio?` · ${esc(rangoFechas(c))}`:''}</span>
-    ${cb?`<span class="prog"><i style="width:${pct}%"></i></span>`:''}
+    ${cb||c.grupos?`<span class="prog"><i style="width:${pct}%"></i></span>`:''}
     <span class="chev" aria-hidden="true">›</span></button>`;
 }
 
@@ -1237,7 +1260,7 @@ function statsTorneo(c){
     if(x.res.tipo!=='normal')r.wo++;
     (x.res.s||[]).forEach(([p,q],i)=>{if(p===''||p==null)return;r.sets++;const tb=c.superTB&&c.sets===3&&i===2;if(!tb)r.games+=(+p)+(+q);if(esTB(c,i,+p,+q))r.tb++});
   });
-  if(!cb) return r;
+  if(!cb){if(esRR(c))r.ronda=campeonDe(c)?'':'Round robin';return r}
   r.vivos=cb.campeon?1:cb.rondas[0].reduce((a,x)=>a+(x.a?1:0)+(x.b?1:0),0)-jgP;
   let ri=-1;cb.rondas.forEach((f,i)=>{if(ri<0&&f.some(x=>x.estado==='pendiente'))ri=i});
   r.ronda=cb.campeon?'':ri>=0?nombreRonda(ri,cb.R):'Esperando resultados';
@@ -1265,6 +1288,8 @@ function noticiasDe(t){
       else out.push({t:tt,tipo:'res',tit:`${G} ${D?'avanzan':'avanza'} a ${nombreRonda(x.r+1,cb.R).toLowerCase()}`,txt:`${D?'Vencieron':'Venció'} a ${P} ${sc} · ${c.nombre}`,cat:c.id});
     }));
   });
+  t.categorias.forEach(c=>{if(!esRR(c))return;const e=campeonDe(c);if(!e)return;const D=c.modalidad==='D';const tt=Math.max(...partidosGrupo(c).map(x=>x.res?.t||0));
+    out.push({t:tt,tipo:'campeon',tit:`${etiqueta(S,c,e)} ${D?'son campeones':c.rama==='F'?'es campeona':'es campeón'} de ${c.nombre}`,txt:`Ganó el round robin: ${resumenFinal(c).replace('round robin · ','')}.${c.premios?.campeon?' Premio: Gs. '+fmtCI(c.premios.campeon)+'.':''}`,cat:c.id})});
   (S.noticias||[]).filter(n=>n.ev===t.id).forEach(n=>out.push({t:n.t,tipo:'manual',tit:n.titulo,txt:n.texto,id:n.id}));
   return out.sort((a,b)=>b.t-a.t);
 }
@@ -1366,7 +1391,7 @@ function caraACara(a,b){
 }
 
 /* ---- Evolución en el ranking ---- */
-function fechaCat(c){return c.fin||c.inicio||(c.cuadro?.creado||'').slice(0,10)||''}
+function fechaCat(c){return c.fin||c.inicio||(c.cuadro?.creado||c.grupos?.creado||'').slice(0,10)||''}
 function evolucion(pid){
   const out={};
   MODALIDADES.forEach(([k,l])=>{
@@ -1500,8 +1525,8 @@ function kpisTorneo(c){
 
 /* ---- Eventos ---- */
 function estadoTorneo(c,hoy){
-  const cb=calcularCuadro(c);if(cb&&cb.campeon) return 'fin';
-  if(cb) return 'curso';
+  if(campeonDe(c)) return 'fin';
+  if(c.cuadro||c.grupos) return 'curso';
   if(!c.inicio&&!c.fin) return 'sin';
   const ini=c.inicio||c.fin;
   return ini>hoy?'prox':'curso';
@@ -1585,6 +1610,8 @@ function datosPerfil(pid){
     extra.forEach(({x,cbx})=>{if(x.estado!=='jugado'||(x.a!==ent.id&&x.b!==ent.id))return;const i=x.a===ent.id?0:1;
       ms.push({e,c,cb:cbx,x,i,ent,riv:i===0?x.b:x.a,gano:x.g===ent.id,t:x.res.t||base+(x.grupo?50:300)*60000,comp:ent.j.find(id=>id!==pid)||null,stb:c.superTB&&c.sets===3})});
     let etiq='Inscripto',pts=0;
+    if(esRR(c)){const tab=tablaGrupo(c,0);const i=tab.findIndex(o=>o.e===ent.id);const fin=gruposCompletos(c);pts=PUNTOS_RR[i]??15;
+      etiq=fin&&i===0?'Campeón':fin?`${i+1}.º round robin`:'En carrera · Round robin';parts.push({e,c,etiq,pts,camp:fin&&i===0,final:fin&&i<2});return}
     if(c.grupos&&c.grupos.lista.flat().includes(ent.id)&&!(cb&&maxR>=0)){etiq=cb||gruposCompletos(c)?'Fase de grupos':'En carrera · Grupos';pts=PUNTOS_GRUPO}
     if(cb&&maxR>=0){const f=cb.R-1-maxR;const camp=cb.campeon===ent.id;
       const elim=cb.rondas.some(fl=>fl.some(x=>x.estado==='jugado'&&(x.a===ent.id||x.b===ent.id)&&x.g!==ent.id));
@@ -2051,8 +2078,7 @@ function vistaCategorias(){
   if(c) return detalleTorneo(t,c);
   ui.cat=null;
   const hoy=hoyISO();
-  const tabs=`<div class="seg" role="group" aria-label="Vista"><button data-act="tl" data-k="" aria-pressed="${!ui.tl}">Torneos</button><button data-act="tl" data-k="camp" aria-pressed="${ui.tl==='camp'}">Campeones</button></div>`;
-  if(ui.tl==='camp') return `${encabezado('Campeones',{sb:'Historial del club, año por año'})}${tabs}${vistaCampeones()}`;
+  const tabs='';
   const grupos=[['curso','En curso'],['prox','Próximos'],['sin','Sin fecha'],['fin','Finalizados']];
   const html=grupos.map(([k,l])=>{const xs=t.categorias.filter(c=>estadoTorneo(c,hoy)===k).sort((a,b)=>k==='fin'?(b.inicio||'').localeCompare(a.inicio||''):(a.inicio||'').localeCompare(b.inicio||''));
     return xs.length?`<section class="sec"><h3>${l} · ${xs.length}</h3><div class="list">${xs.map(c=>filaTorneo(c)).join('')}</div></section>`:''}).join('');
@@ -2063,7 +2089,9 @@ function vistaCategorias(){
 function detalleTorneo(t,c){
   const cb=calcularCuadro(c);
   if(ui.sub==='grupos'&&!c.grupos) ui.sub=null;
+  if(ui.sub==='cuadro'&&(esRR(c)||(c.formato==='rr'&&!cb))) ui.sub=null;
   if(!ui.sub||(ui.sub==='cuadro'&&!cb&&!puedeEditar)) ui.sub=cb?'cuadro':c.grupos?'grupos':'insc';
+  if(ui.sub==='cuadro'&&esRR(c)) ui.sub='grupos';
   const tags=`<span class="tags"><span class="tag g">${MODS[c.modalidad]}</span><span class="tag">${RAMAS[c.rama]}</span><span class="tag">${c.nivel?'Solo '+esc(c.nivel):'Todas las categorías'}</span><span class="tag">Al mejor de ${c.sets}${c.superTB&&c.sets===3?' · súper tie-break':''}</span>${c.inicio?`<span class="tag">${esc(rangoFechas(c))}</span>`:''}${c.sede?`<span class="tag">${esc(c.sede)}</span>`:''}${premioTag(c)}</span>`;
   const n=c.inscriptos.length;
   return `<button class="back" data-act="volver">‹ Torneos</button>
@@ -2072,8 +2100,8 @@ function detalleTorneo(t,c){
     ${kpisTorneo(c)}
     <div class="seg" role="group" aria-label="Sección del torneo">
       <button data-act="sub" data-k="insc" aria-pressed="${ui.sub==='insc'}">Inscripción · ${n}</button>
-      ${c.grupos?`<button data-act="sub" data-k="grupos" aria-pressed="${ui.sub==='grupos'}">Grupos · ${c.grupos.lista.length}</button>`:''}
-      <button data-act="sub" data-k="cuadro" aria-pressed="${ui.sub==='cuadro'}">Cuadro${cb?'':' (sin generar)'}</button>
+      ${c.grupos?`<button data-act="sub" data-k="grupos" aria-pressed="${ui.sub==='grupos'}">${esRR(c)?'Round robin':'Grupos · '+c.grupos.lista.length}</button>`:''}
+      ${esRR(c)||(c.formato==='rr'&&!cb)?'':`<button data-act="sub" data-k="cuadro" aria-pressed="${ui.sub==='cuadro'}">Cuadro${cb?'':' (sin generar)'}</button>`}
     </div>
     ${ui.sub==='insc'?seccionInscriptos(t,c,cb)
       :ui.sub==='grupos'&&c.grupos?seccionGrupos(c)
@@ -2265,13 +2293,14 @@ function seccionInscriptos(t,c,cb){
       <div class="grid2"><div class="field"><label for="modoCuadro">Ubicación en el cuadro</label><select id="modoCuadro">
         <option value="ranking" ${ui.modoCuadro==='ranking'?'selected':''}>Todos por ranking</option>
         <option value="sorteo" ${ui.modoCuadro==='sorteo'?'selected':''}>Cabezas de serie por ranking, resto por sorteo</option></select></div></div>
-      ${c.formato==='grupos'?`<div class="btns"><button class="btn pri" data-act="armar-grupos" ${n<4?'disabled':''}>Armar grupos</button>${c.grupos?'<span class="small muted">Los grupos ya están armados: volver a armarlos borra sus resultados.</span>':''}</div>`
+      ${c.formato==='rr'?`<div class="btns"><button class="btn pri" data-act="armar-rr" ${n<3?'disabled':''}>Armar round robin</button></div>`
+        :c.formato==='grupos'?`<div class="btns"><button class="btn pri" data-act="armar-grupos" ${n<4?'disabled':''}>Armar grupos</button>${c.grupos?'<span class="small muted">Los grupos ya están armados: volver a armarlos borra sus resultados.</span>':''}</div>`
         :`<div class="btns"><button class="btn pri" data-act="generar" ${n<2?'disabled':''}>Generar cuadro</button></div>`}
-      <span class="small muted">${c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para armar grupos.':`${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. Todos juegan contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`}</span></div>`;
+      <span class="small muted">${c.formato==='rr'?(n<3?'Necesitás al menos 3 inscriptos para un round robin.':`Todos contra todos: ${n*(n-1)/2} partidos. Gana quien termine primero en la tabla (partidos ganados, después el partido entre ellos, sets y games).`):c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para armar grupos.':`${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. Todos juegan contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`}</span></div>`;
   } else {
     cuerpo=n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>';
   }
-  const aviso=puedeEditar&&cb&&!c.grupos&&c.formato==='grupos'?`<div class="note warn">Elegiste <b>fase de grupos</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "Armar grupos".</div>`
+  const aviso=puedeEditar&&cb&&!c.grupos&&(c.formato==='grupos'||c.formato==='rr')?`<div class="note warn">Elegiste <b>${c.formato==='rr'?'round robin':'fase de grupos'}</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "${c.formato==='rr'?'Armar round robin':'Armar grupos'}".</div>`
     :puedeEditar&&cb&&c.online?`<div class="note">La inscripción online está activada, pero el cuadro ya está armado: el botón "Quiero anotarme" solo aparece mientras no hay cuadro.</div>`:'';
   return `${aviso}${!cb&&!c.grupos&&puedeEditar?seccionSolicitudes(c):''}<div class="panel sec"><div class="sec-hd"><h3>Inscriptos · ${n} ${D?'parejas':'jugadores'}</h3>
     ${cb&&puedeEditar?`<button class="btn danger ${ui.armado==='rehacer'?'arm':''}" data-act="arm" data-w="rehacer">${ui.armado==='rehacer'?'Tocá de nuevo: se borran los resultados':'Rehacer cuadro'}</button>`:''}</div>${cuerpo}</div>`;
@@ -2279,20 +2308,23 @@ function seccionInscriptos(t,c,cb){
 function seccionGrupos(c){
   const G=c.grupos;const pasan=G.pasan||2;const completos=gruposCompletos(c);const ps=partidosGrupo(c);
   const jug=ps.filter(x=>x.estado==='jugado').length;
-  const cab=`<div class="sec-hd"><h3>Fase de grupos</h3><span class="small muted">${jug} de ${ps.length} partidos · pasan ${pasan===1?'el primero':'los '+pasan+' primeros'} de cada grupo</span></div>`;
+  const rr=esRR(c);const camp=campeonDe(c);
+  if(rr&&camp)festejarUnaVez(c,{campeon:camp});
+  const cab=`<div class="sec-hd"><h3>${rr?'Round robin':'Fase de grupos'}</h3><span class="small muted">${jug} de ${ps.length} partidos${rr?' · todos contra todos, gana el primero de la tabla':` · pasan ${pasan===1?'el primero':'los '+pasan+' primeros'} de cada grupo`}</span></div>`;
   let accion='';
-  if(puedeEditar&&!c.cuadro){
+  if(rr&&camp) accion=`<div class="champ rr-champ"><button class="box" data-act="festejar" data-n="${esc(etiqueta(S,c,camp))}" title="Festejar de nuevo"><small>Campeón</small><b><span class="ballico"></span> ${esc(etiqueta(S,c,camp))}</b></button></div>`;
+  if(puedeEditar&&!c.cuadro&&!rr){
     accion=completos?`<div class="note"><b>Terminaron los grupos.</b> Ya podés armar el cuadro con los ${clasificados(c).length} clasificados.</div><div class="btns"><button class="btn pri" data-act="desde-grupos">Generar cuadro con los clasificados</button></div>`
       :`<div class="small muted">Cuando se jueguen todos los partidos de los grupos vas a poder generar el cuadro con los clasificados.</div>`;
   }
   const grupos=G.lista.map((g,gi)=>{const tab=tablaGrupo(c,gi);const mis=ps.filter(x=>x.gi===gi);
-    return `<div class="grp"><div class="grp-hd"><h3>Grupo ${LETRAS[gi]}</h3><span class="small muted">${mis.filter(x=>x.estado==='jugado').length}/${mis.length} jugados</span></div>
+    return `<div class="grp"><div class="grp-hd"><h3>${rr?'Tabla':'Grupo '+LETRAS[gi]}</h3><span class="small muted">${mis.filter(x=>x.estado==='jugado').length}/${mis.length} jugados</span></div>
       <div class="tbl-wrap"><table class="gtab"><thead><tr><th>#</th><th>${c.modalidad==='D'?'Pareja':'Jugador'}</th><th>PJ</th><th>PG</th><th>Sets</th><th>Games</th></tr></thead><tbody>
-      ${tab.map((o,i)=>`<tr class="${i<pasan?'clasif':''}"><td><span class="rk">${i+1}</span></td><td class="gnm"><b>${esc(etiqueta(S,c,o.e))}</b>${banderasEntrada(c,o.e)}</td><td>${o.pj}</td><td>${o.pg}</td><td>${o.sg}-${o.sp}</td><td>${o.gg}-${o.gp}</td></tr>`).join('')}
+      ${tab.map((o,i)=>`<tr class="${(rr?(camp&&i===0):i<pasan)?'clasif':''}"><td><span class="rk">${i+1}</span></td><td class="gnm"><b>${esc(etiqueta(S,c,o.e))}</b>${banderasEntrada(c,o.e)}</td><td>${o.pj}</td><td>${o.pg}</td><td>${o.sg}-${o.sp}</td><td>${o.gg}-${o.gp}</td></tr>`).join('')}
       </tbody></table></div>
       <div class="list">${mis.map(x=>itemPartido({c,x,cb:null,z:'grupo'})).join('')}</div></div>`}).join('');
   return `<div class="sec">${cab}${accion}<div class="grps">${grupos}</div>
-    ${puedeEditar&&!c.cuadro&&!ps.some(x=>x.estado==='jugado')?`<div class="btns"><button class="btn danger ${ui.armado==='rehacer-grupos'?'arm':''}" data-act="arm" data-w="rehacer-grupos">${ui.armado==='rehacer-grupos'?'Tocá de nuevo para deshacer los grupos':'Deshacer grupos'}</button></div>`:''}</div>`;
+    ${puedeEditar&&!c.cuadro&&!ps.some(x=>x.estado==='jugado')?`<div class="btns"><button class="btn danger ${ui.armado==='rehacer-grupos'?'arm':''}" data-act="arm" data-w="rehacer-grupos">${ui.armado==='rehacer-grupos'?'Tocá de nuevo para deshacerlo':rr?'Deshacer round robin':'Deshacer grupos'}</button></div>`:''}</div>`;
 }
 function seccionConsolacion(c,cb){
   const cc=cuadroCons(c);const ls=perdedoresPrimera(c);
@@ -2301,6 +2333,7 @@ function seccionConsolacion(c,cb){
   if(puedeEditar){
     if(!cc&&ls.length>=2) html+=`<div class="panel cons-box"><div><b>Cuadro de consolación</b><div class="small muted">${ls.length} ${c.modalidad==='D'?'parejas perdieron':'jugadores perdieron'} su primer partido. Armá un segundo cuadro para que jueguen al menos un partido más. No suma puntos al ranking.</div></div><div class="btns"><button class="btn pri" data-act="armar-cons">Armar consolación</button></div></div>`;
     else if(cc){const dentro=new Set(c.cons.cuadro.slots.filter(Boolean));const nuevos=ls.filter(e=>!dentro.has(e)).length;const conRes=Object.values(c.cons.res||{}).some(r=>r&&r.g);
+      if(!conRes) html+=`<div class="btns"><button class="btn danger ${ui.armado==='deshacer-cons'?'arm':''}" data-act="arm" data-w="deshacer-cons">${ui.armado==='deshacer-cons'?'Tocá de nuevo para deshacer la consolación':'Deshacer consolación'}</button></div>`;
       if(nuevos) html+=`<div class="panel cons-box"><div class="small muted">${nuevos} ${nuevos===1?'perdedor nuevo todavía no está':'perdedores nuevos todavía no están'} en la consolación.</div><div class="btns"><button class="btn ${conRes?'danger':''} ${ui.armado==='rehacer-cons'?'arm':''}" data-act="${conRes?'arm':'armar-cons'}" data-w="rehacer-cons">${ui.armado==='rehacer-cons'?'Tocá de nuevo: se borran sus resultados':'Rehacer consolación'}</button></div></div>`}
   }
   return html;
@@ -2395,10 +2428,10 @@ function renderSheet(){
     <div class="field"><label for="c-pf">Premio vicecampeón (Gs.)</label><input type="text" inputmode="numeric" id="c-pf" value="${esc(fmtCI(c.premios?.finalista))}" placeholder="Ej.: 500.000"></div></div>
     <span class="small muted">Dejalos vacíos si el torneo no tiene premio en efectivo. Se suman a "Entregados en premios" cuando el torneo tiene campeón.</span></div>
     <div class="prz"><h3>Formato</h3><div class="grid2">
-    <div class="field"><label for="c-fmt">Cómo se juega</label><select id="c-fmt"><option value="elim" ${c.formato!=='grupos'?'selected':''}>Eliminación directa</option><option value="grupos" ${c.formato==='grupos'?'selected':''}>Fase de grupos y después cuadro</option></select></div>
+    <div class="field"><label for="c-fmt">Cómo se juega</label><select id="c-fmt"><option value="elim" ${!c.formato||c.formato==='elim'?'selected':''}>Llaves (eliminación directa)</option><option value="rr" ${c.formato==='rr'?'selected':''}>Round robin (todos contra todos)</option><option value="grupos" ${c.formato==='grupos'?'selected':''}>Grupos y después llaves</option></select></div>
     <div class="field"><label for="c-gtam">Tamaño de cada grupo</label><select id="c-gtam">${[3,4,5].map(v=>`<option value="${v}" ${(c.gtam||4)===v?'selected':''}>${v} ${c.modalidad==='D'?'parejas':'jugadores'}</option>`).join('')}</select></div>
     <div class="field"><label for="c-gpas">Pasan al cuadro</label><select id="c-gpas"><option value="1" ${c.gpasan===1?'selected':''}>El primero de cada grupo</option><option value="2" ${(c.gpasan||2)===2?'selected':''}>Los 2 primeros</option></select></div></div>
-    <span class="small muted">El tamaño de grupo y cuántos pasan se usan solo con fase de grupos.</span>
+    <span class="small muted">El tamaño de grupo y cuántos pasan se usan solo con "Grupos y después llaves".</span>
     ${s.id&&(c.cuadro||c.grupos)?`<div class="note warn">Este torneo ya tiene ${c.grupos?'los grupos':'el cuadro'} armado. El formato y la inscripción online se aplican <b>antes</b> de armarlo: para cambiarlos, guardá y después tocá "${c.grupos?'Deshacer grupos':'Rehacer cuadro'}" (se borran sus resultados).</div>`:''}</div>
     <label class="check"><input type="checkbox" id="c-online" ${c.online?'checked':''}> Inscripción online abierta: los jugadores pueden pedir anotarse desde la app</label>
     <label class="check"><input type="checkbox" id="c-tb" ${c.superTB?'checked':''}> El 3.er set se juega como súper tie-break a 10</label>
@@ -2746,6 +2779,7 @@ document.addEventListener('click',ev=>{
     case 'del-pareja':{const c=cat();c.inscriptos=c.inscriptos.filter(e=>e.id!==t.dataset.id);cambiar();break}
     case 'armar-grupos':{const c=cat();if(!armarGrupos(c,c.gtam||4,c.gpasan||2)){toast('Hacen falta más inscriptos para armar grupos.');break}ui.sub='grupos';cambiar();break}
     case 'desde-grupos':{const c=cat();if(!generarDesdeGrupos(c)){toast('Todavía no hay clasificados.');break}ui.sub='cuadro';cambiar();break}
+    case 'armar-rr':{const c=cat();if(!armarRR(c)){toast('Hacen falta al menos 3 inscriptos.');break}ui.sub='grupos';cambiar();break}
     case 'armar-cons':{const c=cat();if(!armarConsolacion(c)){toast('Hacen falta al menos 2 perdedores de primera ronda.');break}cambiar();break}
     case 'generar':{const c=cat();generarCuadro(S,T(),c,val('modoCuadro')||'ranking');ui.sub='cuadro';cambiar();break}
     case 'arm':{const w=t.dataset.w;if(ui.armado!==w){ui.armado=w;render();break}
@@ -2755,6 +2789,7 @@ document.addEventListener('click',ev=>{
       if(w.startsWith('del-n-')){const id=w.slice(6);S.noticias=(S.noticias||[]).filter(n=>n.id!==id);cambiar()}
       if(w==='rehacer'){const c=cat();ui.sub=c.grupos?'grupos':'insc';c.cuadro=null;c.res={};delete c.cons;cambiar()}
       if(w==='rehacer-grupos'){const c=cat();delete c.grupos;c.cuadro=null;c.res={};delete c.cons;ui.sub='insc';cambiar()}
+      if(w==='deshacer-cons'){const c=cat();if(c.cons&&!Object.values(c.cons.res||{}).some(r=>r&&r.g)){delete c.cons;toast('Consolación deshecha.')}cambiar()}
       if(w==='rehacer-cons'){const c=cat();armarConsolacion(c);cambiar()}
       if(w==='del-torneo'){S.torneos=S.torneos.filter(x=>x.id!==ui.sheet.id);ui.torneo=null;ui.sheet=null;ui.tab='resumen';cambiar()}
       if(w==='del-cat'){const tt=T();tt.categorias=tt.categorias.filter(c=>c.id!==ui.sheet.id);ui.sheet=null;ui.cat=null;cambiar()}
@@ -2791,7 +2826,8 @@ document.addEventListener('click',ev=>{
       } else {g=val('p-gan');if(!g){avisar('Elegí quién gana por '+(tipo==='wo'?'W.O.':'retiro')+'.');return}}
       R[x.key]={s:tipo==='wo'?[]:s,g,tipo,...base,t:Date.now()};
       if(P.z!=='grupo')limpiarSiguientes(P.L);ui.sheet=null;ui.msg=null;
-      if(P.final){marcarFestejo(c.id+'-'+g);setTimeout(()=>festejo(etiqueta(S,c,g)),120)} else {ui.pop=P.z+x.key;setTimeout(()=>{ui.pop=null},1500)}
+      if(P.z==='grupo'&&esRR(c)&&gruposCompletos(c)){const cp=campeonDe(c);marcarFestejo(c.id+'-'+cp);setTimeout(()=>festejo(etiqueta(S,c,cp)),120)}
+      else if(P.final){marcarFestejo(c.id+'-'+g);setTimeout(()=>festejo(etiqueta(S,c,g)),120)} else {ui.pop=P.z+x.key;setTimeout(()=>{ui.pop=null},1500)}
       cambiar();break}
     case 'borrar-res':{const P=ctxPartido(ui.sheet.c,ui.sheet.z,ui.sheet.k);if(!P){cerrar();break}const r=P.res[ui.sheet.k]||{};P.res[ui.sheet.k]={cancha:r.cancha||'',hora:r.hora||'',dia:r.dia||''};if(P.z!=='grupo')limpiarSiguientes(P.L);ui.sheet=null;cambiar();break}
   }
@@ -2835,16 +2871,15 @@ function pieImagen(x,W,H){
 }
 function lineasNombre(x,txt,maxW,size){x.font=F_D(size);if(x.measureText(txt).width<=maxW||!txt.includes(' / '))return [txt];return txt.split(' / ').map((t,i,a)=>t+(i<a.length-1?' /':''))}
 async function imagenCampeon(c){
-  const cb=calcularCuadro(c);if(!cb||!cb.campeon) return null;const W=1080,H=1350;
+  const camp=campeonDe(c);if(!camp) return null;const W=1080,H=1350;
   const {cv,x}=await lienzo(W,H,c.nombre,[rangoFechas(c),c.sede].filter(Boolean).join(' · ')||'Torneo del club');
-  const fin=cb.rondas[cb.R-1][0];const D=c.modalidad==='D';
+  const D=c.modalidad==='D';
   x.fillStyle=AMA;x.font=F_D(150);x.textAlign='center';x.fillText(D?'¡CAMPEONES!':c.rama==='F'?'¡CAMPEONA!':'¡CAMPEÓN!',W/2,520);
   // pelota
   x.beginPath();x.arc(W/2,640,46,0,Math.PI*2);x.fillStyle=AMA;x.fill();x.strokeStyle='#fff';x.lineWidth=5;x.beginPath();x.arc(W/2-46,640,40,-0.9,0.9);x.stroke();x.beginPath();x.arc(W/2+46,640,40,Math.PI-0.9,Math.PI+0.9);x.stroke();
-  const nom=etiqueta(S,c,cb.campeon).toUpperCase();x.fillStyle='#fff';
+  const nom=etiqueta(S,c,camp).toUpperCase();x.fillStyle='#fff';
   const ls=lineasNombre(x,nom,W-140,104);let y=800;ls.forEach(l=>{const n=ajustar(x,l,W-140,104,F_D);x.fillText(l,W/2,y);y+=n*1.02});
-  const riv=fin.g===fin.a?fin.b:fin.a;
-  x.fillStyle='rgba(255,255,255,.85)';const t2=`Final: ${marcadorDe(fin)} a ${etiqueta(S,c,riv)}`;ajustar(x,t2,W-140,36,n=>F_B(400,n));x.fillText(t2,W/2,y+30);
+  x.fillStyle='rgba(255,255,255,.85)';const rf=resumenFinal(c);const t2=rf.charAt(0).toUpperCase()+rf.slice(1);ajustar(x,t2,W-140,36,n=>F_B(400,n));x.fillText(t2,W/2,y+30);
   if(c.premios?.campeon){x.fillStyle=AMA;x.font=F_B(700,38);x.fillText('Premio: Gs. '+fmtCI(c.premios.campeon),W/2,y+100)}
   x.textAlign='left';pieImagen(x,W,H);return cv;
 }
@@ -2885,7 +2920,7 @@ async function imagenCuadro(c){
 }
 function opcionesCompartir(c){
   const cb=calcularCuadro(c);const ps=todosLosPartidos({categorias:[c]}).filter(p=>p.x.estado==='jugado').sort(porRecientes);
-  return {camp:!!cb?.campeon,cuadro:!!cb,ps};
+  return {camp:!!campeonDe(c),cuadro:!!cb,ps};
 }
 async function prepararImagen(){
   const s=ui.sheet;if(!s||s.t!=='compartir') return;const c=todasCats().find(x=>x.id===s.c);if(!c) return;
@@ -2900,7 +2935,7 @@ async function prepararImagen(){
 }
 function textoCompartir(){
   const s=ui.sheet;const c=todasCats().find(x=>x.id===s.c);if(!c) return '';const url=location.origin+location.pathname;
-  if(s.tipo==='camp'){const cb=calcularCuadro(c);return `${etiqueta(S,c,cb.campeon)} ${c.modalidad==='D'?'son campeones':c.rama==='F'?'es campeona':'es campeón'} de ${c.nombre}. Mirá el cuadro: ${url}`}
+  if(s.tipo==='camp'){return `${etiqueta(S,c,campeonDe(c))} ${c.modalidad==='D'?'son campeones':c.rama==='F'?'es campeona':'es campeón'} de ${c.nombre}. Mirá el cuadro: ${url}`}
   if(s.tipo==='cuadro') return `Cuadro de ${c.nombre} en ${nombreApp()}: ${url}`;
   const [z,k]=(s.k||'').split('|');const P=ctxPartido(c.id,z,k);if(!P) return url;const g=P.x.g,o=g===P.x.a?P.x.b:P.x.a;
   return `${etiqueta(S,c,g)} le ganó a ${etiqueta(S,c,o)} ${marcadorDe(P.x)} · ${c.nombre}, ${P.titulo.toLowerCase()}. Más resultados: ${url}`;
@@ -2929,8 +2964,8 @@ function slidesTV(){
   const todas=todasCats();
   MODALIDADES.forEach(([k,l])=>{const st=estadisticas(S,todas.filter(c=>claveMod(c)===k));const top=Object.entries(st).filter(([,x])=>x.pts>0).sort((a,b)=>b[1].pts-a[1].pts||b[1].pg-a[1].pg).slice(0,7);
     if(top.length>=2) out.push({t:'Ranking · '+l,h:`<div class="tv-list">${top.map(([id,x],i)=>{const p=jug(S,id);return `<div class="tv-row"><span class="tv-h"><span class="rk tv-rk">${i+1}</span></span><span class="tv-m"><b>${esc(nombreCompleto(p))}${bandera(p?.pais)}</b><small>${esc(p?.club||'')}${p?.categoria?' · '+esc(p.categoria):''}</small></span><span class="tv-c tv-pts">${x.pts}<small> pts</small></span></div>`}).join('')}</div>`})});
-  const camps=todas.map(c=>{const cb=calcularCuadro(c);return cb&&cb.campeon?{c,cb}:null}).filter(Boolean).sort((a,b)=>fechaCat(b.c).localeCompare(fechaCat(a.c))).slice(0,6);
-  if(camps.length) out.push({t:'Campeones',h:`<div class="tv-camps">${camps.map(({c,cb})=>`<div class="tv-camp"><small>${esc(c.nombre)}</small><b>${esc(etiqueta(S,c,cb.campeon))}</b><span>${esc(marcadorDe(cb.rondas[cb.R-1][0]))}</span></div>`).join('')}</div>`});
+  const camps=todas.map(c=>{const e=campeonDe(c);return e?{c,e}:null}).filter(Boolean).sort((a,b)=>fechaCat(b.c).localeCompare(fechaCat(a.c))).slice(0,6);
+  if(camps.length) out.push({t:'Campeones',h:`<div class="tv-camps">${camps.map(({c,e})=>`<div class="tv-camp"><small>${esc(c.nombre)}</small><b>${esc(etiqueta(S,c,e))}</b><span>${esc(resumenFinal(c))}</span></div>`).join('')}</div>`});
   if(!out.length) out.push({t:nombreApp(),h:'<div class="tv-vacio">Pronto vas a ver acá los partidos, los resultados y el ranking del club.</div>'});
   return out;
 }
@@ -2953,14 +2988,14 @@ function seccionSponsors(){
 
 /* ===================== Historial de campeones ===================== */
 function vistaCampeones(){
-  const xs=todasCats().map(c=>{const cb=calcularCuadro(c);return cb&&cb.campeon?{c,cb}:null}).filter(Boolean).sort((a,b)=>fechaCat(b.c).localeCompare(fechaCat(a.c)));
+  const xs=todasCats().map(c=>{const e=campeonDe(c);return e?{c,e}:null}).filter(Boolean).sort((a,b)=>fechaCat(b.c).localeCompare(fechaCat(a.c)));
   if(!xs.length) return '<div class="panel muted">Todavía no hay campeones. Cuando un torneo termine, su campeón queda guardado acá año por año.</div>';
-  const titulos={};xs.forEach(({c,cb})=>inscripto(c,cb.campeon)?.j.forEach(id=>titulos[id]=(titulos[id]||0)+1));
+  const titulos={};xs.forEach(({c,e})=>inscripto(c,e)?.j.forEach(id=>titulos[id]=(titulos[id]||0)+1));
   const top=Object.entries(titulos).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const anios={};xs.forEach(o=>{const y=(fechaCat(o.c)||'').slice(0,4)||'Sin fecha';(anios[y]=anios[y]||[]).push(o)});
   return `${top.length&&top[0][1]>1?`<div class="hcard"><h3>Más títulos</h3>${top.map(([id,n])=>{const p=jug(S,id);return `<button class="hrow" data-act="ver-jug" data-id="${id}"><span><b>${esc(nombreCompleto(p))}${bandera(p?.pais)}</b><small>${esc(p?.club||'')}</small></span><span class="v">${n}<small> título${n===1?'':'s'}</small></span></button>`}).join('')}</div>`:''}
-    ${Object.keys(anios).sort().reverse().map(y=>`<section class="sec"><div class="sec-hd"><h2>${esc(y)} <span class="ct">${anios[y].length}</span></h2></div><div class="list">${anios[y].map(({c,cb})=>{const f=cb.rondas[cb.R-1][0];const fin=f.g===f.a?f.b:f.a;
-      return `<button class="rowbtn" data-act="ver-cat" data-id="${c.id}"><span class="n"><span class="ballico"></span> ${esc(etiqueta(S,c,cb.campeon))}${banderasEntrada(c,cb.campeon)}</span><span class="d">${esc(c.nombre)} · final ${esc(marcadorDe(f))} a ${esc(etiqueta(S,c,fin))}${c.premios?.campeon?' · Gs. '+fmtCI(c.premios.campeon):''}</span><span class="r"><span class="tag g">${MODS[c.modalidad]}</span></span></button>`}).join('')}</div></section>`).join('')}`;
+    ${Object.keys(anios).sort().reverse().map(y=>`<section class="sec"><div class="sec-hd"><h2>${esc(y)} <span class="ct">${anios[y].length}</span></h2></div><div class="list">${anios[y].map(({c,e})=>{
+      return `<button class="rowbtn" data-act="ver-cat" data-id="${c.id}"><span class="n"><span class="ballico"></span> ${esc(etiqueta(S,c,e))}${banderasEntrada(c,e)}</span><span class="d">${esc(c.nombre)} · ${esc(resumenFinal(c))}${c.premios?.campeon?' · Gs. '+fmtCI(c.premios.campeon):''}</span><span class="r"><span class="tag g">${esRR(c)?'Round robin':MODS[c.modalidad]}</span></span></button>`}).join('')}</div></section>`).join('')}`;
 }
 
 function limpiarSiguientes(c){
