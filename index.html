@@ -2093,7 +2093,7 @@ function vistaCategorias(){
   const grupos=[['curso','En curso'],['prox','Próximos'],['sin','Sin fecha'],['fin','Finalizados']];
   const html=grupos.map(([k,l])=>{const xs=t.categorias.filter(c=>estadoTorneo(c,hoy)===k).sort((a,b)=>k==='fin'?(b.inicio||'').localeCompare(a.inicio||''):(a.inicio||'').localeCompare(b.inicio||''));
     return xs.length?`<section class="sec"><h3>${l} · ${xs.length}</h3><div class="list">${xs.map(c=>filaTorneo(c)).join('')}</div></section>`:''}).join('');
-  return `${encabezado('Torneos',{sb:`${t.categorias.length} torneo${t.categorias.length===1?'':'s'} del club`,acc:(t.categorias.some(c=>c.cuadro)?'<button class="btn sm pdf" data-act="rep-llave" data-id="all">'+ICO_PDF+'Descargar llaves (PDF)</button>':'')+(puedeEditar?'<button class="btn sm" data-act="xl-abrir">Importar Excel</button><button class="btn pri" data-act="nueva-cat">Nuevo torneo</button>':'')})}
+  return `${encabezado('Torneos',{sb:`${t.categorias.length} torneo${t.categorias.length===1?'':'s'} del club`,acc:(puedeEditar?'<button class="btn sm" data-act="xl-abrir">Importar Excel</button><button class="btn pri" data-act="nueva-cat">Nuevo torneo</button>':'')})}
     ${tabs}
     ${html||`<div class="panel muted">Todavía no hay torneos. Cada torneo tiene su nombre, por ejemplo "Apertura Singles Damas" o "Clausura Dobles Mixtos".${puedeEditar?' Creá el primero para inscribir jugadores.':''}</div>`}`;
 }
