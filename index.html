@@ -662,7 +662,7 @@ body.tv-on{overflow:hidden}
 .paso{display:flex;flex-direction:column;gap:10px}
 .paso h3{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px}
 .paso .pn{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--court);color:#fff;font-size:12px;letter-spacing:0}
-.fmt-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fmt-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
 @media (max-width:560px){.fmt-cards{grid-template-columns:1fr}.fmt-card{display:grid;grid-template-columns:56px 1fr;column-gap:12px;row-gap:2px;align-items:center;padding:10px 12px}.fmt-card .fmt-ico{grid-row:1/span 2}}
 .fmt-card{position:relative;display:flex;flex-direction:column;gap:4px;padding:12px;border:2px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;transition:border-color .15s,background .15s}
 .fmt-card input{position:absolute;opacity:0;pointer-events:none}
@@ -932,7 +932,7 @@ function estadisticas(S,categorias){
     if(esRR(cat)){const tab=tablaGrupo(cat,0);const fin=gruposCompletos(cat);tab.forEach((o,i)=>{const e=inscripto(cat,o.e);if(!e)return;const p=PUNTOS_RR[i]??15;
       const etiq=fin&&i===0?'Campeón':fin&&i===1?'Finalista':`${i+1}.º round robin`;e.j.forEach(pid=>{const s=get(pid);s.pts+=p;s.cats[cat.id]={p,etiq,nombre:cat.nombre,mod:cat.modalidad}})})}
     else if(cat.grupos) cat.grupos.lista.flat().forEach(eid=>{if(eid in alcanzo)return;const e=inscripto(cat,eid);if(!e)return;
-      e.j.forEach(pid=>{const s=get(pid);s.pts+=PUNTOS_GRUPO;s.cats[cat.id]={p:PUNTOS_GRUPO,etiq:'Fase de grupos',nombre:cat.nombre,mod:cat.modalidad}})});
+      e.j.forEach(pid=>{const s=get(pid);s.pts+=PUNTOS_GRUPO;s.cats[cat.id]={p:PUNTOS_GRUPO,etiq:'Round robin',nombre:cat.nombre,mod:cat.modalidad}})});
   });
   return st;
 }
@@ -1260,7 +1260,7 @@ const porRecientes=(p,q)=>(q.x.res?.t||0)-(p.x.res?.t||0)||q.x.r-p.x.r;
 function filaTorneo(c,ev){
   let {cb,jg,tot}=progresoTorneo(c);let st='Sin cuadro · inscribí jugadores',on=false;
   if(!cb&&c.grupos){const ps=partidosGrupo(c);jg=ps.filter(x=>x.estado==='jugado').length;tot=ps.length;const cp=campeonDe(c);
-    if(cp){st=`<span class="ballico"></span> Campeón: ${esc(etiqueta(S,c,cp))}`;on=true}else st=(esRR(c)?'Round robin':'Fase de grupos')+` · ${jg}/${tot}`}
+    if(cp){st=`<span class="ballico"></span> Campeón: ${esc(etiqueta(S,c,cp))}`;on=true}else st=`Round robin · ${jg}/${tot}`}
   if(cb){if(cb.campeon){st=`<span class="ballico"></span> Campeón: ${esc(etiqueta(S,c,cb.campeon))}`;on=true}
     else{let r=-1;cb.rondas.forEach((f,i)=>{if(r<0&&f.some(x=>x.estado==='pendiente'))r=i});st=r>=0?`En juego · ${nombreRonda(r,cb.R)}`:'Esperando resultados'}}
   if(estadoTorneo(c,hoyISO())==='prox'){const d=Math.round((Date.parse(c.inicio)-Date.parse(hoyISO()))/86400000);st=`Próximo · empieza ${d===1?'mañana':'en '+d+' días'}`;on=false}
@@ -1651,7 +1651,7 @@ function datosPerfil(pid){
     let etiq='Inscripto',pts=0;
     if(esRR(c)){const tab=tablaGrupo(c,0);const i=tab.findIndex(o=>o.e===ent.id);const fin=gruposCompletos(c);pts=PUNTOS_RR[i]??15;
       etiq=fin&&i===0?'Campeón':fin?`${i+1}.º round robin`:'En carrera · Round robin';parts.push({e,c,etiq,pts,camp:fin&&i===0,final:fin&&i<2});return}
-    if(c.grupos&&c.grupos.lista.flat().includes(ent.id)&&!(cb&&maxR>=0)){etiq=cb||gruposCompletos(c)?'Fase de grupos':'En carrera · Grupos';pts=PUNTOS_GRUPO}
+    if(c.grupos&&c.grupos.lista.flat().includes(ent.id)&&!(cb&&maxR>=0)){etiq=cb||gruposCompletos(c)?'Round robin':'En carrera · Round robin';pts=PUNTOS_GRUPO}
     if(cb&&maxR>=0){const f=cb.R-1-maxR;const camp=cb.campeon===ent.id;
       const elim=cb.rondas.some(fl=>fl.some(x=>x.estado==='jugado'&&(x.a===ent.id||x.b===ent.id)&&x.g!==ent.id));
       pts=camp?PUNTOS_CAMPEON:(PUNTOS_RONDA[f]??1);
@@ -2139,7 +2139,7 @@ function detalleTorneo(t,c){
     ${kpisTorneo(c)}
     <div class="seg" role="group" aria-label="Sección del torneo">
       <button data-act="sub" data-k="insc" aria-pressed="${ui.sub==='insc'}">Inscripción · ${n}</button>
-      ${c.grupos?`<button data-act="sub" data-k="grupos" aria-pressed="${ui.sub==='grupos'}">${esRR(c)?'Round robin':'Grupos · '+c.grupos.lista.length}</button>`:''}
+      ${c.grupos?`<button data-act="sub" data-k="grupos" aria-pressed="${ui.sub==='grupos'}">${esRR(c)?'Round robin':'Round robin · '+c.grupos.lista.length+' grupos'}</button>`:''}
       ${esRR(c)||(c.formato==='rr'&&!cb)?'':`<button data-act="sub" data-k="cuadro" aria-pressed="${ui.sub==='cuadro'}">Cuadro${cb?'':' (sin generar)'}</button>`}
     </div>
     ${ui.sub==='insc'?seccionInscriptos(t,c,cb)
@@ -2333,13 +2333,13 @@ function seccionInscriptos(t,c,cb){
         <option value="ranking" ${ui.modoCuadro==='ranking'?'selected':''}>Todos por ranking</option>
         <option value="sorteo" ${ui.modoCuadro==='sorteo'?'selected':''}>Cabezas de serie por ranking, resto por sorteo</option></select></div></div>
       ${c.formato==='rr'?`<div class="btns"><button class="btn pri" data-act="armar-rr" ${n<3?'disabled':''}>Armar round robin</button></div>`
-        :c.formato==='grupos'?`<div class="btns"><button class="btn pri" data-act="armar-grupos" ${n<4?'disabled':''}>Armar grupos</button>${c.grupos?'<span class="small muted">Los grupos ya están armados: volver a armarlos borra sus resultados.</span>':''}</div>`
+        :c.formato==='grupos'?`<div class="btns"><button class="btn pri" data-act="armar-grupos" ${n<4?'disabled':''}>Armar round robin</button>${c.grupos?'<span class="small muted">Los grupos ya están armados: volver a armarlos borra sus resultados.</span>':''}</div>`
         :`<div class="btns"><button class="btn pri" data-act="generar" ${n<2?'disabled':''}>Generar cuadro</button></div>`}
-      <span class="small muted">${c.formato==='rr'?(n<3?'Necesitás al menos 3 inscriptos para un round robin.':`Todos contra todos: ${n*(n-1)/2} partidos. Gana quien termine primero en la tabla (partidos ganados, después el partido entre ellos, sets y games).`):c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para armar grupos.':`${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. Todos juegan contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`}</span></div>`;
+      <span class="small muted">${c.formato==='rr'?(n<3?'Necesitás al menos 3 inscriptos para un round robin.':`Todos contra todos: ${n*(n-1)/2} partidos. Gana quien termine primero en la tabla (partidos ganados, después el partido entre ellos, sets y games).`):c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para el round robin.':`Round robin: ${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. En cada grupo juegan todos contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`}</span></div>`;
   } else {
     cuerpo=n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>';
   }
-  const aviso=puedeEditar&&cb&&!c.grupos&&(c.formato==='grupos'||c.formato==='rr')?`<div class="note warn">Elegiste <b>${c.formato==='rr'?'round robin':'fase de grupos'}</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "${c.formato==='rr'?'Armar round robin':'Armar grupos'}".</div>`
+  const aviso=puedeEditar&&cb&&!c.grupos&&(c.formato==='grupos'||c.formato==='rr')?`<div class="note warn">Elegiste <b>round robin</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "Armar round robin".</div>`
     :puedeEditar&&cb&&c.online?`<div class="note">La inscripción online está activada, pero el cuadro ya está armado: el botón "Quiero anotarme" solo aparece mientras no hay cuadro.</div>`:'';
   return `${aviso}${!cb&&!c.grupos&&puedeEditar?seccionSolicitudes(c):''}<div class="panel sec"><div class="sec-hd"><h3>Inscriptos · ${n} ${D?'parejas':'jugadores'}</h3>
     ${cb&&puedeEditar?`<button class="btn danger ${ui.armado==='rehacer'?'arm':''}" data-act="arm" data-w="rehacer">${ui.armado==='rehacer'?'Tocá de nuevo: se borran los resultados':'Rehacer cuadro'}</button>`:''}</div>${cuerpo}</div>`;
@@ -2349,12 +2349,12 @@ function seccionGrupos(c){
   const jug=ps.filter(x=>x.estado==='jugado').length;
   const rr=esRR(c);const camp=campeonDe(c);
   if(rr&&camp)festejarUnaVez(c,{campeon:camp});
-  const cab=`<div class="sec-hd"><h3>${rr?'Round robin':'Fase de grupos'}</h3><span class="small muted">${jug} de ${ps.length} partidos${rr?' · todos contra todos, gana el primero de la tabla':` · pasan ${pasan===1?'el primero':'los '+pasan+' primeros'} de cada grupo`}</span></div>`;
+  const cab=`<div class="sec-hd"><h3>Round robin</h3><span class="small muted">${jug} de ${ps.length} partidos${rr?' · todos contra todos, gana el primero de la tabla':` · pasan ${pasan===1?'el primero':'los '+pasan+' primeros'} de cada grupo`}</span></div>`;
   let accion='';
   if(rr&&camp) accion=`<div class="champ rr-champ"><button class="box" data-act="festejar" data-n="${esc(etiqueta(S,c,camp))}" title="Festejar de nuevo"><small>Campeón</small><b><span class="ballico"></span> ${esc(etiqueta(S,c,camp))}</b></button></div>`;
   if(puedeEditar&&!c.cuadro&&!rr){
-    accion=completos?`<div class="note"><b>Terminaron los grupos.</b> Ya podés armar el cuadro con los ${clasificados(c).length} clasificados.</div><div class="btns"><button class="btn pri" data-act="desde-grupos">Generar cuadro con los clasificados</button></div>`
-      :`<div class="small muted">Cuando se jueguen todos los partidos de los grupos vas a poder generar el cuadro con los clasificados.</div>`;
+    accion=completos?`<div class="note"><b>Terminó el round robin.</b> Ya podés armar el cuadro con los ${clasificados(c).length} clasificados.</div><div class="btns"><button class="btn pri" data-act="desde-grupos">Generar cuadro con los clasificados</button></div>`
+      :`<div class="small muted">Cuando se jueguen todos los partidos del round robin vas a poder generar el cuadro con los clasificados.</div>`;
   }
   const grupos=G.lista.map((g,gi)=>{const tab=tablaGrupo(c,gi);const mis=ps.filter(x=>x.gi===gi);
     return `<div class="grp"><div class="grp-hd"><h3>${rr?'Tabla':'Grupo '+LETRAS[gi]}</h3><span class="small muted">${mis.filter(x=>x.estado==='jugado').length}/${mis.length} jugados</span></div>
@@ -2363,7 +2363,7 @@ function seccionGrupos(c){
       </tbody></table></div>
       <div class="list">${mis.map(x=>itemPartido({c,x,cb:null,z:'grupo'})).join('')}</div></div>`}).join('');
   return `<div class="sec">${cab}${accion}<div class="grps">${grupos}</div>
-    ${puedeEditar&&!c.cuadro&&!ps.some(x=>x.estado==='jugado')?`<div class="btns"><button class="btn danger ${ui.armado==='rehacer-grupos'?'arm':''}" data-act="arm" data-w="rehacer-grupos">${ui.armado==='rehacer-grupos'?'Tocá de nuevo para deshacerlo':rr?'Deshacer round robin':'Deshacer grupos'}</button></div>`:''}</div>`;
+    ${puedeEditar&&!c.cuadro&&!ps.some(x=>x.estado==='jugado')?`<div class="btns"><button class="btn danger ${ui.armado==='rehacer-grupos'?'arm':''}" data-act="arm" data-w="rehacer-grupos">${ui.armado==='rehacer-grupos'?'Tocá de nuevo para deshacerlo':'Deshacer round robin'}</button></div>`:''}</div>`;
 }
 function seccionConsolacion(c,cb){
   const cc=cuadroCons(c);const ls=perdedoresPrimera(c);
@@ -2463,13 +2463,13 @@ function renderSheet(){
     <div class="paso"><h3><span class="pn">1</span>¿Cómo se juega?</h3>
       <div class="fmt-cards">
         ${card('elim','Llaves','Eliminación directa: el que pierde queda afuera.',icoLlave)}
-        ${card('rr','Round robin','Todos contra todos. Gana el primero de la tabla. Ideal de 3 a 8.',icoRR)}
-        ${card('grupos','Grupos y llaves','Grupos de todos contra todos; los mejores pasan a las llaves.',icoGr)}
+        ${fmt==='rr'?card('rr','Todos contra todos','Una sola tabla, gana el primero.',icoRR):''}
+        ${card('grupos','Round robin','Grupos de todos contra todos; los mejores de cada grupo pasan a las llaves.',icoGr)}
       </div>
       <div class="grid2" id="gopts" ${fmt==='grupos'?'':'hidden'}>
         <div class="field"><label for="c-gtam">Tamaño de cada grupo</label><select id="c-gtam">${[3,4,5].map(v=>`<option value="${v}" ${(c.gtam||4)===v?'selected':''}>${v} por grupo</option>`).join('')}</select></div>
         <div class="field"><label for="c-gpas">Pasan a las llaves</label><select id="c-gpas"><option value="1" ${c.gpasan===1?'selected':''}>El primero de cada grupo</option><option value="2" ${(c.gpasan||2)===2?'selected':''}>Los 2 primeros</option></select></div></div>
-      ${armado?`<div class="note warn">Este torneo ya tiene ${c.grupos?(esRR(c)?'el round robin':'los grupos'):'el cuadro'} armado, por eso el formato no se puede cambiar. Para cambiarlo, primero tocá "${c.grupos?(esRR(c)?'Deshacer round robin':'Deshacer grupos'):'Rehacer cuadro'}" (se borran sus resultados).</div>`:''}
+      ${armado?`<div class="note warn">Este torneo ya tiene ${c.grupos?'el round robin':'el cuadro'} armado, por eso el formato no se puede cambiar. Para cambiarlo, primero tocá "${c.grupos?'Deshacer round robin':'Rehacer cuadro'}" (se borran sus resultados).</div>`:''}
     </div>
     <div class="paso"><h3><span class="pn">2</span>¿Quiénes juegan?</h3>
       <div class="opts" role="radiogroup" aria-label="Modalidad">${chip('c-mod','S','Singles',!D,bloq)}${chip('c-mod','D','Dobles',D,bloq)}</div>
@@ -2824,7 +2824,7 @@ document.addEventListener('click',ev=>{
       if(!mod.disabled&&mod.value==='S'&&ram.value==='X'){avisar('En singles elegí masculino o femenino. Mixto es solo para dobles.');break}
       if(ui.sheet.id){const c=T().categorias.find(x=>x.id===ui.sheet.id);Object.assign(c,d);if(!mod.disabled){c.modalidad=mod.value;c.rama=ram.value;c.nivel=niv.value}}
       else{const c={id:uid(),...d,modalidad:mod.value,rama:ram.value,nivel:niv.value,inscriptos:[],cuadro:null,res:{}};T().categorias.push(c);ui.cat=c.id;ui.tab='categorias';ui.sub='insc';
-        toast(`Torneo creado. Ahora inscribí ${c.modalidad==='D'?'a las parejas':'a los jugadores'} y tocá "${d.formato==='rr'?'Armar round robin':d.formato==='grupos'?'Armar grupos':'Generar cuadro'}".`,6000)}
+        toast(`Torneo creado. Ahora inscribí ${c.modalidad==='D'?'a las parejas':'a los jugadores'} y tocá "${d.formato==='grupos'||d.formato==='rr'?'Armar round robin':'Generar cuadro'}".`,6000)}
       ui.sheet=null;ui.msg=null;cambiar();break}
     case 'insc-todos':{const c=cat();elegibles(S,c).forEach(p=>{if(!c.inscriptos.some(e=>e.id===p.id))c.inscriptos.push({id:p.id,j:[p.id]})});cambiar();break}
     case 'insc-ninguno':cat().inscriptos=[];cambiar();break;
@@ -3084,7 +3084,7 @@ document.addEventListener('change',ev=>{
 function nombreSugerido(){
   const mod=radioVal('c-mod'),ram=radioVal('c-rama'),niv=val('c-niv'),fmt=radioVal('c-fmt');
   const r=mod==='D'?{M:'Caballeros',F:'Damas',X:'Mixtos'}[ram]:{M:'Caballeros',F:'Damas',X:''}[ram];
-  return [mod==='D'?'Dobles':'Singles',r,niv,fmt==='rr'?'(round robin)':''].filter(Boolean).join(' ');
+  return [mod==='D'?'Dobles':'Singles',r,niv,fmt==='grupos'||fmt==='rr'?'(round robin)':''].filter(Boolean).join(' ');
 }
 document.addEventListener('change',ev=>{const t=ev.target;if(!t.name||!/^c-(fmt|mod|rama)$/.test(t.name))return;
   if(t.name==='c-fmt'){const g=document.getElementById('gopts');if(g)g.hidden=t.value!=='grupos'}
