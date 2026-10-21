@@ -1,10 +1,11 @@
 // Service worker: guarda la app para que abra rápido y funcione sin conexión (solo lectura).
-const VERSION = 'cdt-v14';
+const VERSION = 'cdt-v15';
 const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Cada archivo por separado: si falta uno (por ejemplo un ícono), la app igual se instala.
+  e.waitUntil(caches.open(VERSION).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => null)))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k))))
@@ -25,5 +26,14 @@ self.addEventListener('fetch', e => {
     const red = fetch(req).then(r => { if (r.ok || r.type === 'opaque') { const c = r.clone(); caches.open(VERSION).then(x => x.put(req, c)); } return r; })
       .catch(() => hit);
     return hit || red;
+  }));
+});
+
+// Al tocar un aviso, abre la app (o la trae al frente si ya está abierta).
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(ws => {
+    const w = ws.find(x => 'focus' in x);
+    return w ? w.focus() : self.clients.openWindow('./');
   }));
 });

@@ -49,3 +49,23 @@ create policy "fotos admin sube" on storage.objects
   for insert to authenticated with check (bucket_id = 'fotos');
 create policy "fotos admin borra" on storage.objects
   for delete to authenticated using (bucket_id = 'fotos');
+
+-- 5) INSCRIPCIÓN ONLINE (agregado en la versión con 12 mejoras)
+--    El público puede enviar pedidos de inscripción; solo los administradores los leen, aprueban o borran.
+--    Si ya ejecutaste este archivo antes, podés ejecutar solo este bloque.
+create table if not exists public.tenis_solicitudes (
+  id      uuid primary key default gen_random_uuid(),
+  torneo  text not null check (char_length(torneo) between 1 and 40),
+  data    jsonb not null check (pg_column_size(data) < 4000),
+  creado  timestamptz not null default now()
+);
+alter table public.tenis_solicitudes enable row level security;
+drop policy if exists "tenis publico pide inscripcion" on public.tenis_solicitudes;
+drop policy if exists "tenis admin lee solicitudes"    on public.tenis_solicitudes;
+drop policy if exists "tenis admin borra solicitudes"  on public.tenis_solicitudes;
+create policy "tenis publico pide inscripcion" on public.tenis_solicitudes
+  for insert to anon, authenticated with check (true);
+create policy "tenis admin lee solicitudes" on public.tenis_solicitudes
+  for select to authenticated using (public.tenis_es_admin());
+create policy "tenis admin borra solicitudes" on public.tenis_solicitudes
+  for delete to authenticated using (public.tenis_es_admin());
