@@ -820,6 +820,11 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 .fondo-op{display:flex;flex-direction:column;gap:4px;border:2px solid var(--line);border-radius:10px;padding:4px;background:var(--surface);cursor:pointer;font-size:12px;text-align:left;color:var(--ink)}
 .fondo-op[aria-pressed="true"]{border-color:var(--court);box-shadow:0 0 0 2px var(--ball)}
 .fondo-op img,.fondo-op .fo-c{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:6px;display:block;background:#12234a}
+.kpis>.premio-k{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:baseline;column-gap:14px;background:var(--surface)}
+.kpis>.premio-k span{order:-1}.kpis>.premio-k b{white-space:nowrap;font-size:30px}
+.kpis-jug{grid-template-columns:repeat(2,1fr)}
+@media (min-width:560px){.kpis-jug{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:1100px){.kpis-jug{grid-template-columns:repeat(6,1fr)}}
 </style>
 
 <div class="app">
@@ -1971,6 +1976,8 @@ function datosPerfil(pid){
   st.racha=Math.abs(cur);st.rachaTipo=cur>0?'V':cur<0?'D':'';
   return {parts,ms,st};
 }
+/* Premios en plata: campeón y vicecampeón de torneos terminados (en dobles, el premio de la pareja) */
+function premiosDe(parts){let tot=0,n=0;parts.forEach(x=>{if(!campeonDe(x.c))return;const v=x.camp?(+x.c.premios?.campeon||0):x.final?(+x.c.premios?.finalista||0):0;if(v){tot+=v;n++}});return {tot,n}}
 function marcadorPropio(m){
   if(m.x.res.tipo==='wo') return 'W.O.';
   return (m.x.res.s||[]).filter(v=>v[0]!==''&&v[0]!=null).map(v=>`${v[m.i]}-${v[1-m.i]}`+(v[2]!=null?`(${tbDe(v,m.i)}-${tbDe(v,1-m.i)})`:'')).join(' ')+(m.x.res.tipo==='ret'?' ret.':'');
@@ -2014,13 +2021,14 @@ function perfilJugador(pid){
   const hist=[...ms].reverse();
   return `<button class="back" data-act="volver-jug">‹ Jugadores</button>
     <div class="ph-perfil">${bloqueAvatar(p)}${encabezado(esc(nombreCompleto(p))+bandera(p.pais,'big'),{ey:p.sexo==='F'?'Jugadora':'Jugador',sb:esc([paisNombre(p.pais),p.club||'Sin club',p.categoria?'Categoría '+p.categoria:'',p.sexo==='F'?'Damas':'Caballeros',edadJug(p)!=null?edadJug(p)+' años':'',p.altura?(p.altura/100).toFixed(2).replace('.',',')+' m':'',p.mano==='D'?(p.sexo==='F'?'Diestra':'Diestro'):p.mano==='Z'?(p.sexo==='F'?'Zurda':'Zurdo'):''].filter(Boolean).join(' · ')),acc:`<button class="btn sm ${sigo(p.id)?'on':''} btn-seg" data-act="seguir" data-id="${p.id}" aria-pressed="${sigo(p.id)}">${ICO_STAR}${sigo(p.id)?'Siguiendo':'Seguir'}</button><button class="btn sm" data-act="h2h" data-id="${p.id}">Cara a cara</button><button class="btn sm pdf" data-act="rep-jug" data-id="${p.id}">${ICO_PDF}Descargar estadísticas (PDF)</button>`+(puedeEditar?`<button class="btn sm" data-act="edit-jug" data-id="${p.id}">Editar datos</button>`:'')})}</div>
-    <section class="kpis" aria-label="Resumen del jugador">
+    <section class="kpis kpis-jug" aria-label="Resumen del jugador">
       <div><b>${st.pj}</b><span>Partidos</span></div>
       <div><b>${st.pg}<small>-${pp}</small></b><span>Ganados y perdidos</span><em>${pct(st.pg,st.pj)} de victorias</em></div>
       <div><b>${titulos}</b><span>Títulos</span><em>${finales} final${finales===1?'':'es'} jugada${finales===1?'':'s'}</em></div>
       <div><b>${st.sg}<small>-${st.sp}</small></b><span>Sets</span><em>${pct(st.sg,st.sg+st.sp)} ganados</em></div>
       <div><b>${st.racha?st.racha+'<small> '+st.rachaTipo+'</small>':'—'}</b><span>Racha actual</span><em>${st.rachaTipo==='V'?'victorias seguidas':st.rachaTipo==='D'?'derrotas seguidas':'sin partidos'}</em></div>
       <div><b>${parts.length}</b><span>Torneos jugados</span><em>${titulos?titulos+' como campeón':'sin títulos aún'}</em></div>
+      ${(()=>{const pr=premiosDe(parts);return `<div class="premio-k"><b>${fmtMon(pr.tot)}</b><span>Premios ganados</span><em>${pr.n?`en ${pr.n} torneo${pr.n===1?'':'s'}${parts.some(x=>x.c.modalidad==='D'&&campeonDe(x.c)&&(x.camp||x.final)&&(+x.c.premios?.campeon||+x.c.premios?.finalista))?' · en dobles, premio de la pareja':''}`:'sin premios aún'}</em></div>`})()}
     </section>
     <div class="hgrid">${tarjetas.join('')}</div>
     ${seccionEvolucion(pid)}
@@ -2290,8 +2298,9 @@ function repJugador(pid){
       columnStyles:{0:{fontStyle:'bold',textColor:C_GRIS,cellWidth:70},2:{fontStyle:'bold',textColor:C_GRIS,cellWidth:70}}});
     const pp=st.pj-st.pg,titulos=parts.filter(x=>x.camp).length,finales=parts.filter(x=>x.final).length;
     y=subtitulo(doc,'Resumen',doc.lastAutoTable.finalY+20);
-    y=tabla(doc,{startY:y+4,head:[['Partidos','Ganados','Perdidos','% victorias','Títulos','Finales','Sets','Games','Racha actual']],
-      body:[[st.pj,st.pg,pp,pct(st.pg,st.pj),titulos,finales,`${st.sg}-${st.sp}`,`${st.gg}-${st.gp}`,st.racha?`${st.racha} ${st.rachaTipo==='V'?(st.racha===1?'victoria':'victorias'):(st.racha===1?'derrota':'derrotas')}`:'-']],styles:{halign:'center',fontSize:9}});
+    const prJ=premiosDe(parts);
+    y=tabla(doc,{startY:y+4,head:[['Partidos','Ganados','Perdidos','% victorias','Títulos','Finales','Premios','Sets','Games','Racha actual']],
+      body:[[st.pj,st.pg,pp,pct(st.pg,st.pj),titulos,finales,pt(fmtMon(prJ.tot)),`${st.sg}-${st.sp}`,`${st.gg}-${st.gp}`,st.racha?`${st.racha} ${st.rachaTipo==='V'?(st.racha===1?'victoria':'victorias'):(st.racha===1?'derrota':'derrotas')}`:'-']],styles:{halign:'center',fontSize:9}});
     const todas=S.torneos.flatMap(x=>x.categorias);
     const rk=MODALIDADES.map(([k,l])=>{const est=estadisticas(S,todas.filter(c=>claveMod(c)===k));if(!est[pid])return null;
       const orden=Object.entries(est).sort((a,b)=>b[1].pts-a[1].pts||b[1].pg-a[1].pg||(b[1].sg-b[1].sp)-(a[1].sg-a[1].sp));
