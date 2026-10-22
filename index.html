@@ -798,12 +798,12 @@ const CLUB=(()=>{const ok=c=>/^[a-z0-9-]{2,30}$/.test(c)&&c!=='privado';let c=''
   if(!ok(c)){try{c=localStorage.getItem('cuadro-tenis:club')||''}catch(e){}}
   if(!ok(c))c='principal';
   try{localStorage.setItem('cuadro-tenis:club',c)}catch(e){}
-  try{const u=new URL(location.href);if(c==='principal'){if(u.searchParams.has('club')){u.searchParams.delete('club');history.replaceState(null,'',u)}}else if(u.searchParams.get('club')!==c){u.searchParams.set('club',c);history.replaceState(null,'',u)}}catch(e){}
+  try{const u=new URL(location.href);if(u.searchParams.get('club')!==c){u.searchParams.set('club',c);history.replaceState(null,'',u)}}catch(e){}
   return c})();
 const ID_PUB=CLUB==='principal'?'principal':CLUB, ID_PRIV=CLUB==='principal'?'privado':CLUB+':privado';
 const KEY='cuadro-tenis-pwa'+(CLUB==='principal'?'':':'+CLUB);
 let clubInfo={nombre:'',existe:CLUB==='principal'};
-function linkClub(slug){const u=new URL(location.origin+location.pathname);if(slug&&slug!=='principal')u.searchParams.set('club',slug);return u.toString()}
+function linkClub(slug){const u=new URL(location.origin+location.pathname);u.searchParams.set('club',slug||'principal');return u.toString()}
 const PUNTOS_CAMPEON=100;
 const PUNTOS_RONDA=[70,45,25,15,8,4,2]; // perdedor según rondas desde el final
 const NOMBRES_RONDA=['Final','Semifinal','Cuartos de final','Octavos de final','16avos de final','32avos de final','64avos de final'];
