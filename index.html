@@ -3361,6 +3361,7 @@ document.addEventListener('click',ev=>{
     case 'sel-cat':ui.cat=t.dataset.id;ui.armado=null;ui.msg=null;render();break;
     case 'festejar':festejo(t.dataset.n);break;
     case 'club-alta':altaClub();break;
+    case 'pago-todos':{const c=todasCats().find(x=>x.id===t.dataset.c);if(!c)break;c.pagos=c.pagos||{};const f=c.fin&&c.fin<hoyISO()?c.fin:hoyISO();inscriptosJug(c).forEach(p=>{if(!c.pagos[p.id])c.pagos[p.id]=f});const y=window.scrollY;cambiar();window.scrollTo({top:y});toast('Todos marcados como pagados.');break}
     case 'copiar':{const v=t.dataset.v;(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(()=>toast('Enlace copiado.'),()=>toast(v,6000));break}
     case 'temporada':abrir({t:'temporada'});break;
     case 'fin-xlsx':finanzasXLSX();break;
@@ -3568,6 +3569,7 @@ document.addEventListener('click',ev=>{
       ui.armado=null;
       if(w==='del-foto'){const f=(S.galeria||[]).find(x=>x.id===ui.sheet.id);S.galeria=(S.galeria||[]).filter(x=>x!==f);if(f&&f.a&&assetsApi)assetsApi.delete(f.a).catch(()=>{});ui.sheet=null;cambiar()}
       if(w.startsWith('del-club-')){bajaClub(w.slice(9));break}
+      if(w.startsWith('pago-ninguno-')){const c=todasCats().find(x=>x.id===w.slice(13));if(c){c.pagos={};cambiar()}break}
       if(w==='del-mov'){S.finanzas.movs=movs().filter(x=>x.id!==ui.sheet.id);ui.sheet=null;toast('Movimiento borrado.');cambiar();break}
       if(w.startsWith('del-sp-')){const id=w.slice(7);S.sponsors=(S.sponsors||[]).filter(x=>x.id!==id);cambiar()}
       if(w.startsWith('del-n-')){const id=w.slice(6);S.noticias=(S.noticias||[]).filter(n=>n.id!==id);cambiar()}
@@ -3803,6 +3805,7 @@ function seccionPagos(c){
     <div class="pay-res"><div><b>${n}</b><span>pagaron</span></div><div><b>${deben}</b><span>deben</span></div>${cuota?`<div><b>${fmtMon(n*cuota)}</b><span>recaudado de ${fmtMon(ps.length*cuota)}</span></div>`:''}</div>
     <div class="list pay-list">${ps.map(p=>`<div class="pay-row ${pag[p.id]?'ok':''}"><label class="check"><input type="checkbox" data-act="pago" data-c="${c.id}" data-pid="${p.id}" ${pag[p.id]?'checked':''}> <span><b>${esc(nombreCompleto(p))}</b>${pag[p.id]?`<small>Pagó${typeof pag[p.id]==='string'?' el '+esc(fmtFecha(pag[p.id])):''}</small>`:'<small>Debe</small>'}</span></label>
       ${!pag[p.id]?(p.telefono?`<button class="btn sm" data-act="wa-pago" data-c="${c.id}" data-pid="${p.id}">${ICO_WA}Recordar</button>`:'<span class="small muted">Sin teléfono</span>'):''}</div>`).join('')}</div>
+    ${deben||n?`<div class="btns">${deben?`<button class="btn sm" data-act="pago-todos" data-c="${c.id}">Marcar a todos como pagados</button>`:''}${n?`<button class="btn sm danger ${ui.armado==='pago-ninguno-'+c.id?'arm':''}" data-act="arm" data-w="pago-ninguno-${c.id}">${ui.armado==='pago-ninguno-'+c.id?'Tocá de nuevo para desmarcar a todos':'Desmarcar a todos'}</button>`:''}</div>`:''}
     ${deben>1&&ps.some(p=>!pag[p.id]&&p.telefono)?`<span class="small muted">Tocá "Recordar" en cada uno: WhatsApp abre un chat por persona con el mensaje listo.</span>`:''}</div>`;
 }
 
