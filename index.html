@@ -2870,7 +2870,8 @@ document.addEventListener('click',ev=>{
       if(D&&c.rama==='X'&&d.j1.sexo===d.j2.sexo){avisar('En mixtos la pareja es una dama y un caballero.');break}
       if(!sb){avisar('La inscripción online necesita conexión con el servidor del club.');break}
       t.disabled=true;
-      sb.from('tenis_solicitudes').insert({torneo:c.id,data:d}).then(({error})=>{if(error){t.disabled=false;avisar('No se pudo enviar el pedido. Probá de nuevo en un rato.');return}ui.sheet.ok=true;ui.msg=null;renderSheet()});
+      sb.from('tenis_solicitudes').insert({torneo:c.id,data:d}).then(({error})=>{if(error){t.disabled=false;console.error('solicitud',error);const m=String(error.message||'')+' '+String(error.code||'');
+        avisar(/PGRST205|42P01|schema cache|does not exist|tenis_solicitudes/i.test(m)?'La inscripción online todavía no está activada en el servidor del club. Avisale al administrador.':/row-level|42501|permission/i.test(m)?'El servidor no permite enviar pedidos todavía (faltan los permisos). Avisale al administrador.':'No se pudo enviar el pedido. Revisá la conexión y probá de nuevo.');return}ui.sheet.ok=true;ui.msg=null;renderSheet()});
       break}
     case 'sol-recargar':cargarSolicitudes(t.dataset.id);break;
     case 'sol-no':case 'sol-ok':{const cid=t.dataset.c,id=t.dataset.id;const lista=Array.isArray(solCache[cid])?solCache[cid]:[];const r=lista.find(x=>x.id===id);if(!r||!sb)break;
