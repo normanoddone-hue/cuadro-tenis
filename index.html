@@ -2444,15 +2444,23 @@ function seccionSolicitudes(c){
     ${st.length?`<div class="list">${st.map((r,ri)=>{const d=r.data||{};const js=[d.j1,d.j2].filter(Boolean);
       const pr=problemasSolicitud(c,d);const firma=x=>normTxt(String(x?.cedula||'')||(x?.nombre||'')+(x?.apellido||''));
       if(st.slice(0,ri).some(o=>firma(o.data?.j1)===firma(d.j1)))pr.push('Pedido repetido');
-      return `<div class="solrow"><div><b>${js.map(j=>esc(j.nombre+' '+j.apellido)).join(' / ')}</b><div class="small muted">${esc([js.map(j=>[j.categoria,j.club].filter(Boolean).join(', ')).filter(Boolean).join(' / '),d.telefono?'Tel. '+d.telefono:'',fmtMomento(Date.parse(r.creado))].filter(Boolean).join(' · '))}</div>${d.nota?`<div class="small">${esc(d.nota)}</div>`:''}${pr.map(x=>`<div class="sol-warn">${esc(x)}</div>`).join('')}</div>
+      const nomJ=j=>{const p=buscarJugador(j);return p?nombreCompleto(p):`${j.nombre||''} ${j.apellido||''}`.trim()||('C.I. '+fmtCI(j.cedula))};
+      return `<div class="solrow"><div><b>${js.map(j=>esc(nomJ(j))).join(' / ')}</b>${js.some(j=>j.registrado===false&&!buscarJugador(j))?' <span class="tag on">Registro nuevo</span>':''}<div class="small muted">${esc([js.map(j=>[j.categoria,j.club].filter(Boolean).join(', ')).filter(Boolean).join(' / '),d.telefono?'Tel. '+d.telefono:'',fmtMomento(Date.parse(r.creado))].filter(Boolean).join(' · '))}</div>${d.nota?`<div class="small">${esc(d.nota)}</div>`:''}${pr.map(x=>`<div class="sol-warn">${esc(x)}</div>`).join('')}</div>
       <div class="btns"><button class="btn sm pri" data-act="sol-ok" ${pr.length?'disabled title="No se puede aprobar: revisá el aviso"':''} data-id="${r.id}" data-c="${c.id}">Aprobar</button><button class="btn sm" data-act="sol-no" data-id="${r.id}" data-c="${c.id}">Rechazar</button></div></div>`}).join('')}</div>`
       :`<div class="small muted">Todavía no llegaron pedidos. Compartí la app: en este torneo aparece el botón "Quiero anotarme".</div>`}</div>`;
+}
+async function buscarCedula(ci,torneo){
+  if(logueado&&S){const p=S.jugadores.find(x=>x.cedula===ci);if(!p) return {existe:false};
+    const c=todasCats().find(x=>x.id===torneo);return {existe:true,nombre:p.nombre,categoria:p.categoria||'',sexo:p.sexo,inscripto:!!c?.inscriptos.some(e=>e.j.includes(p.id))}}
+  if(!sb) return {existe:false};
+  try{const {data,error}=await sb.rpc('tenis_buscar_cedula',{ci,torneo_id:torneo});if(error){console.warn('buscar cedula',error);return {existe:false}}return data||{existe:false}}
+  catch(e){return {existe:false}}
 }
 function buscarJugador(j){const ci=String(j.cedula||'').replace(/\D/g,'');return (ci&&S.jugadores.find(x=>x.cedula===ci))||S.jugadores.find(x=>normTxt(x.nombre)===normTxt(j.nombre)&&normTxt(x.apellido)===normTxt(j.apellido))||null}
 /* Problemas de un pedido de inscripción: categoría, rama o ya inscripto */
 function problemasSolicitud(c,d){
   const out=[];
-  [d.j1,d.j2].filter(Boolean).forEach(j=>{const p=buscarJugador(j);const nom=`${j.nombre} ${j.apellido}`.trim();
+  [d.j1,d.j2].filter(Boolean).forEach(j=>{const p=buscarJugador(j);const nom=p?nombreCompleto(p):`${j.nombre||''} ${j.apellido||''}`.trim();
     const cat=p?.categoria||j.categoria||'';
     if(c.nivel&&cat!==c.nivel) out.push(`${nom} es de ${cat||'ninguna categoría'} y el torneo es solo para ${c.nivel}`);
     const sexo=p?.sexo||j.sexo;if(c.rama!=='X'&&sexo&&sexo!==c.rama) out.push(`${nom} no es de la rama ${c.rama==='F'?'damas':'caballeros'}`);
@@ -2464,7 +2472,7 @@ function jugadorDeSolicitud(j,sexo){
   const ci=String(j.cedula||'').replace(/\D/g,'');
   let p=ci&&S.jugadores.find(x=>x.cedula===ci);
   if(!p)p=S.jugadores.find(x=>normTxt(x.nombre)===normTxt(j.nombre)&&normTxt(x.apellido)===normTxt(j.apellido));
-  if(!p){p={id:uid(),nombre:j.nombre.trim(),apellido:j.apellido.trim(),cedula:ci,telefono:j.telefono||'',club:j.club||'',categoria:NIVELES.includes(j.categoria)?j.categoria:'',sexo,pais:'py'};S.jugadores.push(p)}
+  if(!p){p={id:uid(),nombre:(j.nombre||'').trim(),apellido:(j.apellido||'').trim(),cedula:ci,telefono:j.telefono||'',club:j.club||'',categoria:NIVELES.includes(j.categoria)?j.categoria:'',sexo:j.sexo||sexo,pais:j.pais||'py',nacimiento:j.nacimiento||'',mano:j.mano||'',altura:j.altura||''};S.jugadores.push(p)}
   else{if(!p.telefono&&j.telefono)p.telefono=j.telefono;if(!p.cedula&&ci)p.cedula=ci;if(!p.club&&j.club)p.club=j.club}
   return p;
 }
@@ -2755,20 +2763,33 @@ function renderSheet(){
     <span class="small muted">Se ven en el inicio, en la pantalla TV y al pie de los reportes PDF. Usá logos en PNG con fondo transparente o blanco.</span>`;
   }
   if(s.t==='sol'){const c=todasCats().find(x=>x.id===s.c);const D=c?.modalidad==='D';const X=c?.rama==='X';
-    const bloque=(n,tit)=>`<div class="prz"><h3>${tit}</h3><div class="grid2">
-      <div class="field"><label for="s${n}-nom">Nombre</label><input type="text" id="s${n}-nom" autocomplete="${n===1?'given-name':'off'}"></div>
-      <div class="field"><label for="s${n}-ape">Apellido</label><input type="text" id="s${n}-ape" autocomplete="${n===1?'family-name':'off'}"></div>
-      <div class="field"><label for="s${n}-ci">N.º de cédula</label><input type="text" id="s${n}-ci" inputmode="numeric"></div>
-      <div class="field"><label for="s${n}-cat">Categoría</label><select id="s${n}-cat"><option value="">No sé / sin categoría</option>${NIVELES.map(v=>`<option ${c?.nivel===v?'selected':''}>${v}</option>`).join('')}</select>${c?.nivel?`<span class="small muted">Este torneo es solo para jugadores de ${esc(c.nivel)}.</span>`:''}</div>
+    const sub=`<div class="sub small muted">${esc(c?.nombre||'')}${c?.nivel?' · solo '+esc(c.nivel):''}</div>`;
+    const quien=n=>D?(n===1?'Jugador 1':'Jugador 2 (pareja)'):'Tus datos';
+    const registro=(n,r)=>`<div class="prz"><h3>${quien(n)} · registrarse</h3>
+      <div class="note small">La cédula ${esc(fmtCI(r.ci))} no está registrada en el club. Completá los datos para registrarte.</div>
+      <div class="grid2">
+      <div class="field"><label for="s${n}-nom">Nombre</label><input type="text" id="s${n}-nom" autocomplete="${n===1?'given-name':'off'}" value="${esc(r.nombre||'')}"></div>
+      <div class="field"><label for="s${n}-ape">Apellido</label><input type="text" id="s${n}-ape" autocomplete="${n===1?'family-name':'off'}" value="${esc(r.apellido||'')}"></div>
+      <div class="field"><label for="s${n}-nac">Fecha de nacimiento</label><input type="date" id="s${n}-nac" max="${hoyISO()}"></div>
+      <div class="field"><label for="s${n}-sexo">Rama</label><select id="s${n}-sexo"><option value="M" ${(X?n===1:c?.rama!=='F')?'selected':''}>Caballero</option><option value="F" ${(X?n===2:c?.rama==='F')?'selected':''}>Dama</option></select></div>
+      <div class="field"><label for="s${n}-cat">Categoría</label><select id="s${n}-cat"><option value="">Sin categoría</option>${NIVELES.map(v=>`<option ${c?.nivel===v?'selected':''}>${v}</option>`).join('')}</select>${c?.nivel?`<span class="small muted">Este torneo es solo para ${esc(c.nivel)}.</span>`:''}</div>
       <div class="field"><label for="s${n}-club">Club</label><input type="text" id="s${n}-club"></div>
-      ${X?`<div class="field"><label for="s${n}-sexo">Rama</label><select id="s${n}-sexo"><option value="M">Caballero</option><option value="F" ${n===2?'selected':''}>Dama</option></select></div>`:''}</div></div>`;
-    h=s.ok?`<div class="sheet-hd"><h2>¡Pedido enviado!</h2>${cerrarBtn}</div><div class="note">El club recibió tu pedido para <b>${esc(c?.nombre||'')}</b>. Cuando lo confirme, vas a aparecer en la lista de inscriptos.</div><div class="btns"><button class="btn pri" data-act="cerrar">Listo</button></div>`
-    :`<div class="sheet-hd"><div><h2>Quiero anotarme</h2><div class="sub small muted">${esc(c?.nombre||'')}${c?.nivel?' · solo '+esc(c.nivel):''}</div></div>${cerrarBtn}</div>
-    ${bloque(1,D?'Jugador 1':'Tus datos')}${D?bloque(2,'Jugador 2 (pareja)'):''}
-    <div class="grid2"><div class="field"><label for="s-tel">Teléfono de contacto</label><input type="text" id="s-tel" inputmode="tel" autocomplete="tel"></div>
-    <div class="field"><label for="s-nota">Comentario (opcional)</label><input type="text" id="s-nota" placeholder="Ej.: no puedo jugar el sábado de mañana"></div></div>
-    <span class="small muted">Tus datos solo los ve el administrador del club.</span>${err}
-    <div class="btns"><button class="btn pri" data-act="enviar-sol" data-primary>Enviar pedido</button></div>`;
+      <div class="field"><label for="s${n}-tel">Teléfono</label><input type="text" id="s${n}-tel" inputmode="tel" autocomplete="${n===1?'tel':'off'}"></div>
+      <div class="field"><label for="s${n}-pais">Nacionalidad</label><select id="s${n}-pais">${PAISES.map(([k,v])=>`<option value="${k}" ${k==='py'?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="field"><label for="s${n}-mano">Mano hábil</label><select id="s${n}-mano"><option value="">Sin dato</option><option value="D">Diestro</option><option value="Z">Zurdo</option></select></div>
+      <div class="field"><label for="s${n}-alt">Altura (cm)</label><input type="number" id="s${n}-alt" inputmode="numeric" min="100" max="230" placeholder="Ej.: 178"></div></div></div>`;
+    const encontrado=(n,r)=>`<div class="prz sol-ok-p"><h3>${quien(n)}</h3><div><b>¡Hola, ${esc(r.nombre||'jugador')}!</b> Ya estás registrado en el club${r.categoria?' · '+esc(r.categoria):''}.</div></div>`;
+    if(s.ok) h=`<div class="sheet-hd"><h2>¡Pedido enviado!</h2>${cerrarBtn}</div><div class="note">El club recibió ${s.nuevos?'tu registro y ':''}tu pedido para <b>${esc(c?.nombre||'')}</b>. Cuando lo confirme, vas a aparecer en la lista de inscriptos.</div><div class="btns"><button class="btn pri" data-act="cerrar">Listo</button></div>`;
+    else if(!s.paso||s.paso==='ci') h=`<div class="sheet-hd"><div><h2>Quiero anotarme</h2>${sub}</div>${cerrarBtn}</div>
+      <p class="small muted" style="margin:0">Ingresá ${D?'las cédulas de los dos jugadores':'tu número de cédula'}. Si ya estás registrado en el club, enviamos el pedido; si no, te pedimos tus datos para registrarte.</p>
+      <div class="grid2"><div class="field"><label for="s1-ci">${D?'Cédula del jugador 1':'N.º de cédula'}</label><input type="text" id="s1-ci" inputmode="numeric" value="${esc(fmtCI(s.ci1||''))}" autocomplete="off"></div>
+      ${D?`<div class="field"><label for="s2-ci">Cédula del jugador 2</label><input type="text" id="s2-ci" inputmode="numeric" value="${esc(fmtCI(s.ci2||''))}" autocomplete="off"></div>`:''}</div>
+      ${err}<div class="btns"><button class="btn pri" data-act="sol-buscar" data-primary>${s.buscando?'Buscando…':'Continuar'}</button></div>`;
+    else h=`<div class="sheet-hd"><div><h2>Quiero anotarme</h2>${sub}</div>${cerrarBtn}</div>
+      ${s.r1.existe?encontrado(1,s.r1):registro(1,s.r1)}${D?(s.r2.existe?encontrado(2,s.r2):registro(2,s.r2)):''}
+      <div class="field"><label for="s-nota">Comentario (opcional)</label><input type="text" id="s-nota" placeholder="Ej.: no puedo jugar el sábado de mañana"></div>
+      <span class="small muted">Tus datos solo los ve el administrador del club.</span>${err}
+      <div class="btns"><button class="btn pri" data-act="enviar-sol" data-primary>${(s.r1.existe&&(!D||s.r2.existe))?'Enviar pedido':'Registrarme y enviar pedido'}</button><button class="btn" data-act="sol-volver">Cambiar cédula</button></div>`;
   }
   if(s.t==='compartir'){const c=todasCats().find(x=>x.id===s.c);const o=c?opcionesCompartir(c):{ps:[]};
     const tipos=[['pdf','Torneo completo (PDF)'],o.camp?['camp','Imagen del campeón']:null,o.cuadro?['cuadro','Imagen del cuadro']:null,o.ps.length?['res','Imagen de un resultado']:null].filter(Boolean);
@@ -2878,19 +2899,45 @@ document.addEventListener('click',ev=>{
     case 'sp-add':{const nombre=val('sp-nom');let url=val('sp-url');if(!nombre){avisar('Escribí el nombre del auspiciante.');break}if(!ui.spLogo){avisar('Elegí el logo.');break}
       if(url&&!/^https?:\/\//i.test(url))url='https://'+url;S.sponsors=S.sponsors||[];S.sponsors.push({id:uid(),nombre,url,logo:ui.spLogo});ui.spLogo=null;ui.msg=null;cambiar();break}
     case 'solicitar':abrir({t:'sol',c:t.dataset.id});break;
-    case 'enviar-sol':{const c=todasCats().find(x=>x.id===ui.sheet.c);if(!c)break;const D=c.modalidad==='D';
-      const j=n=>({nombre:val(`s${n}-nom`),apellido:val(`s${n}-ape`),cedula:val(`s${n}-ci`).replace(/\D/g,''),categoria:val(`s${n}-cat`),club:val(`s${n}-club`),sexo:c.rama==='X'?val(`s${n}-sexo`):c.rama});
-      const d={j1:j(1),j2:D?j(2):null,telefono:val('s-tel'),nota:val('s-nota').slice(0,200)};
-      if(!d.j1.nombre||!d.j1.apellido||(D&&(!d.j2.nombre||!d.j2.apellido))){avisar('Completá nombre y apellido'+(D?' de los dos jugadores.':'.'));break}
-      if(!d.telefono&&!d.j1.cedula){avisar('Dejá un teléfono o tu cédula para que el club te pueda confirmar.');break}
-      if(D&&c.rama==='X'&&d.j1.sexo===d.j2.sexo){avisar('En mixtos la pareja es una dama y un caballero.');break}
-      const pr=problemasSolicitud(c,d);if(pr.length){avisar(pr[0]+'.');break}
-      const kLoc='cdt-sol-'+c.id+'-'+normTxt((d.j1.cedula||'')+d.j1.nombre+d.j1.apellido);let ya=false;try{ya=!!localStorage.getItem(kLoc)}catch(e){}
+    case 'sol-buscar':{const c=todasCats().find(x=>x.id===ui.sheet.c);if(!c)break;const D=c.modalidad==='D';
+      const ci1=val('s1-ci').replace(/\D/g,''),ci2=D?val('s2-ci').replace(/\D/g,''):'';
+      if(ci1.length<5||(D&&ci2.length<5)){avisar('Escribí '+(D?'las dos cédulas':'tu número de cédula')+' completo.');break}
+      if(D&&ci1===ci2){avisar('Las dos cédulas son iguales.');break}
+      ui.sheet.ci1=ci1;ui.sheet.ci2=ci2;ui.sheet.buscando=true;ui.msg=null;renderSheet();
+      Promise.all([buscarCedula(ci1,c.id),D?buscarCedula(ci2,c.id):null]).then(([r1,r2])=>{const sh=ui.sheet;if(!sh||sh.t!=='sol')return;sh.buscando=false;
+        sh.r1={...r1,ci:ci1};sh.r2=r2?{...r2,ci:ci2}:null;
+        const pr=[];[[sh.r1,1],[sh.r2,2]].forEach(([r,n])=>{if(!r||!r.existe)return;const nom=r.nombre||('Jugador '+n);
+          if(r.inscripto)pr.push(`${nom} ya está ${r.sexo==='F'?'inscripta':'inscripto'} en este torneo`);
+          if(c.nivel&&r.categoria!==c.nivel)pr.push(`${nom} es de ${r.categoria||'ninguna categoría'} y el torneo es solo para ${c.nivel}`);
+          if(c.rama!=='X'&&r.sexo&&r.sexo!==c.rama)pr.push(`${nom} no es de la rama ${c.rama==='F'?'damas':'caballeros'}`)});
+        if(c.rama==='X'&&sh.r1.existe&&sh.r2?.existe&&sh.r1.sexo===sh.r2.sexo)pr.push('En mixtos la pareja es una dama y un caballero');
+        if(pr.length){ui.msg=pr[0]+'.';renderSheet();return}
+        sh.paso='datos';ui.msg=null;renderSheet()});
+      break}
+    case 'sol-volver':ui.sheet.paso='ci';ui.msg=null;renderSheet();break;
+    case 'enviar-sol':{const c=todasCats().find(x=>x.id===ui.sheet.c);if(!c)break;const D=c.modalidad==='D';const sh=ui.sheet;
+      const datosDe=(n,r)=>r.existe?{cedula:r.ci,nombre:r.nombre||'',registrado:true}
+        :{cedula:r.ci,nombre:val(`s${n}-nom`),apellido:val(`s${n}-ape`),nacimiento:val(`s${n}-nac`),sexo:val(`s${n}-sexo`),categoria:val(`s${n}-cat`),club:val(`s${n}-club`),telefono:val(`s${n}-tel`),pais:val(`s${n}-pais`),mano:val(`s${n}-mano`),altura:val(`s${n}-alt`)?+val(`s${n}-alt`):'',registrado:false};
+      const d={j1:datosDe(1,sh.r1),j2:D?datosDe(2,sh.r2):null,nota:val('s-nota').slice(0,200)};
+      const nuevos=[d.j1,d.j2].filter(j=>j&&!j.registrado);
+      for(const j of nuevos){
+        if(!j.nombre||!j.apellido){avisar('Completá nombre y apellido.');return}
+        if(!j.nacimiento){avisar(`Completá la fecha de nacimiento de ${j.nombre}.`);return}
+        if(j.nacimiento>hoyISO()||edadDe(j.nacimiento)>100){avisar(`Revisá la fecha de nacimiento de ${j.nombre}.`);return}
+        if(!j.telefono){avisar(`Dejá un teléfono de ${j.nombre} para que el club pueda confirmar.`);return}
+        if(j.altura!==''&&(j.altura<100||j.altura>230)){avisar('La altura va en centímetros, por ejemplo 178.');return}
+        if(c.nivel&&j.categoria!==c.nivel){avisar(`${j.nombre} ${j.apellido} es de ${j.categoria||'ninguna categoría'} y el torneo es solo para ${c.nivel}.`);return}
+        if(c.rama!=='X'&&j.sexo!==c.rama){avisar(`El torneo es de ${c.rama==='F'?'damas':'caballeros'}.`);return}
+      }
+      if(D&&c.rama==='X'){const sx=j=>j.registrado?(j===d.j1?sh.r1.sexo:sh.r2.sexo):j.sexo;if(sx(d.j1)===sx(d.j2)){avisar('En mixtos la pareja es una dama y un caballero.');return}}
+      d.telefono=d.j1.telefono||'';
+      const kLoc='cdt-sol-'+c.id+'-'+sh.ci1;let ya=false;try{ya=!!localStorage.getItem(kLoc)}catch(e){}
       if(ya){avisar('Ya enviaste un pedido para este torneo. El club lo tiene que confirmar.');break}
       if(!sb){avisar('La inscripción online necesita conexión con el servidor del club.');break}
       t.disabled=true;
       sb.from('tenis_solicitudes').insert({torneo:c.id,data:d}).then(({error})=>{if(error){t.disabled=false;console.error('solicitud',error);const m=String(error.message||'')+' '+String(error.code||'');
-        avisar(/PGRST205|42P01|schema cache|does not exist|tenis_solicitudes/i.test(m)?'La inscripción online todavía no está activada en el servidor del club. Avisale al administrador.':/row-level|42501|permission/i.test(m)?'El servidor no permite enviar pedidos todavía (faltan los permisos). Avisale al administrador.':'No se pudo enviar el pedido. Revisá la conexión y probá de nuevo.');return}try{localStorage.setItem(kLoc,'1')}catch(e){}ui.sheet.ok=true;ui.msg=null;renderSheet()});
+        avisar(/PGRST205|42P01|schema cache|does not exist|tenis_solicitudes/i.test(m)?'La inscripción online todavía no está activada en el servidor del club. Avisale al administrador.':/row-level|42501|permission/i.test(m)?'El servidor no permite enviar pedidos todavía (faltan los permisos). Avisale al administrador.':'No se pudo enviar el pedido. Revisá la conexión y probá de nuevo.');return}
+        try{localStorage.setItem(kLoc,'1')}catch(e){}sh.ok=true;sh.nuevos=nuevos.length>0;ui.msg=null;renderSheet()});
       break}
     case 'sol-recargar':cargarSolicitudes(t.dataset.id);break;
     case 'sol-no':case 'sol-ok':{const cid=t.dataset.c,id=t.dataset.id;const lista=Array.isArray(solCache[cid])?solCache[cid]:[];const r=lista.find(x=>x.id===id);if(!r||!sb)break;

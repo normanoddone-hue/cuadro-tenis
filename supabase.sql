@@ -69,3 +69,24 @@ create policy "tenis admin lee solicitudes" on public.tenis_solicitudes
   for select to authenticated using (public.tenis_es_admin());
 create policy "tenis admin borra solicitudes" on public.tenis_solicitudes
   for delete to authenticated using (public.tenis_es_admin());
+
+-- 6) BUSCAR JUGADOR POR CÉDULA AL INSCRIBIRSE
+--    Responde solo si la cédula está registrada (y el nombre, categoría y rama), sin mostrar cédulas al público.
+create or replace function public.tenis_buscar_cedula(ci text, torneo_id text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare priv jsonb; pub jsonb; pid text; j jsonb; cat jsonb; ins boolean := false;
+begin
+  ci := regexp_replace(coalesce(ci,''), '\D', '', 'g');
+  if length(ci) < 5 then return jsonb_build_object('existe', false); end if;
+  select data into priv from tenis_estado where id = 'privado';
+  select key into pid from jsonb_each(coalesce(priv,'{}'::jsonb)) where value->>'cedula' = ci limit 1;
+  if pid is null then return jsonb_build_object('existe', false); end if;
+  select data into pub from tenis_estado where id = 'principal';
+  select x into j from jsonb_array_elements(coalesce(pub->'jugadores','[]'::jsonb)) x where x->>'id' = pid limit 1;
+  select c into cat from jsonb_array_elements(coalesce(pub->'torneos','[]'::jsonb)) t, jsonb_array_elements(coalesce(t->'categorias','[]'::jsonb)) c where c->>'id' = torneo_id limit 1;
+  if cat is not null then
+    ins := exists(select 1 from jsonb_array_elements(coalesce(cat->'inscriptos','[]'::jsonb)) e, jsonb_array_elements_text(coalesce(e->'j','[]'::jsonb)) k where k = pid);
+  end if;
+  return jsonb_build_object('existe', true, 'nombre', j->>'nombre', 'categoria', coalesce(j->>'categoria',''), 'sexo', j->>'sexo', 'inscripto', ins);
+end $$;
+grant execute on function public.tenis_buscar_cedula(text, text) to anon, authenticated;
