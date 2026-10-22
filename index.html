@@ -2773,7 +2773,7 @@ function vistaFinanzas(){
       <td class="num">${t.inscEsp?pctTxt(t.insc,t.inscEsp):'—'}</td></tr>`}).join('');
   const nomCat=id=>{const c=todasCats().find(x=>x.id===id);return c?c.nombre:'General del club'};
   const listaMovs=[...d.ms].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-  return `${encabezado('Finanzas',{ey:'Solo administrador',sb:'Ingresos, gastos y rentabilidad de los torneos',acc:`<button class="btn" data-act="fin-xlsx">${ICO_PDF}Excel</button><button class="btn pri" data-act="mov-nuevo">Cargar ingreso o gasto</button>`})}
+  return `${encabezado('Finanzas',{ey:'Solo administrador',sb:'Ingresos, gastos y rentabilidad de los torneos',acc:`<button class="btn" data-act="fin-pdf">${ICO_PDF}Reporte PDF</button><button class="btn" data-act="fin-xlsx">${ICO_PDF}Excel</button><button class="btn pri" data-act="mov-nuevo">Cargar ingreso o gasto</button>`})}
     <div class="fin-top"><div class="field"><label for="fin-anio">Temporada</label><select id="fin-anio">${an.map(a=>`<option value="${a}" ${ui.finAnio===a?'selected':''}>${a}</option>`).join('')}<option value="" ${ui.finAnio===''?'selected':''}>Todas las temporadas</option></select></div>
       <div class="field fin-cat"><label for="fin-cat">Torneo</label><select id="fin-cat"><option value="">Global: todos los torneos</option>${delAnio.map(c=>`<option value="${c.id}" ${ui.finCat===c.id?'selected':''}>${esc(c.nombre)}</option>`).join('')}</select></div></div>
     ${uno?`<div class="note fin-uno">Estás viendo solo <b>${esc(uno.nombre)}</b>. <button class="lnk2" data-act="fin-cat" data-id="">Ver global</button></div>`:''}
@@ -2820,6 +2820,38 @@ function hojaMov(s){
     <div class="field"><label for="mv-nota">Nota (opcional)</label><input type="text" id="mv-nota" value="${esc(m.nota||'')}" placeholder="Ej.: 6 tubos de pelotas"></div>
     <div class="btns"><button class="btn pri" data-act="mov-guardar">Guardar</button>${s.id?`<button class="btn danger ${ui.armado==='del-mov'?'arm':''}" data-act="arm" data-w="del-mov">${ui.armado==='del-mov'?'Tocá de nuevo para borrar':'Borrar'}</button>`:''}</div>
     <span class="small muted">Las inscripciones y los premios se calculan solos: acá cargá lo demás.</span>`;
+}
+function finanzasPDF(){
+  const d=datosFinanzas(ui.finAnio,ui.finCat),T=d.T;const uno=ui.finCat&&todasCats().find(c=>c.id===ui.finCat);
+  const pc=(a,b)=>b?Math.round(a/b*100)+'%':'-';
+  conPDF(async doc=>{
+    let y=encabezadoPDF(doc,'Reporte financiero'+(uno?' · '+uno.nombre:''),(uno?'Un torneo':'Global de todos los torneos')+' · '+(ui.finAnio?'Temporada '+ui.finAnio:'Todas las temporadas')+' · Uso interno del club');
+    const kp=(h,b)=>{tabla(doc,{startY:y,theme:'plain',styles:{fontSize:8.5,halign:'center',cellPadding:{top:2,bottom:5,left:3,right:3}},head:[h],headStyles:{textColor:C_GRIS,fontStyle:'bold',fontSize:7.5},body:[b],bodyStyles:{fontStyle:'bold',fontSize:11.5,textColor:[18,35,74]},
+      didParseCell:x=>{if(x.section==='body'&&/^-/.test(String(x.cell.raw)))x.cell.styles.textColor=[198,40,40]}});y=doc.lastAutoTable.finalY+8};
+    kp(['Ingresos','Egresos','Resultado','Margen','Cobranza',uno?'Inscriptos':'Torneos rentables'],
+       [pt(fmtMon(T.ing)),pt(fmtMon(T.egr)),pt(fmtMon(T.res)),pc(T.res,T.ing),pc(T.insc,T.inscEsp),uno?`${d.tor[0]?.jug||0} (${d.tor[0]?.pag||0} pagaron)`:`${d.rentables} de ${d.conMov}`]);
+    kp(['Ingreso por jugador','Costo por jugador','Por cobrar','Resultado proyectado','Retorno sobre gastos'],
+       [T.jug?pt(fmtMon(Math.round(T.ing/T.jug))):'-',T.jug?pt(fmtMon(Math.round(T.egr/T.jug))):'-',pt(fmtMon(T.porCobrar)),pt(fmtMon(T.proyRes)),pc(T.res,T.egr)]);
+    if(!uno&&d.tor.length){y=subtitulo(doc,'Por torneo',y+14);
+      const n=v=>(v<0?'-':'')+fmtNum(Math.abs(v),mon()[3]),sm=pt(simMon());
+      y=tabla(doc,{startY:y+4,styles:{fontSize:7.8},head:[['Torneo','Jug.','Inscripciones','Otros ingr.','Premios','Otros gastos','Resultado','Margen']],
+        body:d.tor.map(t=>[pt(t.c.nombre),t.jug,n(t.insc),n(t.otrosIng),n(t.premios),n(t.otrosEgr),n(t.res),t.ing?pc(t.res,t.ing):'-']),
+        columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right',fontStyle:'bold'},7:{halign:'right'}},
+        didParseCell:x=>{if(x.section==='body'&&x.column.index===6&&/^-/.test(String(x.cell.raw)))x.cell.styles.textColor=[198,40,40]}});
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C_GRIS);doc.text('Montos en '+sm,36,y+11);y+=6}
+    const comp=(tit,k,tot)=>{const l=d.ordenComp(k);if(!l.length)return;y=subtitulo(doc,tit,y+18);y=tabla(doc,{startY:y+4,head:[['Concepto','Monto','%']],body:l.map(([c,v])=>[pt(c),pt(fmtMon(v)),pc(v,tot)]),columnStyles:{1:{halign:'right'},2:{halign:'right',cellWidth:50}}})};
+    comp('De dónde entra la plata','ing',T.ing);comp('En qué se gasta','egr',T.egr);
+    if(d.ms.length){const nom=id=>{const c=todasCats().find(x=>x.id===id);return c?c.nombre:'General del club'};
+      y=subtitulo(doc,'Ingresos y gastos cargados',y+18);
+      y=tabla(doc,{startY:y+4,head:[['Fecha','Tipo','Concepto',uno?'Nota':'Torneo','Monto']],
+        body:[...d.ms].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')).map(m=>[pt(fmtFecha(m.fecha)||'-'),m.tipo==='ing'?'Ingreso':'Gasto',pt(m.concepto||''),pt(uno?(m.nota||''):nom(m.c)),pt((m.tipo==='ing'?'':'-')+fmtMon(m.monto))]),
+        columnStyles:{4:{halign:'right'}},didParseCell:x=>{if(x.section==='body'&&x.column.index===4)x.cell.styles.textColor=x.row.raw[1]==='Ingreso'?[31,138,76]:[198,40,40]}})}
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C_GRIS);
+    if(y+40>doc.internal.pageSize.getHeight()-50){doc.addPage();y=40}
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C_GRIS);
+    doc.text(pt('Ingresos: inscripciones marcadas como pagadas más ingresos cargados. Egresos: premios de torneos con campeón más gastos cargados. Proyectado: si pagan todos y se entregan todos los premios.'),36,y+18,{maxWidth:doc.internal.pageSize.getWidth()-72});
+    await guardarPDF(doc,`finanzas-${uno?slug(uno.nombre):(ui.finAnio||'todas')}.pdf`);
+  });
 }
 async function finanzasXLSX(){
   const d=datosFinanzas(ui.finAnio,ui.finCat);toast('Generando Excel…',0);
@@ -2891,7 +2923,7 @@ const MANUAL=[
   'Arriba ves los indicadores: ingresos, egresos, resultado, margen, cobranza, torneos rentables, ingreso y costo por jugador, y el resultado proyectado.',
   'Las <b>inscripciones cobradas</b> y los <b>premios</b> de los torneos con campeón se suman solos.',
   'Para lo demás tocá <b>Cargar ingreso o gasto</b>: auspicios, cantina, pelotas, trofeos, juez, alquiler de canchas… Elegí si es de un torneo o general del club.',
-  'Tocá un movimiento de la lista para corregirlo o borrarlo. Con <b>Excel</b> descargás todo.'],
+  'Tocá un movimiento de la lista para corregirlo o borrarlo. Con <b>Reporte PDF</b> o <b>Excel</b> descargás lo que estés viendo (global o un torneo).'],
   tips:['Las finanzas son privadas: solo las ve el administrador.','El resultado proyectado supone que pagan todos los inscriptos y que se entregan todos los premios.']},
  {id:'ranking',t:'Ranking, campeones y ascensos',d:'Lo que se calcula solo.',pasos:[
   '<b>Ranking</b> suma puntos por ronda alcanzada en cada torneo, separado por modalidad y rama.',
@@ -3443,6 +3475,7 @@ document.addEventListener('click',ev=>{
     case 'copiar':{const v=t.dataset.v;(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(()=>toast('Enlace copiado.'),()=>toast(v,6000));break}
     case 'temporada':abrir({t:'temporada'});break;
     case 'fin-xlsx':finanzasXLSX();break;
+    case 'fin-pdf':finanzasPDF();break;
     case 'fin-cat':ui.finCat=t.dataset.id||'';render();window.scrollTo({top:0});break;
     case 'mov-nuevo':abrir({t:'mov'});break;
     case 'mov-edit':abrir({t:'mov',id:t.dataset.id});break;
