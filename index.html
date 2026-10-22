@@ -2836,15 +2836,15 @@ const MANUAL=[
  {id:'inicio',t:'Primeros pasos',d:'Lo que tenés que hacer una sola vez para dejar la app lista para tu club.',pasos:[
   'Tocá <b>Ingresar como administrador</b> (abajo en el menú) y entrá con tu correo y contraseña. El público no necesita cuenta: ve todo sin ingresar.',
   'Abrí <b>Club y cuenta</b> y cargá el <b>nombre del club</b>, el <b>logo</b> y la <b>moneda</b> (guaraníes, pesos, reales, dólares…). Se usan en el menú, en los montos y en todos los PDF.',
-  'Desde ahí mismo podés cambiar tu contraseña y cargar los <b>auspiciantes</b>.',
+  'Desde ahí mismo elegís el <b>fondo de la app</b> (cancha dibujada o una foto real, con un velo para que se lea bien), cambiás tu contraseña y cargás los <b>auspiciantes</b>.',
   'Instalá la app en tu celular: en Android tocá <b>Instalar app</b>; en iPhone, en Safari, <b>Compartir → Agregar a inicio</b>.'],
-  tips:['Todo lo que cambiás se guarda solo. Abajo del menú ves "Guardado" cuando ya está en la nube.','Hacé de vez en cuando <b>Exportar copia</b> (en Club y cuenta) para tener un respaldo.']},
+  tips:['En el celular, las secciones del administrador (Campeones, Finanzas, Manual y Club y cuenta) están en el botón <b>Más</b> de la barra de abajo.','Todo lo que cambiás se guarda solo. Abajo del menú ves "Guardado" cuando ya está en la nube.','Hacé de vez en cuando <b>Exportar copia</b> (en Club y cuenta) para tener un respaldo.']},
  {id:'jugadores',t:'Jugadores',d:'La base de jugadores del club. Cada torneo toma los inscriptos de acá.',pasos:[
   'Andá a <b>Jugadores → Agregar jugador</b>. Cargá nombre, apellido, sexo y <b>categoría</b> (Primera a Sexta).',
   'Completá cédula, teléfono y fecha de nacimiento. <b>Estos tres datos son privados</b>: solo los ve el administrador; el público ve únicamente la edad.',
   'Agregá foto, club, país (sale la banderita), altura y mano hábil si querés que el perfil quede completo.',
   'Para corregir algo, abrí el jugador y tocá <b>Editar</b>.'],
-  tips:['El teléfono es el que se usa para los avisos por WhatsApp. Cargalo como 09xx: la app le pone el +595 sola.','Cada perfil muestra estadísticas, evolución, rachas y el <b>cara a cara</b> contra cualquier rival.']},
+  tips:['El teléfono es el que se usa para los avisos por WhatsApp. Cargalo como 09xx: la app le pone el +595 sola.','Cada perfil muestra los <b>últimos 5 partidos</b> (G verde, P roja), estadísticas, <b>premios ganados</b>, evolución, rachas y el <b>cara a cara</b> contra cualquier rival.']},
  {id:'torneos',t:'Crear un torneo',d:'Un evento (por ejemplo "Apertura 2026") agrupa varios torneos (Singles Caballeros, Dobles Mixtos…).',pasos:[
   'En <b>Torneos</b>, si todavía no hay evento, tocá <b>Crear evento</b> y poné nombre, sede y fechas.',
   'Tocá <b>Nuevo torneo</b>. Elegí el formato: <b>Llaves</b> (eliminación directa) o <b>Round robin</b> (grupos todos contra todos y los mejores pasan a llaves).',
@@ -2857,7 +2857,7 @@ const MANUAL=[
   'Abrí el torneo y andá a la pestaña <b>Inscripción y pagos</b>.',
   'Marcá a los jugadores uno por uno, o usá <b>Inscribir a todos</b>. En dobles, elegí los dos jugadores y tocá <b>Agregar pareja</b>.',
   'Si activaste la <b>inscripción online</b>, los jugadores piden su lugar con su cédula. Los pedidos aparecen arriba: tocá <b>Aprobar</b> o <b>Rechazar</b>.',
-  'En <b>Pagos de inscripción</b> marcá la casilla de cada jugador que pagó. Arriba ves cuántos pagaron, cuántos deben y cuánto se recaudó.',
+  'En <b>Pagos de inscripción</b> marcá la casilla de cada jugador que pagó, o tildá <b>Todos pagaron</b> para marcarlos a todos de una vez. Arriba ves cuántos pagaron, cuántos deben y cuánto se recaudó.',
   'Para quien debe, tocá <b>Recordar</b>: se abre WhatsApp con el mensaje y el monto listos.'],
   tips:['La app no deja inscribir a alguien de otra categoría, de otra rama ni dos veces en el mismo torneo.','Los pagos son privados: el público no los ve.']},
  {id:'cuadro',t:'Armar el cuadro',d:'El sorteo y la llave, o los grupos del round robin.',pasos:[
@@ -2879,6 +2879,13 @@ const MANUAL=[
   'Desde Ranking y desde cada jugador podés descargar su PDF.',
   'Con <b>Pantalla TV</b> (en Inicio) la app pasa sola resultados, próximos partidos y auspiciantes: ideal para un televisor en el club.'],
   tips:['Para la comisión directiva: en <b>Torneos → Resumen de temporada</b> descargás el informe del año en PDF o Excel, con recaudación, participación y jugadores más activos.','Publicá <b>Noticias</b> y subí fotos a la <b>Galería</b> desde el Inicio.','Los jugadores pueden tocar <b>Seguir</b> en un perfil y activar los avisos para enterarse de sus partidos.']},
+ {id:'finanzas',t:'Finanzas',d:'Cuánto entra, cuánto sale y cuánto deja cada torneo.',pasos:[
+  'Abrí <b>Finanzas</b> (en el celular, desde <b>Más</b>) y elegí la temporada.',
+  'Arriba ves los indicadores: ingresos, egresos, resultado, margen, cobranza, torneos rentables, ingreso y costo por jugador, y el resultado proyectado.',
+  'Las <b>inscripciones cobradas</b> y los <b>premios</b> de los torneos con campeón se suman solos.',
+  'Para lo demás tocá <b>Cargar ingreso o gasto</b>: auspicios, cantina, pelotas, trofeos, juez, alquiler de canchas… Elegí si es de un torneo o general del club.',
+  'Tocá un movimiento de la lista para corregirlo o borrarlo. Con <b>Excel</b> descargás todo.'],
+  tips:['Las finanzas son privadas: solo las ve el administrador.','El resultado proyectado supone que pagan todos los inscriptos y que se entregan todos los premios.']},
  {id:'ranking',t:'Ranking, campeones y ascensos',d:'Lo que se calcula solo.',pasos:[
   '<b>Ranking</b> suma puntos por ronda alcanzada en cada torneo, separado por modalidad y rama.',
   '<b>Campeones</b> guarda el historial del club año por año, con foto de cada ganador.',
