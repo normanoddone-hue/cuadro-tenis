@@ -811,6 +811,15 @@ i.ing{background:#2f9e5b}i.egr{background:#e0803a}
 .mas-it{display:grid;grid-template-columns:36px 1fr;column-gap:12px;align-items:center;text-align:left}
 .mas-it .mas-ico{grid-row:span 2;display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--soft)}
 .mas-it .n,.mas-it .d{grid-column:2}
+
+/* Fondo con foto real */
+body[data-fondo]::after{background:linear-gradient(rgba(238,241,246,var(--velo,.6)),rgba(238,241,246,var(--velo,.6))),var(--foto) center/cover no-repeat #c9b9ad}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) body[data-fondo]::after{background:linear-gradient(rgba(9,15,32,calc(var(--velo,.6) + .15)),rgba(9,15,32,calc(var(--velo,.6) + .15))),var(--foto) center/cover no-repeat #111}}
+body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255,255,255,.6)}
+.fondos{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.fondo-op{display:flex;flex-direction:column;gap:4px;border:2px solid var(--line);border-radius:10px;padding:4px;background:var(--surface);cursor:pointer;font-size:12px;text-align:left;color:var(--ink)}
+.fondo-op[aria-pressed="true"]{border-color:var(--court);box-shadow:0 0 0 2px var(--ball)}
+.fondo-op img,.fondo-op .fo-c{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:6px;display:block;background:#12234a}
 </style>
 
 <div class="app">
@@ -887,6 +896,20 @@ function parseMonto(t){t=String(t||'').replace(/[^\d.,]/g,'');if(!t)return 0;
   if(mon()[3]===0)return +t.replace(/\D/g,'')||0;
   const m=t.match(/^(.*)[.,](\d{1,2})$/);const ent=(m?m[1]:t).replace(/\D/g,'');return +(ent+(m?'.'+m[2]:''))||0}
 function ejMonto(gs,otro){return mon()[0]==='PYG'?gs:otro}
+/* Fondo de la app (Club y cuenta). Fotos de Unsplash, licencia libre. */
+const FONDOS=[['cancha','Cancha dibujada',''],
+  ['ladrillo','Polvo de ladrillo (desde arriba)','photo-1620742820748-87c09249a72a'],
+  ['ladrillo2','Polvo de ladrillo (líneas)','photo-1777996626022-1b3a635d0727'],
+  ['red','Pelotas junto a la red','photo-1759819599208-0b79a7f3f347'],
+  ['gradas','Gradas','photo-1767884161718-e0d34e9c15e9']];
+function urlFondo(id,w){return `https://images.unsplash.com/${id}?fm=jpg&q=${w>1000?78:60}&w=${w}&auto=format&fit=crop`}
+function aplicarFondo(k,vela){
+  const f=FONDOS.find(x=>x[0]===k)||FONDOS[0];const b=document.body;if(!b)return;
+  if(!f[2]){b.removeAttribute('data-fondo');b.style.removeProperty('--foto');return}
+  const w=Math.min(3000,Math.round(Math.max(screen.width,screen.height)*(window.devicePixelRatio||1)));
+  b.setAttribute('data-fondo',f[0]);b.style.setProperty('--foto',`url("${urlFondo(f[2],Math.max(1200,w))}")`);
+  b.style.setProperty('--velo',String(vela??0.6));
+}
 function fmtCI(ci){const d=String(ci||'').replace(/\D/g,'');return d?d.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):''}
 
 function jug(S,id){return S.jugadores.find(j=>j.id===id)}
@@ -1462,6 +1485,7 @@ const ico=k=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[k]
 
 function render(){
   actualizarPermisos();
+  if(S&&!(ui.sheet&&ui.sheet.t==='login'))aplicarFondo(S.fondo,S.fondoVelo);
   if(!S&&cargado&&logueado&&clubInfo.existe){S=nuevoEstado();if(clubInfo.nombre)S.club=clubInfo.nombre}
   renderShell();
   const m=document.getElementById('main');
@@ -3201,6 +3225,9 @@ function renderSheet(){
       <span class="small muted">El logo y el nombre se ven en el menú, en la barra del celular y en los reportes.</span>
       <div class="btns"><button class="btn man-btn" data-act="tab" data-k="finanzas">${ico('finanzas')}Finanzas</button><button class="btn man-btn" data-act="tab" data-k="manual">${ico('manual')}Manual del usuario</button></div>
       <div class="field"><label for="l-club">Nombre del club</label><input type="text" id="l-club" value="${esc(S.club||'')}" placeholder="Ej.: Club de Tenis Asunción"></div>
+      <div class="field"><label>Fondo de la app</label><div class="fondos">${FONDOS.map(([k,n,id])=>`<button class="fondo-op" data-act="fondo" data-k="${k}" aria-pressed="${(ui.fondoPend??S.fondo??'cancha')===k}">${id?`<img src="${urlFondo(id,320)}" alt="" loading="lazy">`:'<span class="fo-c"></span>'}${esc(n)}</button>`).join('')}</div>
+        ${(ui.fondoPend??S.fondo??'cancha')!=='cancha'?`<label for="l-velo" class="small muted">Velo sobre la foto (más a la derecha, más clarito)</label><input type="range" id="l-velo" min="0.3" max="0.9" step="0.05" value="${ui.veloPend??S.fondoVelo??0.6}">`:''}
+        <span class="small muted">Se ve al instante para probar; tocá Guardar para dejarlo para todos.</span></div>
       <div class="field"><label for="l-mon">Moneda</label><select id="l-mon">${MONEDAS.map(([k,n,sim])=>`<option value="${k}" ${mon()[0]===k?'selected':''}>${esc(n)} · ${esc(sim)}</option>`).join('')}</select>
         <span class="small muted">Se usa en inscripciones, premios, pagos y reportes. Cambiarla no convierte los montos ya cargados.</span></div>
       <div class="grid2"><div class="field"><label for="l-p">Nueva contraseña</label><input type="password" id="l-p" autocomplete="new-password" placeholder="Dejala vacía para no cambiarla"></div>
@@ -3321,8 +3348,8 @@ function renderSheet(){
 /* ===================== Acciones ===================== */
 function radioVal(n){return document.querySelector(`input[name="${n}"]:checked`)?.value||''}
 function val(id){const e=document.getElementById(id);return e?e.value.trim():''}
-function abrir(sheet){ui.logoPend=undefined;ui.sheet=sheet;ui.msg=null;ui.armado=null;render();setTimeout(()=>{const f=document.querySelector('.sheet input:not([disabled]),.sheet select');if(f&&window.innerWidth>640)f.focus()},30)}
-function cerrar(){ui.sheet=null;ui.msg=null;ui.armado=null;render()}
+function abrir(sheet){ui.logoPend=undefined;ui.fondoPend=ui.veloPend=undefined;ui.sheet=sheet;ui.msg=null;ui.armado=null;render();setTimeout(()=>{const f=document.querySelector('.sheet input:not([disabled]),.sheet select');if(f&&window.innerWidth>640)f.focus()},30)}
+function cerrar(){if(ui.fondoPend!==undefined||ui.veloPend!==undefined){ui.fondoPend=ui.veloPend=undefined;if(S)aplicarFondo(S.fondo,S.fondoVelo)}ui.sheet=null;ui.msg=null;ui.armado=null;render()}
 function cargarJugadoresEjemplo(){
   const {hom,muj}=jugadoresEjemplo(generador(Date.now()%2147483646+1));
   const ya=new Set(S.jugadores.map(p=>(p.nombre+' '+p.apellido).toLowerCase()));
@@ -3383,6 +3410,7 @@ document.addEventListener('click',ev=>{
     case 'festejar':festejo(t.dataset.n);break;
     case 'club-alta':altaClub();break;
     case 'mas':abrir({t:'mas'});break;
+    case 'fondo':ui.fondoPend=t.dataset.k;aplicarFondo(ui.fondoPend,ui.veloPend??S.fondoVelo);renderSheet();break;
     case 'pago-todos':{const c=todasCats().find(x=>x.id===t.dataset.c);if(!c)break;c.pagos=c.pagos||{};const f=c.fin&&c.fin<hoyISO()?c.fin:hoyISO();inscriptosJug(c).forEach(p=>{if(!c.pagos[p.id])c.pagos[p.id]=f});const y=window.scrollY;cambiar();window.scrollTo({top:y});toast('Todos marcados como pagados.');break}
     case 'copiar':{const v=t.dataset.v;(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(()=>toast('Enlace copiado.'),()=>toast(v,6000));break}
     case 'temporada':abrir({t:'temporada'});break;
@@ -3505,7 +3533,7 @@ document.addEventListener('click',ev=>{
       if(pw!==pw2){avisar('Las contraseñas no coinciden.');break}
       (async()=>{
         if(pw){const {error}=await sb.auth.updateUser({password:pw});if(error){avisar('No se pudo cambiar la contraseña: '+error.message);return}}
-        S.club=club;const mo=val('l-mon');if(mo)S.moneda=mo;if(ui.logoPend!==undefined){S.logo=ui.logoPend||null;ui.logoPend=undefined}
+        S.club=club;const mo=val('l-mon');if(mo)S.moneda=mo;if(ui.fondoPend!==undefined)S.fondo=ui.fondoPend;if(ui.veloPend!==undefined)S.fondoVelo=ui.veloPend;ui.fondoPend=ui.veloPend=undefined;if(ui.logoPend!==undefined){S.logo=ui.logoPend||null;ui.logoPend=undefined}
         ui.sheet=null;ui.msg=null;toast(pw?'Datos y contraseña actualizados.':'Datos actualizados.');cambiar();
       })();
       break}
@@ -3891,6 +3919,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(!t.name||!/^c-(fmt|
   const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido();
 });
 document.addEventListener('input',ev=>{
+  if(ev.target.id==='l-velo'){ui.veloPend=+ev.target.value;aplicarFondo(ui.fondoPend??S.fondo,ui.veloPend);return}
   if(ev.target.id==='c-nom')delete ev.target.dataset.auto;
   if(/^s-[01]-\d$/.test(ev.target.id||''))syncTB();
   if((ev.target.id==='c-pc'||ev.target.id==='c-pf'||ev.target.id==='c-cuota')&&mon()[3]===0){const el=ev.target,fin=el.value.length-el.selectionStart;el.value=fmtCI(el.value);const pos=Math.max(0,el.value.length-fin);try{el.setSelectionRange(pos,pos)}catch(e){}}
