@@ -738,6 +738,8 @@ details.mas[open] summary{margin-bottom:4px}
 .sh-pdf{background:var(--soft);border-radius:var(--r-sm);padding:12px 14px;font-size:14px}
 .sh-pdf ul{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:3px}
 .chips .chip{white-space:nowrap}
+
+.sol-warn{margin-top:4px;font-size:12.5px;font-weight:600;color:var(--danger)}
 </style>
 
 <div class="app">
@@ -2439,10 +2441,24 @@ function seccionSolicitudes(c){
   if(st&&st.err) return `<div class="note warn">No se pudieron leer las solicitudes online. Si es la primera vez, ejecutá en Supabase la parte "tenis_solicitudes" de supabase.sql.</div>`;
   const D=c.modalidad==='D';
   return `<div class="panel sec"><div class="sec-hd"><h3>Solicitudes online · ${st.length}</h3><button class="btn sm" data-act="sol-recargar" data-id="${c.id}">Actualizar</button></div>
-    ${st.length?`<div class="list">${st.map(r=>{const d=r.data||{};const js=[d.j1,d.j2].filter(Boolean);
-      return `<div class="solrow"><div><b>${js.map(j=>esc(j.nombre+' '+j.apellido)).join(' / ')}</b><div class="small muted">${esc([js.map(j=>[j.categoria,j.club].filter(Boolean).join(', ')).filter(Boolean).join(' / '),d.telefono?'Tel. '+d.telefono:'',fmtMomento(Date.parse(r.creado))].filter(Boolean).join(' · '))}</div>${d.nota?`<div class="small">${esc(d.nota)}</div>`:''}</div>
-      <div class="btns"><button class="btn sm pri" data-act="sol-ok" data-id="${r.id}" data-c="${c.id}">Aprobar</button><button class="btn sm" data-act="sol-no" data-id="${r.id}" data-c="${c.id}">Rechazar</button></div></div>`}).join('')}</div>`
+    ${st.length?`<div class="list">${st.map((r,ri)=>{const d=r.data||{};const js=[d.j1,d.j2].filter(Boolean);
+      const pr=problemasSolicitud(c,d);const firma=x=>normTxt(String(x?.cedula||'')||(x?.nombre||'')+(x?.apellido||''));
+      if(st.slice(0,ri).some(o=>firma(o.data?.j1)===firma(d.j1)))pr.push('Pedido repetido');
+      return `<div class="solrow"><div><b>${js.map(j=>esc(j.nombre+' '+j.apellido)).join(' / ')}</b><div class="small muted">${esc([js.map(j=>[j.categoria,j.club].filter(Boolean).join(', ')).filter(Boolean).join(' / '),d.telefono?'Tel. '+d.telefono:'',fmtMomento(Date.parse(r.creado))].filter(Boolean).join(' · '))}</div>${d.nota?`<div class="small">${esc(d.nota)}</div>`:''}${pr.map(x=>`<div class="sol-warn">${esc(x)}</div>`).join('')}</div>
+      <div class="btns"><button class="btn sm pri" data-act="sol-ok" ${pr.length?'disabled title="No se puede aprobar: revisá el aviso"':''} data-id="${r.id}" data-c="${c.id}">Aprobar</button><button class="btn sm" data-act="sol-no" data-id="${r.id}" data-c="${c.id}">Rechazar</button></div></div>`}).join('')}</div>`
       :`<div class="small muted">Todavía no llegaron pedidos. Compartí la app: en este torneo aparece el botón "Quiero anotarme".</div>`}</div>`;
+}
+function buscarJugador(j){const ci=String(j.cedula||'').replace(/\D/g,'');return (ci&&S.jugadores.find(x=>x.cedula===ci))||S.jugadores.find(x=>normTxt(x.nombre)===normTxt(j.nombre)&&normTxt(x.apellido)===normTxt(j.apellido))||null}
+/* Problemas de un pedido de inscripción: categoría, rama o ya inscripto */
+function problemasSolicitud(c,d){
+  const out=[];
+  [d.j1,d.j2].filter(Boolean).forEach(j=>{const p=buscarJugador(j);const nom=`${j.nombre} ${j.apellido}`.trim();
+    const cat=p?.categoria||j.categoria||'';
+    if(c.nivel&&cat!==c.nivel) out.push(`${nom} es de ${cat||'ninguna categoría'} y el torneo es solo para ${c.nivel}`);
+    const sexo=p?.sexo||j.sexo;if(c.rama!=='X'&&sexo&&sexo!==c.rama) out.push(`${nom} no es de la rama ${c.rama==='F'?'damas':'caballeros'}`);
+    if(p&&c.inscriptos.some(e=>e.j.includes(p.id))) out.push(`${nom} ya está ${sexo==='F'?'inscripta':'inscripto'} en este torneo`);
+  });
+  return out;
 }
 function jugadorDeSolicitud(j,sexo){
   const ci=String(j.cedula||'').replace(/\D/g,'');
@@ -2743,7 +2759,7 @@ function renderSheet(){
       <div class="field"><label for="s${n}-nom">Nombre</label><input type="text" id="s${n}-nom" autocomplete="${n===1?'given-name':'off'}"></div>
       <div class="field"><label for="s${n}-ape">Apellido</label><input type="text" id="s${n}-ape" autocomplete="${n===1?'family-name':'off'}"></div>
       <div class="field"><label for="s${n}-ci">N.º de cédula</label><input type="text" id="s${n}-ci" inputmode="numeric"></div>
-      <div class="field"><label for="s${n}-cat">Categoría</label><select id="s${n}-cat"><option value="">No sé / sin categoría</option>${NIVELES.map(v=>`<option ${c?.nivel===v?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="field"><label for="s${n}-cat">Categoría</label><select id="s${n}-cat"><option value="">No sé / sin categoría</option>${NIVELES.map(v=>`<option ${c?.nivel===v?'selected':''}>${v}</option>`).join('')}</select>${c?.nivel?`<span class="small muted">Este torneo es solo para jugadores de ${esc(c.nivel)}.</span>`:''}</div>
       <div class="field"><label for="s${n}-club">Club</label><input type="text" id="s${n}-club"></div>
       ${X?`<div class="field"><label for="s${n}-sexo">Rama</label><select id="s${n}-sexo"><option value="M">Caballero</option><option value="F" ${n===2?'selected':''}>Dama</option></select></div>`:''}</div></div>`;
     h=s.ok?`<div class="sheet-hd"><h2>¡Pedido enviado!</h2>${cerrarBtn}</div><div class="note">El club recibió tu pedido para <b>${esc(c?.nombre||'')}</b>. Cuando lo confirme, vas a aparecer en la lista de inscriptos.</div><div class="btns"><button class="btn pri" data-act="cerrar">Listo</button></div>`
@@ -2868,14 +2884,17 @@ document.addEventListener('click',ev=>{
       if(!d.j1.nombre||!d.j1.apellido||(D&&(!d.j2.nombre||!d.j2.apellido))){avisar('Completá nombre y apellido'+(D?' de los dos jugadores.':'.'));break}
       if(!d.telefono&&!d.j1.cedula){avisar('Dejá un teléfono o tu cédula para que el club te pueda confirmar.');break}
       if(D&&c.rama==='X'&&d.j1.sexo===d.j2.sexo){avisar('En mixtos la pareja es una dama y un caballero.');break}
+      const pr=problemasSolicitud(c,d);if(pr.length){avisar(pr[0]+'.');break}
+      const kLoc='cdt-sol-'+c.id+'-'+normTxt((d.j1.cedula||'')+d.j1.nombre+d.j1.apellido);let ya=false;try{ya=!!localStorage.getItem(kLoc)}catch(e){}
+      if(ya){avisar('Ya enviaste un pedido para este torneo. El club lo tiene que confirmar.');break}
       if(!sb){avisar('La inscripción online necesita conexión con el servidor del club.');break}
       t.disabled=true;
       sb.from('tenis_solicitudes').insert({torneo:c.id,data:d}).then(({error})=>{if(error){t.disabled=false;console.error('solicitud',error);const m=String(error.message||'')+' '+String(error.code||'');
-        avisar(/PGRST205|42P01|schema cache|does not exist|tenis_solicitudes/i.test(m)?'La inscripción online todavía no está activada en el servidor del club. Avisale al administrador.':/row-level|42501|permission/i.test(m)?'El servidor no permite enviar pedidos todavía (faltan los permisos). Avisale al administrador.':'No se pudo enviar el pedido. Revisá la conexión y probá de nuevo.');return}ui.sheet.ok=true;ui.msg=null;renderSheet()});
+        avisar(/PGRST205|42P01|schema cache|does not exist|tenis_solicitudes/i.test(m)?'La inscripción online todavía no está activada en el servidor del club. Avisale al administrador.':/row-level|42501|permission/i.test(m)?'El servidor no permite enviar pedidos todavía (faltan los permisos). Avisale al administrador.':'No se pudo enviar el pedido. Revisá la conexión y probá de nuevo.');return}try{localStorage.setItem(kLoc,'1')}catch(e){}ui.sheet.ok=true;ui.msg=null;renderSheet()});
       break}
     case 'sol-recargar':cargarSolicitudes(t.dataset.id);break;
     case 'sol-no':case 'sol-ok':{const cid=t.dataset.c,id=t.dataset.id;const lista=Array.isArray(solCache[cid])?solCache[cid]:[];const r=lista.find(x=>x.id===id);if(!r||!sb)break;
-      if(a==='sol-ok'){const c=todasCats().find(x=>x.id===cid);const d=r.data||{};
+      if(a==='sol-ok'){const c=todasCats().find(x=>x.id===cid);const d=r.data||{};const pr=problemasSolicitud(c,d);if(pr.length){toast('No se puede aprobar: '+pr[0]+'.',5000);break}
         const p1=jugadorDeSolicitud(d.j1,d.j1.sexo||c.rama);const p2=d.j2?jugadorDeSolicitud(d.j2,d.j2.sexo||c.rama):null;
         const ya=c.inscriptos.some(e=>e.j.includes(p1.id)||(p2&&e.j.includes(p2.id)));
         if(!ya){desarmar(c);c.inscriptos.push(p2?{id:uid(),j:[p1.id,p2.id]}:{id:p1.id,j:[p1.id]})}
