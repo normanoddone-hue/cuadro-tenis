@@ -583,7 +583,8 @@ input,textarea{caret-color:var(--link)}
 .gotro input{width:auto;min-height:36px;padding:6px 8px}
 .gotro input[type=number]{width:70px}
 .gwrap{overflow:auto;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);max-height:78vh}
-.ggrid{display:grid;grid-template-columns:62px repeat(var(--nc),minmax(150px,1fr));min-width:max-content}
+.ggrid{display:grid;grid-template-columns:62px repeat(var(--nc),minmax(150px,1fr));min-width:calc(62px + var(--nc) * 150px)}
+.ggrid .gcard{min-width:0}.ggrid .gcard b,.ggrid .gcard small{overflow-wrap:anywhere;white-space:normal}
 .gh0,.gch{position:sticky;top:0;z-index:2;background:var(--court);color:#fff;font-weight:700;font-size:13px;padding:10px 8px;text-align:center}
 .gh0{left:0;z-index:3}
 .ghr{position:sticky;left:0;z-index:1;background:var(--soft);font-weight:700;font-size:13px;padding:8px 6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;color:var(--muted)}
