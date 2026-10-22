@@ -740,6 +740,22 @@ details.mas[open] summary{margin-bottom:4px}
 .chips .chip{white-space:nowrap}
 
 .sol-warn{margin-top:4px;font-size:12.5px;font-weight:600;color:var(--danger)}
+
+/* WhatsApp, pagos y ascensos */
+.wa-btns{display:flex;flex-wrap:wrap;gap:6px}
+.btn.wa{border-color:#25d366;color:#0f6b3a}
+.btn.wa svg{color:#25d366}
+.pay-res{display:flex;gap:10px;flex-wrap:wrap}
+.pay-res>div{flex:1;min-width:110px;background:var(--soft);border-radius:var(--r-sm);padding:10px 12px;display:flex;flex-direction:column}
+.pay-res b{font-family:"Barlow Condensed",var(--f-body);font-style:italic;font-weight:800;font-size:24px;line-height:1}
+.pay-res span{font-size:12px;color:var(--muted)}
+.pay-list{max-height:360px;overflow-y:auto}
+.pay-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.pay-row:last-child{border-bottom:none}
+.pay-row .check span{display:flex;flex-direction:column}
+.pay-row small{font-size:12px;color:var(--danger)}
+.pay-row.ok small{color:#1f8a4c}
+.asc{border-left:6px solid var(--ball)}
 </style>
 
 <div class="app">
@@ -1089,7 +1105,7 @@ async function flush(){
     const filas=[{id:'principal',data:JSON.parse(str),updated_at:new Date().toISOString()},{id:'privado',data:priv,updated_at:new Date().toISOString()}];
     const {error}=await sb.from('tenis_estado').upsert(filas);
     if(error) throw error;
-    lastSaved=str;setStatus('Guardado');
+    lastSaved=str;privMap=priv;setStatus('Guardado');
   }catch(e){
     const msg=String(e&&(e.message||e.code)||'');
     if(/row-level|permission|JWT|401|403/i.test(msg)){setStatus('Sin permiso para guardar');}
@@ -1103,11 +1119,13 @@ function separar(S){
   const pub=JSON.parse(JSON.stringify(S));const priv={};
   (pub.jugadores||[]).forEach(p=>{const x={};CAMPOS_PRIV.forEach(k=>{if(p[k]!=null&&p[k]!==''){x[k]=p[k]}delete p[k]});
     const e=edadDe(x.nacimiento);if(e!=null)p.edad=e;else delete p.edad;if(Object.keys(x).length)priv[p.id]=x});
+  (pub.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(c.pagos){priv._pagos=priv._pagos||{};priv._pagos[c.id]=c.pagos;delete c.pagos}}));
   delete pub.admin;
   return {pub,priv};
 }
 let privMap=null;
-function mezclarPriv(){if(!S||!privMap)return;(S.jugadores||[]).forEach(p=>{const x=privMap[p.id];if(x)Object.assign(p,x)})}
+function mezclarPriv(){if(!S||!privMap)return;(S.jugadores||[]).forEach(p=>{const x=privMap[p.id];if(x)Object.assign(p,x)});
+  const pg=privMap._pagos||{};(S.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(pg[c.id])c.pagos=pg[c.id]}))}
 async function cargarPriv(){
   if(!sb||!logueado){privMap=null;return}
   const {data}=await sb.from('tenis_estado').select('data').eq('id','privado').maybeSingle();
@@ -1192,6 +1210,7 @@ const ICO_SHARE='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle 
 const ICO_STAR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg>';
 const ICO_TV='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M8 21h8M12 17v4"/></svg>';
 const ICO_GEAR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+const ICO_WA='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8.4 19z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1.2-1.4-1.8-.9-.8.8a4 4 0 0 1-2.3-2.3l.8-.8-.9-1.8z"/></svg>';
 const ICO_LOCK='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const ICO_SALIR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/></svg>';
 
@@ -1819,6 +1838,7 @@ function perfilJugador(pid){
     </section>
     <div class="hgrid">${tarjetas.join('')}</div>
     ${seccionEvolucion(pid)}
+    ${(p.historialCat||[]).length?`<section class="sec"><div class="sec-hd"><h2>Cambios de categoría</h2></div><div class="list">${[...p.historialCat].reverse().map(h=>`<div class="pay-row"><span><span class="tag">${esc(h.de)}</span> → <span class="tag on">${esc(h.a)}</span> <small class="muted">${esc(h.motivo||'')}</small></span><span class="small muted">${esc(fmtFecha(h.fecha))}</span></div>`).join('')}</div></section>`:''}
     <section class="sec"><div class="sec-hd"><h2>Torneos <span class="ct">${parts.length}</span></h2></div>
       ${parts.length?`<div class="list">${[...parts].reverse().map(x=>`<button class="rowbtn" data-act="ir-torneo" data-ev="${x.e.id}" data-id="${x.c.id}"><span class="n">${esc(x.c.nombre)}</span><span class="d">${esc([rangoFechas(x.c),x.c.sede].filter(Boolean).join(' · ')||'Sin fecha')}</span><span class="r"><span class="tag ${x.camp?'on':x.final?'g':''}">${esc(x.etiq)}</span><br><span class="small muted">${x.pts} pts</span></span></button>`).join('')}</div>`
         :'<div class="panel muted">Todavía no está inscripto en ningún torneo.</div>'}
@@ -2417,6 +2437,7 @@ function vistaJugadores(){
       <div class="btns"><button class="btn sm" data-act="h2h">Cara a cara</button>${puedeEditar?`<button class="btn sm" data-act="xl-abrir">Importar Excel</button><button class="btn pri" data-act="nuevo-jug">Agregar jugador</button>
         ${nEj?`<button class="btn danger ${ui.armado==='quitar-ej'?'arm':''}" data-act="arm" data-w="quitar-ej">${ui.armado==='quitar-ej'?'Tocá de nuevo para quitarlos':'Quitar jugadores de ejemplo ('+nEj+')'}</button>`:''}`:''}</div></div>
     ${ui.msg&&!ui.sheet?`<div class="note warn">${esc(ui.msg)}</div>`:''}
+    ${seccionAscensos()}
     <div class="filters">
       <div style="flex:1;min-width:180px"><input type="search" id="q" placeholder="Buscar por nombre, cédula o club" value="${esc(ui.q)}" aria-label="Buscar jugador"></div>
       <div class="chips">${[['','Todos'],['M','Caballeros'],['F','Damas']].map(([k,l])=>`<button class="chip" aria-pressed="${ui.fsexo===k}" data-act="fsexo" data-k="${k}">${l}</button>`).join('')}</div>
@@ -2519,7 +2540,7 @@ function seccionInscriptos(t,c,cb){
   }
   const aviso=puedeEditar&&cb&&!c.grupos&&(c.formato==='grupos'||c.formato==='rr')?`<div class="note warn">Elegiste <b>round robin</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "Armar round robin".</div>`
     :puedeEditar&&cb&&c.online?`<div class="note">La inscripción online está activada, pero el cuadro ya está armado: el botón "Quiero anotarme" solo aparece mientras no hay cuadro.</div>`:'';
-  return `${aviso}${!emp&&puedeEditar?seccionSolicitudes(c):''}<div class="panel sec"><div class="sec-hd"><h3>Inscriptos · ${n} ${D?'parejas':'jugadores'}</h3>
+  return `${aviso}${!emp&&puedeEditar?seccionSolicitudes(c):''}${seccionPagos(c)}<div class="panel sec"><div class="sec-hd"><h3>Inscriptos · ${n} ${D?'parejas':'jugadores'}</h3>
     ${cb&&puedeEditar?`<button class="btn danger ${ui.armado==='rehacer'?'arm':''}" data-act="arm" data-w="rehacer">${ui.armado==='rehacer'?'Tocá de nuevo: se borran los resultados':'Rehacer cuadro'}</button>`:''}</div>${cuerpo}</div>`;
 }
 function seccionGrupos(c){
@@ -2666,6 +2687,7 @@ function renderSheet(){
     <details class="mas" ${s.id&&(c.premios?.campeon||c.online)?'open':''}><summary>Más opciones: premios, sets e inscripción online</summary>
       <div class="grid2"><div class="field"><label for="c-sets">Partidos</label><select id="c-sets"><option value="3" ${c.sets===3?'selected':''}>Al mejor de 3 sets</option><option value="5" ${c.sets===5?'selected':''}>Al mejor de 5 sets</option></select></div>
       <div class="field"><label for="c-pc">Premio campeón (Gs.)</label><input type="text" inputmode="numeric" id="c-pc" value="${esc(fmtCI(c.premios?.campeon))}" placeholder="Ej.: 1.000.000"></div>
+      <div class="field"><label for="c-cuota">Inscripción por jugador (Gs.)</label><input type="text" inputmode="numeric" id="c-cuota" value="${esc(fmtCI(c.cuota))}" placeholder="Ej.: 100.000"></div>
       <div class="field"><label for="c-pf">Premio vicecampeón (Gs.)</label><input type="text" inputmode="numeric" id="c-pf" value="${esc(fmtCI(c.premios?.finalista))}" placeholder="Ej.: 500.000"></div></div>
       <label class="check"><input type="checkbox" id="c-tb" ${c.superTB?'checked':''}> El 3.er set se juega como súper tie-break a 10</label>
       <label class="check"><input type="checkbox" id="c-online" ${c.online?'checked':''}> Inscripción online: los jugadores pueden pedir anotarse desde la app</label>
@@ -2712,6 +2734,9 @@ function renderSheet(){
     <div class="field"><label for="p-hora">Hora</label><input type="time" id="p-hora" value="${esc(res.hora||'')}"></div></div>
     ${err}
     ${P.despues?'<div class="note warn">Si cambiás el ganador, se anulan los resultados siguientes de esta llave.</div>':''}
+    ${x.a&&x.b&&x.estado!=='jugado'?(()=>{const ids=[...(inscripto(c,x.a)?.j||[]),...(inscripto(c,x.b)?.j||[])];
+      return `<div class="prz wa-box"><h3>Avisar el horario por WhatsApp</h3><div class="wa-btns">${ids.map(id=>{const p=jug(S,id);return p?.telefono?`<button class="btn sm wa" data-act="wa-hora" data-pid="${id}">${ICO_WA}${esc(nombreCompleto(p))}</button>`:`<span class="btn sm" aria-disabled="true" title="Cargale el teléfono en su ficha">${esc(nombreCompleto(p))} · sin teléfono</span>`}).join('')}</div>
+        <span class="small muted">Usa el día, la hora y la cancha que estén cargados arriba. Se abre un chat con el mensaje listo para enviar.</span></div>`})():''}
     <div class="btns"><button class="btn pri" data-act="guardar-partido">Guardar</button>${res.g?'<button class="btn" data-act="borrar-res">Borrar resultado</button>':''}</div>`;
   }
   if(s.t==='login'){
@@ -2849,7 +2874,7 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act;
   if(a==='ov'){if(ev.target===t)cerrar();return}
-  if(a==='insc') return;
+  if(a==='insc'||a==='pago') return;
   const cat=()=>T().categorias.find(c=>c.id===ui.cat);
   switch(a){
     case 'tab':ui.tab=t.dataset.k;if(ui.tab==='jugadores')ui.jug=null;if(ui.tab==='categorias')ui.cat=null;ui.armado=null;ui.msg=null;render();window.scrollTo({top:0});break;
@@ -2896,6 +2921,13 @@ document.addEventListener('click',ev=>{
     case 'ver-cat':if(t.dataset.ev&&t.dataset.ev!==T()?.id)elegirTorneo(t.dataset.ev);ui.sub=null;ui.cat=t.dataset.id;ui.tab='categorias';render();window.scrollTo({top:0});break;
     case 'sel-cat':ui.cat=t.dataset.id;ui.armado=null;ui.msg=null;render();break;
     case 'festejar':festejo(t.dataset.n);break;
+    case 'wa-hora':{const P=ctxPartido(ui.sheet.c,ui.sheet.z,ui.sheet.k);if(!P)break;const p=jug(S,t.dataset.pid);
+      abrirWA(p?.telefono,textoHorario(P.c,P.x,t.dataset.pid,{dia:val('p-dia'),hora:val('p-hora'),cancha:val('p-can')},P.titulo));break}
+    case 'wa-pago':{const c=todasCats().find(x=>x.id===t.dataset.c);const p=jug(S,t.dataset.pid);if(!c||!p)break;
+      abrirWA(p.telefono,`Hola ${p.nombre}, te recordamos el pago de la inscripción de ${c.nombre}${+c.cuota?`: Gs. ${fmtCI(c.cuota)}`:''}. ¡Gracias! — ${nombreApp()}`);break}
+    case 'asc-ok':case 'asc-no':{const k=t.dataset.k;const x=ascensosSugeridos().find(y=>y.k===k);if(!x)break;S.ascensos=S.ascensos||{};S.ascensos[k]=a==='asc-ok'?'ok':'no';
+      if(a==='asc-ok'){x.p.historialCat=x.p.historialCat||[];x.p.historialCat.push({de:x.de,a:x.a,fecha:hoyISO(),motivo:x.motivo});x.p.categoria=x.a;toast(`${nombreCompleto(x.p)} subió a ${x.a}.`)}
+      cambiar();break}
     case 'tv':abrirTV();break;
     case 'tv-salir':cerrarTV();break;
     case 'tl':ui.tl=t.dataset.k;render();break;
@@ -3042,7 +3074,7 @@ document.addEventListener('click',ev=>{
       else S.jugadores.push({id:uid(),...d});
       ui.sheet=null;ui.msg=null;cambiar();break}
     case 'guardar-cat':{
-      const d={nombre:val('c-nom'),inicio:val('c-ini'),fin:val('c-fin'),sede:val('c-sede'),sets:+val('c-sets'),superTB:document.getElementById('c-tb').checked,formato:radioVal('c-fmt')||'elim',gtam:+val('c-gtam')||4,gpasan:+val('c-gpas')||2,online:!!document.getElementById('c-online')?.checked,premios:{campeon:+val('c-pc').replace(/\D/g,'')||0,finalista:+val('c-pf').replace(/\D/g,'')||0}};
+      const d={nombre:val('c-nom'),inicio:val('c-ini'),fin:val('c-fin'),sede:val('c-sede'),sets:+val('c-sets'),superTB:document.getElementById('c-tb').checked,formato:radioVal('c-fmt')||'elim',gtam:+val('c-gtam')||4,gpasan:+val('c-gpas')||2,online:!!document.getElementById('c-online')?.checked,cuota:+val('c-cuota').replace(/\D/g,'')||0,premios:{campeon:+val('c-pc').replace(/\D/g,'')||0,finalista:+val('c-pf').replace(/\D/g,'')||0}};
       const bloq=!!document.querySelector('input[name=c-mod]:disabled');const mod={value:radioVal('c-mod')||'S',disabled:bloq},ram={value:radioVal('c-rama')||'M'},niv=document.getElementById('c-niv');
       if(!d.nombre){avisar('Poné un nombre al torneo.');break}
       if(document.querySelector('input[name=c-fmt]:disabled')){const c0=T().categorias.find(x=>x.id===ui.sheet.id);if(c0)d.formato=c0.formato||'elim'}
@@ -3293,11 +3325,49 @@ function vistaCampeones(){
       return `<button class="rowbtn camprow" data-act="ver-cat" data-id="${c.id}"><span class="camp-av">${(inscripto(c,e)?.j||[]).map(id=>avatar(jug(S,id),56,'camp-foto')).join('')}</span><span class="n">${esc(etiqueta(S,c,e))}${banderasEntrada(c,e)}</span><span class="d">${esc(c.nombre)} · ${esc(resumenFinal(c))}${c.premios?.campeon?' · Gs. '+fmtCI(c.premios.campeon):''}</span><span class="r"><span class="tag g">${esRR(c)?'Round robin':MODS[c.modalidad]}</span></span></button>`}).join('')}</div></section>`).join('')}`;
 }
 
+/* ===================== WhatsApp a jugadores ===================== */
+function telWA(t){let d=String(t||'').replace(/\D/g,'');if(!d) return '';if(d.startsWith('00'))d=d.slice(2);
+  if(d.startsWith('595')) return d;if(d.startsWith('0')) return '595'+d.slice(1);if(d.length===9&&d.startsWith('9')) return '595'+d;return d}
+function abrirWA(tel,txt){const n=telWA(tel);window.open('https://wa.me/'+(n||'')+'?text='+encodeURIComponent(txt),'_blank','noopener')}
+function textoHorario(c,x,pid,{dia,hora,cancha},titulo){
+  const p=jug(S,pid);const lado=inscripto(c,x.a)?.j.includes(pid)?'a':'b';const riv=lado==='a'?x.b:x.a;const comp=inscripto(c,lado==='a'?x.a:x.b)?.j.find(id=>id!==pid);
+  const cuando=[dia?(fmtDia(dia)==='Hoy'?'hoy':fmtDia(dia)==='Mañana'?'mañana':'el '+fmtDia(dia)):'',hora?'a las '+hora:'',cancha?'en la '+txtCancha(cancha).toLowerCase():''].filter(Boolean).join(' ');
+  return `Hola ${p?.nombre||''}, tu partido de ${c.nombre} (${titulo}) es ${cuando||'pronto: el horario lo confirmamos'}${riv?`, contra ${etiqueta(S,c,riv)}`:''}${comp?` (jugás con ${nombreCompleto(jug(S,comp))})`:''}. ¡Éxitos! — ${nombreApp()}`;
+}
+
+/* ===================== Pagos de inscripción (privado: solo el administrador) ===================== */
+function inscriptosJug(c){return [...new Set(c.inscriptos.flatMap(e=>e.j))].map(id=>jug(S,id)).filter(Boolean).sort((a,b)=>a.apellido.localeCompare(b.apellido))}
+function seccionPagos(c){
+  if(!puedeEditar||!c.inscriptos.length) return '';
+  const cuota=+c.cuota||0;const ps=inscriptosJug(c);const pag=c.pagos||{};const n=ps.filter(p=>pag[p.id]).length;const deben=ps.length-n;
+  return `<div class="panel sec"><div class="sec-hd"><h3>Pagos de inscripción</h3><span class="small muted">${cuota?`Cuota Gs. ${fmtCI(cuota)} por jugador`:'Sin cuota cargada: ponela en Editar → Más opciones'}</span></div>
+    <div class="pay-res"><div><b>${n}</b><span>pagaron</span></div><div><b>${deben}</b><span>deben</span></div>${cuota?`<div><b>Gs. ${fmtCI(n*cuota)}</b><span>recaudado de Gs. ${fmtCI(ps.length*cuota)}</span></div>`:''}</div>
+    <div class="list pay-list">${ps.map(p=>`<div class="pay-row ${pag[p.id]?'ok':''}"><label class="check"><input type="checkbox" data-act="pago" data-c="${c.id}" data-pid="${p.id}" ${pag[p.id]?'checked':''}> <span><b>${esc(nombreCompleto(p))}</b>${pag[p.id]?`<small>Pagó${typeof pag[p.id]==='string'?' el '+esc(fmtFecha(pag[p.id])):''}</small>`:'<small>Debe</small>'}</span></label>
+      ${!pag[p.id]?(p.telefono?`<button class="btn sm" data-act="wa-pago" data-c="${c.id}" data-pid="${p.id}">${ICO_WA}Recordar</button>`:'<span class="small muted">Sin teléfono</span>'):''}</div>`).join('')}</div>
+    ${deben>1&&ps.some(p=>!pag[p.id]&&p.telefono)?`<span class="small muted">Tocá "Recordar" en cada uno: WhatsApp abre un chat por persona con el mensaje listo.</span>`:''}</div>`;
+}
+
+/* ===================== Ascensos de categoría ===================== */
+function ascensosSugeridos(){
+  const out=[];const dec=S.ascensos||{};
+  todasCats().forEach(c=>{if(!c.nivel)return;const e=campeonDe(c);if(!e)return;const i=NIVELES.indexOf(c.nivel);if(i<=0)return;
+    inscripto(c,e)?.j.forEach(pid=>{const p=jug(S,pid);if(!p||p.categoria!==c.nivel)return;const k=pid+'|'+c.id;if(dec[k])return;
+      out.push({k,p,c,de:c.nivel,a:NIVELES[i-1],motivo:`${p.sexo==='F'?'Campeona':'Campeón'} de ${c.nombre}`})})});
+  return out;
+}
+function seccionAscensos(){
+  if(!puedeEditar) return '';const xs=ascensosSugeridos();if(!xs.length) return '';
+  return `<div class="panel sec asc"><div class="sec-hd"><h3>Ascensos sugeridos · ${xs.length}</h3><span class="small muted">Según los títulos en torneos de una categoría</span></div>
+    <div class="list">${xs.map(x=>`<div class="pay-row"><span><b>${esc(nombreCompleto(x.p))}</b> <span class="tag">${esc(x.de)}</span> → <span class="tag on">${esc(x.a)}</span><br><small class="muted">${esc(x.motivo)}</small></span>
+      <span class="btns"><button class="btn sm pri" data-act="asc-ok" data-k="${esc(x.k)}">Subir a ${esc(x.a)}</button><button class="btn sm" data-act="asc-no" data-k="${esc(x.k)}">Descartar</button></span></div>`).join('')}</div></div>`;
+}
+
 function limpiarSiguientes(c){
   let cambio=true;while(cambio){cambio=false;const cb=calcularCuadro(c);cb.rondas.forEach(f=>f.forEach(x=>{const r=c.res[x.key];if(r&&r.g&&r.g!==x.a&&r.g!==x.b){c.res[x.key]={cancha:r.cancha||'',hora:r.hora||''};cambio=true}}))}
 }
 document.addEventListener('change',ev=>{
   const t=ev.target;
+  if(t.dataset.act==='pago'){const c=todasCats().find(x=>x.id===t.dataset.c);if(c){c.pagos=c.pagos||{};if(t.checked)c.pagos[t.dataset.pid]=hoyISO();else delete c.pagos[t.dataset.pid];const y=window.scrollY;cambiar();window.scrollTo({top:y})}return}
   if(t.dataset.act==='insc'){const c=T().categorias.find(x=>x.id===ui.cat);const pid=t.dataset.pid;desarmar(c);
     if(t.checked){if(!c.inscriptos.some(e=>e.id===pid))c.inscriptos.push({id:pid,j:[pid]})}else c.inscriptos=c.inscriptos.filter(e=>e.id!==pid);
     const y=window.scrollY;cambiar();window.scrollTo({top:y});}
@@ -3332,7 +3402,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(!t.name||!/^c-(fmt|
 document.addEventListener('input',ev=>{
   if(ev.target.id==='c-nom')delete ev.target.dataset.auto;
   if(/^s-[01]-\d$/.test(ev.target.id||''))syncTB();
-  if(ev.target.id==='c-pc'||ev.target.id==='c-pf'){const el=ev.target,fin=el.value.length-el.selectionStart;el.value=fmtCI(el.value);const pos=Math.max(0,el.value.length-fin);try{el.setSelectionRange(pos,pos)}catch(e){}}
+  if(ev.target.id==='c-pc'||ev.target.id==='c-pf'||ev.target.id==='c-cuota'){const el=ev.target,fin=el.value.length-el.selectionStart;el.value=fmtCI(el.value);const pos=Math.max(0,el.value.length-fin);try{el.setSelectionRange(pos,pos)}catch(e){}}
   if(ev.target.id==='f-nac'){const e=edadDe(ev.target.value),el=document.getElementById('f-edad');if(el)el.textContent=e!=null?'Edad: '+e+' años':'La edad se calcula sola'}
   if(ev.target.id==='q'){ui.q=ev.target.value;const pos=ev.target.selectionStart;render();const q=document.getElementById('q');if(q){q.focus();try{q.setSelectionRange(pos,pos)}catch(e){}}}
 });
