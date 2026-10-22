@@ -806,6 +806,8 @@ i.ing{background:#2f9e5b}i.egr{background:#e0803a}
 .fb-v{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}.fb-v small{color:var(--muted);font-weight:400}
 .fin-mov .r b{font-variant-numeric:tabular-nums;white-space:nowrap}
 @media (max-width:560px){.fin-bar{grid-template-columns:1fr auto}.fb-t{grid-column:1/-1;order:3}}
+.pay-all{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--soft);cursor:pointer}
+.pay-all span{display:flex;flex-direction:column}.pay-all small{font-size:12px;color:var(--muted)}
 </style>
 
 <div class="app">
@@ -1462,7 +1464,10 @@ function render(){
   if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='manual'&&ui.tab!=='finanzas'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
   if((ui.tab==='manual'||ui.tab==='finanzas')&&!puedeEditar) ui.tab='resumen';
   const v={finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
+  const scr=[...m.querySelectorAll('[data-scroll-key]')].map(e=>[e.dataset.scrollKey,e.scrollTop]);
   m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'');
+  scr.forEach(([k,y])=>{const e=m.querySelector(`[data-scroll-key="${k}"]`);if(e)e.scrollTop=y});
+  m.querySelectorAll('[data-mixto]').forEach(e=>e.indeterminate=true);
   renderSheet();
 }
 function renderShell(){
@@ -3312,7 +3317,7 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act;
   if(a==='ov'){if(ev.target===t)cerrar();return}
-  if(a==='insc'||a==='pago') return;
+  if(a==='insc'||a==='pago'||a==='pago-all') return;
   const cat=()=>T().categorias.find(c=>c.id===ui.cat);
   switch(a){
     case 'man-ir':{const el=document.getElementById('m-'+t.dataset.k);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});break}
@@ -3803,9 +3808,9 @@ function seccionPagos(c){
   const cuota=+c.cuota||0;const ps=inscriptosJug(c);const pag=c.pagos||{};const n=ps.filter(p=>pag[p.id]).length;const deben=ps.length-n;
   return `<div class="panel sec"><div class="sec-hd"><h3>Pagos de inscripción</h3><span class="small muted">${cuota?`Inscripción ${fmtMon(cuota)} por jugador`:'Sin costo de inscripción: cargalo en Editar → Costo de inscripción'}</span></div>
     <div class="pay-res"><div><b>${n}</b><span>pagaron</span></div><div><b>${deben}</b><span>deben</span></div>${cuota?`<div><b>${fmtMon(n*cuota)}</b><span>recaudado de ${fmtMon(ps.length*cuota)}</span></div>`:''}</div>
-    <div class="list pay-list">${ps.map(p=>`<div class="pay-row ${pag[p.id]?'ok':''}"><label class="check"><input type="checkbox" data-act="pago" data-c="${c.id}" data-pid="${p.id}" ${pag[p.id]?'checked':''}> <span><b>${esc(nombreCompleto(p))}</b>${pag[p.id]?`<small>Pagó${typeof pag[p.id]==='string'?' el '+esc(fmtFecha(pag[p.id])):''}</small>`:'<small>Debe</small>'}</span></label>
+    <label class="check pay-all"><input type="checkbox" data-act="pago-all" data-c="${c.id}" ${n===ps.length?'checked':''} ${n&&n<ps.length?'data-mixto="1"':''}> <span><b>Todos pagaron</b><small>${n===ps.length?'Desmarcá para quitar todos los pagos':'Marcá para poner a todos como pagados'}</small></span></label>
+    <div class="list pay-list" data-scroll-key="pagos-${c.id}">${ps.map(p=>`<div class="pay-row ${pag[p.id]?'ok':''}"><label class="check"><input type="checkbox" data-act="pago" data-c="${c.id}" data-pid="${p.id}" ${pag[p.id]?'checked':''}> <span><b>${esc(nombreCompleto(p))}</b>${pag[p.id]?`<small>Pagó${typeof pag[p.id]==='string'?' el '+esc(fmtFecha(pag[p.id])):''}</small>`:'<small>Debe</small>'}</span></label>
       ${!pag[p.id]?(p.telefono?`<button class="btn sm" data-act="wa-pago" data-c="${c.id}" data-pid="${p.id}">${ICO_WA}Recordar</button>`:'<span class="small muted">Sin teléfono</span>'):''}</div>`).join('')}</div>
-    ${deben||n?`<div class="btns">${deben?`<button class="btn sm" data-act="pago-todos" data-c="${c.id}">Marcar a todos como pagados</button>`:''}${n?`<button class="btn sm danger ${ui.armado==='pago-ninguno-'+c.id?'arm':''}" data-act="arm" data-w="pago-ninguno-${c.id}">${ui.armado==='pago-ninguno-'+c.id?'Tocá de nuevo para desmarcar a todos':'Desmarcar a todos'}</button>`:''}</div>`:''}
     ${deben>1&&ps.some(p=>!pag[p.id]&&p.telefono)?`<span class="small muted">Tocá "Recordar" en cada uno: WhatsApp abre un chat por persona con el mensaje listo.</span>`:''}</div>`;
 }
 
@@ -3829,6 +3834,9 @@ function limpiarSiguientes(c){
 }
 document.addEventListener('change',ev=>{
   const t=ev.target;
+  if(t.dataset.act==='pago-all'){const c=todasCats().find(x=>x.id===t.dataset.c);if(c){const f=c.fin&&c.fin<hoyISO()?c.fin:hoyISO();
+      if(t.checked){c.pagos=c.pagos||{};inscriptosJug(c).forEach(p=>{if(!c.pagos[p.id])c.pagos[p.id]=f});toast('Todos marcados como pagados.')}else{c.pagos={};toast('Se quitaron todos los pagos.')}
+      const y=window.scrollY;cambiar();window.scrollTo({top:y})}return}
   if(t.dataset.act==='pago'){const c=todasCats().find(x=>x.id===t.dataset.c);if(c){c.pagos=c.pagos||{};if(t.checked)c.pagos[t.dataset.pid]=hoyISO();else delete c.pagos[t.dataset.pid];const y=window.scrollY;cambiar();window.scrollTo({top:y})}return}
   if(t.dataset.act==='insc'){const c=T().categorias.find(x=>x.id===ui.cat);const pid=t.dataset.pid;desarmar(c);
     if(t.checked){if(!c.inscriptos.some(e=>e.id===pid))c.inscriptos.push({id:pid,j:[pid]})}else c.inscriptos=c.inscriptos.filter(e=>e.id!==pid);
