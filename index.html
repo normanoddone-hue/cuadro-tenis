@@ -825,6 +825,7 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 .kpis-jug{grid-template-columns:repeat(2,1fr)}
 @media (min-width:560px){.kpis-jug{grid-template-columns:repeat(3,1fr)}}
 @media (min-width:1100px){.kpis-jug{grid-template-columns:repeat(6,1fr)}}
+.wl.g{background:#1f8a4c;color:#fff}.wl.p{background:#c62828;color:#fff}
 </style>
 
 <div class="app">
@@ -2317,7 +2318,7 @@ function repJugador(pid){
     if(ms.length){y=subtitulo(doc,'Historial de partidos',y+20);tabla(doc,{startY:y+4,head:[['','Rival','Marcador','Torneo','Ronda']],
       body:[...ms].reverse().map(m=>[m.gano?'G':'P',pt(etiqueta(S,m.c,m.riv)),pt(marcadorPropio(m)),pt(m.c.nombre),pt(rondaDe(m.x,m.cb,true))]),
       columnStyles:{0:{halign:'center',cellWidth:22,fontStyle:'bold'}},
-      didParseCell:d=>{if(d.section==='body'&&d.column.index===0){d.cell.styles.textColor=d.cell.raw==='G'?C_VERDE:C_GRIS}}})}
+      didParseCell:d=>{if(d.section==='body'&&d.column.index===0){d.cell.styles.textColor=d.cell.raw==='G'?[31,138,76]:[198,40,40]}}})}
     await guardarPDF(doc,`estadisticas-${slug(nombreCompleto(p))}.pdf`);
   });
 }
