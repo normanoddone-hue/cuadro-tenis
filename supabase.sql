@@ -234,3 +234,20 @@ language sql stable security definer set search_path = public, auth as $$
     from tenis_clubes c), '[]'::jsonb) else '[]'::jsonb end
 $$;
 grant execute on function public.tenis_listar_clubes() to authenticated;
+
+-- 8) ELIMINAR UN CLUB (solo superadministrador; el club principal no se puede borrar)
+--    Borra sus datos, sus pedidos de inscripción y sus administradores. Las cuentas de usuario quedan en Authentication.
+create or replace function public.tenis_baja_club(p_slug text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  if not tenis_es_super() then raise exception 'Solo el superadministrador puede eliminar clubes'; end if;
+  p_slug := lower(trim(coalesce(p_slug,'')));
+  if p_slug = 'principal' then raise exception 'El club principal no se puede eliminar'; end if;
+  if not exists(select 1 from tenis_clubes where slug = p_slug) then raise exception 'No existe ese club'; end if;
+  delete from tenis_estado where id in (p_slug, p_slug || ':privado');
+  delete from tenis_solicitudes where club = p_slug;
+  delete from tenis_clubes where slug = p_slug;   -- borra también sus administradores
+  return jsonb_build_object('ok', true);
+end $$;
+revoke all on function public.tenis_baja_club(text) from public, anon;
+grant execute on function public.tenis_baja_club(text) to authenticated;

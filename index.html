@@ -1226,7 +1226,8 @@ function seccionClubes(){
   const a=ui.alta||{};
   return `<div class="prz clubes"><h3>Clubes · ${clubesCache.length}</h3><span class="small muted">Como superadministrador ves todos los clubes y podés dar de alta uno nuevo.</span>
     <div class="list">${clubesCache.map(c=>`<div class="pay-row"><span><b>${esc(c.nombre)}</b> <span class="tag">${esc(c.slug)}</span><br><small class="muted">${(c.admins||[]).length?esc(c.admins.join(', ')):'Sin administrador'}</small></span>
-      <span class="btns"><button class="btn sm" data-act="copiar" data-v="${esc(linkClub(c.slug))}">Copiar enlace</button>${c.slug!==CLUB?`<a class="btn sm" href="${esc(linkClub(c.slug))}">Abrir</a>`:''}</span></div>`).join('')}</div>
+      <span class="btns"><button class="btn sm" data-act="copiar" data-v="${esc(linkClub(c.slug))}">Copiar enlace</button>${c.slug!==CLUB?`<a class="btn sm" href="${esc(linkClub(c.slug))}">Abrir</a>`:''}${c.slug!=='principal'?`<button class="btn sm danger ${ui.armado==='del-club-'+c.slug?'arm':''}" data-act="arm" data-w="del-club-${esc(c.slug)}">${ui.armado==='del-club-'+c.slug?'Tocá de nuevo: se borra todo':'Eliminar'}</button>`:''}</span></div>`).join('')}</div>
+    ${ui.armado&&ui.armado.startsWith('del-club-')?`<div class="note warn">Se borran los jugadores, torneos, resultados, pagos, fotos y pedidos de inscripción de ese club. No se puede deshacer. Las cuentas de sus administradores quedan en Supabase.</div>`:''}
     <details class="mas" ${a.abierto?'open':''}><summary>Dar de alta un club o agregar un administrador</summary>
       <div class="grid2"><div class="field"><label for="k-nom">Nombre del club</label><input type="text" id="k-nom" value="${esc(a.nom||'')}" placeholder="Ej.: Club Mbiguá"></div>
       <div class="field"><label for="k-slug">Código (va en la dirección)</label><input type="text" id="k-slug" value="${esc(a.slug||'')}" placeholder="Ej.: mbigua" autocapitalize="off"></div></div>
@@ -1235,6 +1236,16 @@ function seccionClubes(){
       <span class="small muted">Si el código ya existe, solo se agrega el administrador a ese club. Si el correo ya tiene cuenta, se deja la contraseña que tiene.</span>
       ${a.msg?`<div class="note ${a.ok?'':'warn'}">${a.msg}</div>`:''}
       <div class="btns"><button class="btn pri" data-act="club-alta" ${a.enviando?'disabled':''}>${a.enviando?'Creando…':'Crear'}</button></div></details></div>`;
+}
+async function bajaClub(slug){
+  toast('Eliminando club…',0);
+  // Fotos del club (carpeta con su código). Si falla, se sigue igual.
+  try{const {data}=await sb.storage.from('tenis-fotos').list(slug,{limit:1000});if(data&&data.length)await sb.storage.from('tenis-fotos').remove(data.map(f=>slug+'/'+f.name))}catch(e){}
+  const {error}=await sb.rpc('tenis_baja_club',{p_slug:slug});
+  if(error){toast(/function|PGRST202|does not exist/i.test(error.message)?'Falta ejecutar en Supabase el bloque 8 de supabase.sql (eliminar club).':'No se pudo eliminar: '+error.message,7000);return}
+  toast('Club eliminado.');
+  if(slug===CLUB){location.href=linkClub('principal');return}
+  clubesCache=null;renderSheet();
 }
 async function altaClub(){
   const nom=val('k-nom'),slug=slugClub(val('k-slug')||nom),mail=val('k-mail').toLowerCase(),pass=document.getElementById('k-pass')?.value||'';
@@ -3384,6 +3395,7 @@ document.addEventListener('click',ev=>{
     case 'arm':{const w=t.dataset.w;if(ui.armado!==w){ui.armado=w;render();break}
       ui.armado=null;
       if(w==='del-foto'){const f=(S.galeria||[]).find(x=>x.id===ui.sheet.id);S.galeria=(S.galeria||[]).filter(x=>x!==f);if(f&&f.a&&assetsApi)assetsApi.delete(f.a).catch(()=>{});ui.sheet=null;cambiar()}
+      if(w.startsWith('del-club-')){bajaClub(w.slice(9));break}
       if(w.startsWith('del-sp-')){const id=w.slice(7);S.sponsors=(S.sponsors||[]).filter(x=>x.id!==id);cambiar()}
       if(w.startsWith('del-n-')){const id=w.slice(6);S.noticias=(S.noticias||[]).filter(n=>n.id!==id);cambiar()}
       if((w==='rehacer'||w==='rehacer-grupos')&&empezo(cat())){toast('El torneo ya tiene resultados cargados: no se puede rehacer.');render();break}
