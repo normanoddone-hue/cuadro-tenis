@@ -769,6 +769,9 @@ details.mas[open] summary{margin-bottom:4px}
 .man-faq{display:flex;flex-direction:column;gap:8px}
 .man-faq p{margin:0;line-height:1.5}
 .man-btn{justify-content:flex-start}
+
+.tmp-kpi b{font-size:22px}
+.tmp-inc{margin:0;padding-left:18px;line-height:1.6}
 </style>
 
 <div class="app">
@@ -2142,6 +2145,100 @@ function repJugador(pid){
   });
 }
 
+/* ===================== Resumen de temporada (solo administrador) ===================== */
+function anioDe(c){return (c.inicio||c.fin||'').slice(0,4)}
+function aniosTemporada(){return [...new Set(todasCats().map(anioDe).filter(Boolean))].sort().reverse()}
+function jugadosDe(c){
+  const xs=[...partidosGrupo(c)];const cb=calcularCuadro(c);if(cb)cb.rondas.forEach(f=>f.forEach(x=>xs.push(x)));
+  const cc=cuadroCons(c);if(cc)cc.cb.rondas.forEach(f=>f.forEach(x=>xs.push(x)));
+  return xs.filter(x=>x.estado==='jugado'&&x.a&&x.b);
+}
+function datosTemporada(anio){
+  const cats=todasCats().filter(c=>!anio||anioDe(c)===anio).sort((a,b)=>(a.inicio||'9').localeCompare(b.inicio||'9'));
+  const J={};const pj=id=>J[id]||(J[id]={p:jug(S,id),cats:new Set(),pj:0,pg:0,tit:0});
+  let partidos=0,wo=0,recaudado=0,pendiente=0,premios=0,inscripciones=0;const con=new Set();
+  const torneos=cats.map(c=>{
+    const ps=jugadosDe(c);partidos+=ps.length;wo+=ps.filter(x=>x.res?.tipo==='wo').length;inscripciones+=c.inscriptos.length;
+    const jugs=inscriptosJug(c);jugs.forEach(p=>{con.add(p.id);pj(p.id).cats.add(c.id)});
+    ps.forEach(x=>[x.a,x.b].forEach(e=>(inscripto(c,e)?.j||[]).forEach(id=>{const o=pj(id);o.pj++;if(x.g===e)o.pg++})));
+    const camp=campeonDe(c);if(camp)(inscripto(c,camp)?.j||[]).forEach(id=>pj(id).tit++);
+    const cuota=+c.cuota||0;const pag=jugs.filter(p=>c.pagos?.[p.id]).length;
+    const rec=cuota*pag,deb=cuota*(jugs.length-pag);recaudado+=rec;pendiente+=deb;
+    const prem=camp?(+c.premios?.campeon||0)+(+c.premios?.finalista||0):0;premios+=prem;
+    return {c,ins:c.inscriptos.length,jug:jugs.length,pj:ps.length,cuota,pag,rec,deb,prem,camp,estado:camp?'Finalizado':ps.length?'En curso':'Sin empezar'};
+  });
+  const activos=Object.values(J).filter(o=>o.p).sort((a,b)=>b.pj-a.pj||b.cats.size-a.cats.size||b.pg-a.pg);
+  const cuenta=f=>{const m={};activos.forEach(o=>{const k=f(o.p)||'Sin dato';m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
+  const porCat=cuenta(p=>p.categoria).sort((a,b)=>{const i=x=>{const n=NIVELES.indexOf(x[0]);return n<0?99:n};return i(a)-i(b)});
+  return {anio,torneos,activos,partidos,wo,recaudado,pendiente,premios,inscripciones,jugadores:con.size,
+    fin:torneos.filter(t=>t.camp).length,porCat,porClub:cuenta(p=>p.club),porRama:cuenta(p=>p.sexo==='F'?'Damas':'Caballeros'),
+    hayCuota:torneos.some(t=>t.cuota)};
+}
+const gs=n=>'Gs. '+(fmtCI(n)||'0');
+function resumenHTML(d){
+  const k=(n,l)=>`<div><b>${n}</b><span>${l}</span></div>`;
+  return `<div class="pay-res tmp-kpi">${k(d.torneos.length,'torneos')}${k(d.jugadores,'jugadores')}${k(d.partidos,'partidos jugados')}${d.hayCuota?k(gs(d.recaudado),'recaudado'):''}</div>
+    <ul class="small muted tmp-inc"><li>Datos de cada torneo, con inscriptos, partidos y campeón</li>${d.hayCuota?'<li>Recaudación por torneo y lo pendiente de cobro</li>':''}<li>Los ${Math.min(20,d.activos.length)} jugadores más activos</li><li>Participación por categoría, rama y club</li></ul>`;
+}
+function repTemporadaPDF(anio){
+  const d=datosTemporada(anio);if(!d.torneos.length){toast('No hay torneos en esa temporada.');return}
+  conPDF(async doc=>{
+    let y=encabezadoPDF(doc,'Resumen de temporada'+(anio?' '+anio:''),'Informe para la comisión directiva · '+(anio?'torneos con fecha en '+anio:'todos los torneos'));
+    tabla(doc,{startY:y,theme:'plain',styles:{fontSize:9,cellPadding:{top:2,bottom:6,left:4,right:4},halign:'center'},
+      head:[['Torneos','Finalizados','Inscripciones','Jugadores','Partidos','Recaudado','Por cobrar','Premios']],
+      headStyles:{textColor:C_GRIS,fontStyle:'bold',fontSize:7.5},
+      body:[[d.torneos.length,d.fin,d.inscripciones,d.jugadores,d.partidos,d.hayCuota?pt(gs(d.recaudado)):'-',d.hayCuota?pt(gs(d.pendiente)):'-',pt(gs(d.premios))]],
+      bodyStyles:{fontStyle:'bold',fontSize:12,textColor:[18,35,74]}});
+    y=subtitulo(doc,'Torneos de la temporada',doc.lastAutoTable.finalY+22);
+    y=tabla(doc,{startY:y+4,head:[['Torneo','Fecha','Modalidad','Inscr.','Partidos','Estado','Campeón']],
+      body:d.torneos.map(t=>[pt(t.c.nombre),pt(fmtFecha(t.c.inicio)||'-'),pt(`${MODS[t.c.modalidad]} ${RAMAS[t.c.rama].toLowerCase()}${t.c.nivel?' · '+t.c.nivel:''}`),t.ins,t.pj,t.estado,pt(t.camp?etiqueta(S,t.c,t.camp):'-')]),
+      columnStyles:{3:{halign:'right'},4:{halign:'right'}}});
+    if(d.hayCuota){y=subtitulo(doc,'Recaudación por torneo',y+22);
+      y=tabla(doc,{startY:y+4,head:[['Torneo','Cuota','Jugadores','Pagaron','Deben','Recaudado','Por cobrar']],
+        body:[...d.torneos.filter(t=>t.cuota&&t.jug).map(t=>[pt(t.c.nombre),pt(gs(t.cuota)),t.jug,t.pag,t.jug-t.pag,pt(gs(t.rec)),pt(gs(t.deb))]),
+          ['Total','','','','',pt(gs(d.recaudado)),pt(gs(d.pendiente))]],
+        columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'}},
+        didParseCell:x=>{if(x.section==='body'&&x.row.index===x.table.body.length-1)x.cell.styles.fontStyle='bold'}})}
+    y=subtitulo(doc,'Jugadores más activos',y+22);
+    y=tabla(doc,{startY:y+4,head:[['#','Jugador','Club','Cat.','Torneos','Partidos','Ganados','% vict.','Títulos']],
+      body:d.activos.slice(0,20).map((o,i)=>[i+1,pt(nombreCompleto(o.p)),pt(o.p.club||'-'),pt(o.p.categoria||'-'),o.cats.size,o.pj,o.pg,o.pj?pct(o.pg,o.pj):'-',o.tit||'']),
+      columnStyles:{0:{halign:'center',cellWidth:24},4:{halign:'right'},5:{halign:'right'},6:{halign:'right'},7:{halign:'right'},8:{halign:'right'}}});
+    y=subtitulo(doc,'Participación',y+22);
+    const filas=Math.max(d.porCat.length,d.porRama.length,Math.min(d.porClub.length,10));
+    y=tabla(doc,{startY:y+4,head:[['Categoría','Jugadores','Rama','Jugadores','Club','Jugadores']],
+      body:Array.from({length:filas},(_,i)=>[pt(d.porCat[i]?.[0]||''),d.porCat[i]?.[1]||'',d.porRama[i]?.[0]||'',d.porRama[i]?.[1]||'',pt(d.porClub[i]?.[0]||''),d.porClub[i]?.[1]||'']),
+      columnStyles:{1:{halign:'right'},3:{halign:'right'},5:{halign:'right'}}});
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C_GRIS);
+    doc.text(pt('Partidos jugados incluye round robin, llaves y consolación'+(d.wo?` (${d.wo} por W.O.)`:'')+'. Recaudado según los pagos marcados en la app. Premios: los de torneos con campeón.'),36,Math.min(y+18,doc.internal.pageSize.getHeight()-50),{maxWidth:doc.internal.pageSize.getWidth()-72});
+    await guardarPDF(doc,`resumen-temporada-${anio||'completa'}.pdf`);
+  });
+}
+async function guardarBlob(blob,nombre){
+  let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){}
+  if(dl){try{await dl.save({filename:nombre,data:blob});toast('Archivo descargado.')}catch(e){toast(e&&e.code==='declined'?'Descarga cancelada.':'No se pudo descargar en esta vista.')}return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nombre;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);toast('Archivo descargado.');
+}
+async function repTemporadaXLSX(anio){
+  const d=datosTemporada(anio);if(!d.torneos.length){toast('No hay torneos en esa temporada.');return}
+  toast('Generando Excel…',0);
+  try{await cargarXLSX()}catch(e){toast('No se pudo cargar el generador de Excel. Revisá la conexión.');return}
+  const U=XLSX.utils,wb=U.book_new();
+  const hoja=(nombre,filas,anchos)=>{const ws=U.aoa_to_sheet(filas);ws['!cols']=anchos.map(w=>({wch:w}));U.book_append_sheet(wb,ws,nombre)};
+  hoja('Resumen',[[nombreApp()+' · Resumen de temporada '+(anio||'(todas)')],[],['Indicador','Valor'],
+    ['Torneos',d.torneos.length],['Torneos finalizados',d.fin],['Inscripciones',d.inscripciones],['Jugadores distintos',d.jugadores],['Partidos jugados',d.partidos],['Partidos por W.O.',d.wo],
+    ['Recaudado (Gs.)',d.recaudado],['Por cobrar (Gs.)',d.pendiente],['Premios entregados (Gs.)',d.premios]],[34,18]);
+  hoja('Torneos',[['Torneo','Fecha inicio','Modalidad','Rama','Nivel','Formato','Inscripciones','Jugadores','Partidos jugados','Estado','Campeón','Cuota (Gs.)','Pagaron','Deben','Recaudado (Gs.)','Por cobrar (Gs.)','Premios (Gs.)'],
+    ...d.torneos.map(t=>[t.c.nombre,t.c.inicio||'',MODS[t.c.modalidad],RAMAS[t.c.rama],t.c.nivel||'Todas',t.c.grupos||t.c.formato==='grupos'?'Round robin':'Llaves',t.ins,t.jug,t.pj,t.estado,t.camp?etiqueta(S,t.c,t.camp):'',t.cuota,t.pag,t.jug-t.pag,t.rec,t.deb,t.prem])],
+    [40,12,10,11,9,12,12,10,15,12,28,12,9,8,15,15,13]);
+  hoja('Jugadores',[['Apellido','Nombre','Club','Categoría','Rama','Torneos','Partidos','Ganados','Perdidos','% victorias','Títulos'],
+    ...d.activos.map(o=>[o.p.apellido,o.p.nombre,o.p.club||'',o.p.categoria||'',o.p.sexo==='F'?'Damas':'Caballeros',o.cats.size,o.pj,o.pg,o.pj-o.pg,o.pj?Math.round(o.pg/o.pj*100):'',o.tit])],
+    [18,16,20,11,11,9,9,9,9,11,8]);
+  hoja('Participación',[['Por categoría','Jugadores'],...d.porCat,[],['Por rama','Jugadores'],...d.porRama,[],['Por club','Jugadores'],...d.porClub],[24,11]);
+  const out=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  await guardarBlob(new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),`resumen-temporada-${anio||'completa'}.xlsx`);
+}
+
 /* --- Pantalla de reportes --- */
 function vistaReportes(){
   const t=T();const conCuadro=t?t.categorias.filter(c=>c.cuadro):[];
@@ -2308,7 +2405,7 @@ function vistaCategorias(){
   const grupos=[['curso','En curso'],['listo','Por comenzar'],['prox','Próximos'],['sin','Sin fecha'],['fin','Finalizados']];
   const html=grupos.map(([k,l])=>{const xs=t.categorias.filter(c=>estadoTorneo(c,hoy)===k).sort((a,b)=>k==='fin'?(b.inicio||'').localeCompare(a.inicio||''):(a.inicio||'').localeCompare(b.inicio||''));
     return xs.length?`<section class="sec"><h3>${l} · ${xs.length}</h3><div class="list">${xs.map(c=>filaTorneo(c)).join('')}</div></section>`:''}).join('');
-  return `${encabezado('Torneos',{sb:`${t.categorias.length} torneo${t.categorias.length===1?'':'s'} del club`,acc:(puedeEditar?'<button class="btn pri" data-act="nueva-cat">Nuevo torneo</button>':'')})}
+  return `${encabezado('Torneos',{sb:`${t.categorias.length} torneo${t.categorias.length===1?'':'s'} del club`,acc:(puedeEditar?'<button class="btn" data-act="temporada">'+ICO_PDF+'Resumen de temporada</button><button class="btn pri" data-act="nueva-cat">Nuevo torneo</button>':'')})}
     ${tabs}
     ${html||`<div class="panel muted">Todavía no hay torneos. Cada torneo tiene su nombre, por ejemplo "Apertura Singles Damas" o "Clausura Dobles Mixtos".${puedeEditar?' Creá el primero para inscribir jugadores.':''}</div>`}`;
 }
@@ -2822,6 +2919,13 @@ function renderSheet(){
         <span class="small muted">Usa el día, la hora y la cancha que estén cargados arriba. Se abre un chat con el mensaje listo para enviar.</span></div>`})():''}
     <div class="btns"><button class="btn pri" data-act="guardar-partido">Guardar</button>${res.g?'<button class="btn" data-act="borrar-res">Borrar resultado</button>':''}</div>`;
   }
+  if(s.t==='temporada'){const an=aniosTemporada();if(s.anio===undefined)s.anio=an[0]||'';const d=datosTemporada(s.anio);
+    h=`<div class="sheet-hd"><div><h2>Resumen de temporada</h2><div class="sub small muted">Para la comisión directiva</div></div>${cerrarBtn}</div>
+    <div class="field"><label for="tmp-anio">Temporada</label><select id="tmp-anio" data-act-change="tmp-anio">${an.map(a=>`<option value="${a}" ${s.anio===a?'selected':''}>${a}</option>`).join('')}<option value="" ${s.anio===''?'selected':''}>Todos los torneos</option></select></div>
+    ${d.torneos.length?resumenHTML(d):'<div class="note">No hay torneos con fecha en esa temporada.</div>'}
+    <div class="btns"><button class="btn pri" data-act="tmp-pdf" ${d.torneos.length?'':'disabled'}>${ICO_PDF}Descargar PDF</button><button class="btn" data-act="tmp-xlsx" ${d.torneos.length?'':'disabled'}>${ICO_PDF}Descargar Excel</button></div>
+    <span class="small muted">Incluye montos de inscripción: compartilo solo con la comisión. No incluye cédulas ni teléfonos.</span>`;
+  }
   if(s.t==='login'){
     if(logueado){
       h=`<div class="sheet-hd"><h2>Club y cuenta</h2>${cerrarBtn}</div>
@@ -3006,6 +3110,9 @@ document.addEventListener('click',ev=>{
     case 'ver-cat':if(t.dataset.ev&&t.dataset.ev!==T()?.id)elegirTorneo(t.dataset.ev);ui.sub=null;ui.cat=t.dataset.id;ui.tab='categorias';render();window.scrollTo({top:0});break;
     case 'sel-cat':ui.cat=t.dataset.id;ui.armado=null;ui.msg=null;render();break;
     case 'festejar':festejo(t.dataset.n);break;
+    case 'temporada':abrir({t:'temporada'});break;
+    case 'tmp-pdf':repTemporadaPDF(ui.sheet.anio);break;
+    case 'tmp-xlsx':repTemporadaXLSX(ui.sheet.anio);break;
     case 'wa-hora':{const P=ctxPartido(ui.sheet.c,ui.sheet.z,ui.sheet.k);if(!P)break;const p=jug(S,t.dataset.pid);
       abrirWA(p?.telefono,textoHorario(P.c,P.x,t.dataset.pid,{dia:val('p-dia'),hora:val('p-hora'),cancha:val('p-can')},P.titulo));break}
     case 'wa-pago':{const c=todasCats().find(x=>x.id===t.dataset.c);const p=jug(S,t.dataset.pid);if(!c||!p)break;
@@ -3458,6 +3565,7 @@ document.addEventListener('change',ev=>{
     if(t.checked){if(!c.inscriptos.some(e=>e.id===pid))c.inscriptos.push({id:pid,j:[pid]})}else c.inscriptos=c.inscriptos.filter(e=>e.id!==pid);
     const y=window.scrollY;cambiar();window.scrollTo({top:y});}
   if(t.id==='modoCuadro')ui.modoCuadro=t.value;
+  if(t.id==='tmp-anio'&&ui.sheet){ui.sheet.anio=t.value;renderSheet()}
   if(t.id==='c-niv'){const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido()}
   if(t.id==='sp-logo'&&t.files[0]){const f=t.files[0];t.value='';reducir(f,240).then(cv=>{let d=cv.toDataURL('image/png');if(d.length>120000)d=cv.toDataURL('image/jpeg',.86);ui.spLogo=d;const im=document.getElementById('sp-prev');if(im){im.src=d;im.hidden=false}}).catch(()=>avisar('No se pudo leer esa imagen. Probá con PNG o JPG.'))}
   if(t.id==='g-dia'&&t.value){ui.gdia=t.value;render()}
