@@ -835,6 +835,11 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 .mv-fila .mv-quitar{position:absolute;top:4px;right:6px}
 .mv-tot{margin-left:auto}
 @media (max-width:560px){.mv-fila{grid-template-columns:1fr 1fr}.mv-fila>.field:first-child,.mv-fila .mv-otro{grid-column:1/-1;grid-row:auto}}
+
+.rp-lugar{font-style:italic;color:var(--link)!important}
+.rp-sec{margin-top:8px}.rp-sec>.panel{margin-top:10px}
+.rp-gen{margin-bottom:4px}
+.rp-tag{font-size:9px;font-weight:800;letter-spacing:.04em;background:var(--link);color:#fff;border-radius:4px;padding:1px 4px;margin-left:5px;vertical-align:1px}
 </style>
 
 <div class="app">
@@ -931,7 +936,11 @@ function jug(S,id){return S.jugadores.find(j=>j.id===id)}
 function nombreCompleto(p){return p?`${p.nombre} ${p.apellido}`.trim():'—'}
 function nombreCorto(p){return p?`${p.nombre?p.nombre[0]+'. ':''}${p.apellido}`:'—'}
 function inscripto(cat,eid){return cat.inscriptos.find(i=>i.id===eid)}
+/* Rondas de perdedores: lugares reservados 'RP1:n' / 'RP2:n' en la 1.ª ronda del cuadro principal */
+function esRP(id){return typeof id==='string'&&/^RP[12]:/.test(id)}
+function resolverSlot(cat,id){if(!esRP(id))return id;const a=cat.rpAsig?.[id];if(a)return a;return cat.rpCerr?.[id[2]]?null:id}
 function etiqueta(S,cat,eid,corto){
+  if(esRP(eid)) return 'Ganador '+eid.slice(0,3);
   const e=inscripto(cat,eid); if(!e) return '—';
   const ps=e.j.map(id=>jug(S,id));
   if(ps.length===1) return corto?nombreCorto(ps[0]):nombreCompleto(ps[0]);
@@ -968,7 +977,7 @@ function generarCuadro(S,torneo,cat,modo,rnd=Math.random){
   const K=Math.min(cantSembrados(n),n);
   if(modo==='sorteo'){const resto=orden.slice(K);for(let i=resto.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[resto[i],resto[j]]=[resto[j],resto[i]]}orden.splice(K,resto.length,...resto)}
   cat.cuadro={...armarLlave(orden,K),modo,creado:new Date().toISOString()};
-  cat.res={};delete cat.cons;
+  cat.res={};delete cat.cons;limpiarRP(cat);
   return true;
 }
 
@@ -1007,7 +1016,8 @@ function armarRR(c){
   c.grupos={lista:[ordenRanking(S,c,c.inscriptos).map(e=>e.id)],pasan:0,rr:true,res:{},creado:new Date().toISOString()};
   c.cuadro=null;c.res={};delete c.cons;return true;
 }
-function empezo(c){const hay=r=>Object.values(r||{}).some(x=>x&&x.g);return hay(c.res)||hay(c.grupos?.res)||hay(c.cons?.res)}
+function empezo(c){const hay=r=>Object.values(r||{}).some(x=>x&&x.g);return hay(c.res)||hay(c.grupos?.res)||hay(c.cons?.res)||hay(c.rp1?.res)||hay(c.rp2?.res)}
+function limpiarRP(c){delete c.rp1;delete c.rp2;delete c.rpAsig;delete c.rpCerr;c.rpIns=[]}
 function desarmar(c){if(empezo(c)||!(c.cuadro||c.grupos))return;const g=!!c.grupos;c.cuadro=null;c.res={};delete c.grupos;delete c.cons;toast(`Cambiaron los inscriptos: se deshizo ${g?'el round robin':'el cuadro'}. Volvé a armarlo cuando termines.`,5000)}
 function esRR(c){return !!c.grupos?.rr}
 /* Campeón de cualquier formato: llave o round robin terminado */
@@ -1054,8 +1064,91 @@ function previaLlaves(c){
     <div class="prev-list">${filas.join('')}</div></div>`;
 }
 
+/* ===================== Rondas de perdedores (RP1 y RP2) =====================
+   Al armar el cuadro, los lugares libres se marcan RP1 / RP2. Los perdedores de 1.ª ronda que se anotan (pagan una vez)
+   juegan RP1; los ganadores ocupan los lugares RP1. Los perdedores de RP1 juegan RP2 y llenan los lugares RP2.
+   Si se anotan más que los lugares, se juegan rondas hasta que queden justos; si faltan, el lugar vacío queda como libre (bye). */
+function lugaresRP(c,k){return (c.cuadro?.slots||[]).filter(x=>typeof x==='string'&&x.startsWith('RP'+k+':'))}
+function aplicarLugaresRP(c,n1,n2){
+  const N=c.cuadro.N,pos=posicionesSiembra(N);
+  // los libres, empezando por los que enfrentan a los mejores sembrados
+  const libres=pos.map((p,i)=>({i,p})).filter(o=>!c.cuadro.slots[o.i]).sort((a,b)=>b.p-a.p).map(o=>o.i);
+  let k1=0,k2=0;libres.forEach(i=>{if(k1<n1)c.cuadro.slots[i]='RP1:'+(++k1);else if(k2<n2)c.cuadro.slots[i]='RP2:'+(++k2)});
+  c.cuadro.rp={1:k1,2:k2};c.rpAsig={};c.rpCerr={};c.rpIns=[];
+  if(!k1)c.rpCerr[1]=true;if(!k2)c.rpCerr[2]=true;
+}
+/* Perdedores de 1.ª ronda (partidos entre jugadores inscriptos, sin lugares RP) */
+function perdedoresR1(c){const cb=calcularCuadro(c);if(!cb)return {ls:[],faltan:0};let faltan=0;const ls=[];
+  cb.rondas[0].forEach(x=>{const sa=c.cuadro.slots[2*x.m],sb=c.cuadro.slots[2*x.m+1];if(!sa||!sb||esRP(sa)||esRP(sb))return;
+    if(x.estado==='jugado')ls.push(x.g===x.a?x.b:x.a);else faltan++});return {ls,faltan}}
+function perdedoresRP(c,k){const q=cuadroRP(c,k);if(!q)return [];const out=[];q.cb.rondas.forEach(f=>f.forEach(x=>{if(x.estado==='jugado')out.push(x.g===x.a?x.b:x.a)}));return out}
+function mezclar(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function pasarAlCuadro(c,k,ganadores){const ls=lugaresRP(c,k);c.rpAsig=c.rpAsig||{};mezclar(ganadores).forEach((e,i)=>{if(ls[i])c.rpAsig[ls[i]]=e});c.rpCerr=c.rpCerr||{};c.rpCerr[k]=true}
+function armarRP(c,k,jugadores){
+  const cupo=lugaresRP(c,k).length;const z='rp'+k;
+  if(!jugadores.length||!cupo){c[z]={directo:true,jugadores:[]};c.rpCerr=c.rpCerr||{};c.rpCerr[k]=true;return}
+  if(jugadores.length<=cupo){c[z]={directo:true,jugadores:[...jugadores]};pasarAlCuadro(c,k,jugadores);return}
+  const N=tamCuadro(jugadores.length);let W=1;while(W*2<=cupo&&W*2<=N/2)W*=2;
+  const orden=mezclar(jugadores);const pos=posicionesSiembra(N);
+  c[z]={jugadores:[...jugadores],cuadro:{N,slots:pos.map(p=>orden[p-1]||null),sem:{},hasta:Math.log2(N/W),creado:new Date().toISOString()},res:{}};
+}
+/* Cuando se definieron todos los partidos de la última ronda de la RP, los ganadores pasan al cuadro */
+function revisarRP(c,k){
+  if(c.rpCerr?.[k])return false;const q=cuadroRP(c,k);if(!q)return false;
+  const ult=q.cb.rondas[q.cb.R-1];if(!ult.every(x=>x.g||(x.estado==='bye'&&!x.a&&!x.b)))return false;
+  pasarAlCuadro(c,k,ult.map(x=>x.g).filter(Boolean));return true;
+}
+function rpTieneResultadosEnCuadro(c,k){const cb=calcularCuadro(c);if(!cb)return false;
+  return cb.rondas[0].some(x=>{const sa=c.cuadro.slots[2*x.m],sb=c.cuadro.slots[2*x.m+1];return (esRP(sa)&&sa[2]==k||esRP(sb)&&sb[2]==k)&&x.estado==='jugado'})}
+function seccionRP(c,cb){
+  const n1=lugaresRP(c,1).length,n2=lugaresRP(c,2).length;if(!c.cuadro?.rp||(!n1&&!n2))return '';
+  const nom=e=>esc(etiqueta(S,c,e));const cuota=+c.cuotaRP||0;
+  const pagoDe=e=>(inscripto(c,e)?.j||[]).every(id=>c.pagosRP?.[id]);
+  const fila=(e,k)=>`<div class="pay-row ${pagoDe(e)?'ok':''}"><label class="check"><input type="checkbox" data-act="rp-ins" data-c="${c.id}" data-e="${e}" ${(c.rpIns||[]).includes(e)?'checked':''}> <span><b>${nom(e)}</b><small>${(c.rpIns||[]).includes(e)?(pagoDe(e)?'Juega la RP · pagó':'Juega la RP · debe'):'No se anotó'}</small></span></label>
+      ${(c.rpIns||[]).includes(e)?`<label class="check"><input type="checkbox" data-act="rp-pago" data-c="${c.id}" data-e="${e}" ${pagoDe(e)?'checked':''}> Pagó${cuota?' '+fmtMon(cuota):''}</label>`:''}</div>`;
+  let h=`<div class="sec rp-sec"><div class="sec-hd"><h3>Rondas de perdedores</h3><span class="small muted">${n1} lugar${n1===1?'':'es'} RP1 · ${n2} lugar${n2===1?'':'es'} RP2${cuota?` · inscripción ${fmtMon(cuota)} (una sola vez para RP1 y RP2)`:''}</span></div>`;
+  // RP1
+  if(!c.rp1){
+    if(c.rpCerr?.[1]) h+=`<div class="panel muted small">RP1 cerrada sin jugadores: los lugares RP1 quedaron libres.</div>`;
+    else if(puedeEditar){const {ls,faltan}=perdedoresR1(c);const ins=(c.rpIns||[]).filter(e=>ls.includes(e));
+      h+=`<div class="panel sec"><div class="sec-hd"><h3>RP1</h3><span class="small muted">Perdedores de 1.ª ronda: marcá quiénes juegan la RP</span></div>
+        ${ls.length?`<div class="list pay-list">${ls.map(e=>fila(e,1)).join('')}</div>`:'<p class="small muted">Todavía no hay perdedores de 1.ª ronda.</p>'}
+        ${faltan?`<p class="small muted">Faltan ${faltan} partido${faltan===1?'':'s'} de 1.ª ronda. Podés esperar a que terminen para que todos puedan anotarse.</p>`:''}
+        <div class="btns"><button class="btn pri" data-act="rp-armar" data-c="${c.id}" data-k="1" ${ins.length?'':'disabled'}>Armar RP1 con ${ins.length} jugador${ins.length===1?'':'es'}</button>
+        <button class="btn ${ui.armado==='rp-cerrar-1'?'danger arm':''}" data-act="arm" data-w="rp-cerrar-1">${ui.armado==='rp-cerrar-1'?'Tocá de nuevo: los lugares RP1 quedan libres':'No se juega RP1'}</button></div>
+        <p class="small muted">${ins.length>n1?`Se anotaron más que los lugares: se juegan rondas hasta que queden ${n1}.`:ins.length&&ins.length<=n1?`Hay lugar para todos: pasan directo al cuadro${ins.length<n1?' y los lugares que sobran quedan libres':''}.`:''}</p></div>`}
+    else h+=`<div class="panel muted small">RP1: se arma cuando termine la 1.ª ronda.</div>`;
+  } else {
+    const q=cuadroRP(c,1);
+    if(q) h+=seccionCuadro(q.L,q.cb,'RP1');
+    else h+=`<div class="panel small">RP1: ${c.rp1.jugadores.length?`pasaron directo al cuadro ${c.rp1.jugadores.map(nom).join(', ')}.`:'sin jugadores.'}</div>`;
+  }
+  if(c.rpCerr?.[1]&&c.rp1){const pas=lugaresRP(c,1).map(l=>c.rpAsig?.[l]).filter(Boolean);
+    h+=`<div class="note">${pas.length?`<b>Pasaron al cuadro por RP1:</b> ${pas.map(nom).join(', ')}.`:'RP1 terminada.'}${lugaresRP(c,1).length>pas.length?` ${lugaresRP(c,1).length-pas.length} lugar${lugaresRP(c,1).length-pas.length===1?' quedó libre':'es quedaron libres'}.`:''}
+      ${puedeEditar&&!c.rp2&&!rpTieneResultadosEnCuadro(c,1)?` <button class="lnk2" data-act="rp-deshacer" data-c="${c.id}" data-k="1">Deshacer pase</button>`:''}</div>`}
+  // RP2
+  if(n2){
+    if(!c.rp2){
+      if(c.rpCerr?.[2]&&!c.rp2) h+=`<div class="panel muted small">RP2 cerrada sin jugadores: los lugares RP2 quedaron libres.</div>`;
+      else if(puedeEditar&&c.rpCerr?.[1]){const ls=perdedoresRP(c,1);
+        h+=`<div class="panel sec"><div class="sec-hd"><h3>RP2</h3><span class="small muted">Juegan los que perdieron en RP1 (no vuelven a pagar)</span></div>
+          ${ls.length?`<p class="small">${ls.map(nom).join(', ')}</p>`:'<p class="small muted">Nadie perdió en RP1.</p>'}
+          <div class="btns"><button class="btn pri" data-act="rp-armar" data-c="${c.id}" data-k="2">${ls.length?`Armar RP2 con ${ls.length}`:'Cerrar RP2 (lugares libres)'}</button></div></div>`}
+      else h+=`<div class="panel muted small">RP2: se arma cuando termine la RP1.</div>`;
+    } else {
+      const q=cuadroRP(c,2);
+      if(q) h+=seccionCuadro(q.L,q.cb,'RP2');
+      else h+=`<div class="panel small">RP2: ${c.rp2.jugadores.length?`pasaron directo al cuadro ${c.rp2.jugadores.map(nom).join(', ')}.`:'sin jugadores; los lugares RP2 quedaron libres.'}</div>`;
+      if(c.rpCerr?.[2]){const pas=lugaresRP(c,2).map(l=>c.rpAsig?.[l]).filter(Boolean);if(pas.length)h+=`<div class="note"><b>Pasaron al cuadro por RP2:</b> ${pas.map(nom).join(', ')}.${puedeEditar&&!rpTieneResultadosEnCuadro(c,2)?` <button class="lnk2" data-act="rp-deshacer" data-c="${c.id}" data-k="2">Deshacer pase</button>`:''}</div>`}
+    }
+  }
+  return h+'</div>';
+}
+function pagosRPDe(c){if(!c.rpIns?.length)return {jug:0,pag:0};const ps=[...new Set(c.rpIns.flatMap(e=>inscripto(c,e)?.j||[]))];return {jug:ps.length,pag:ps.filter(id=>c.pagosRP?.[id]).length}}
+
 /* ---- Cuadro de consolación: juegan los que perdieron su primer partido ---- */
-function llaveDe(c,z){return z==='cons'&&c.cons?{...c,cuadro:c.cons.cuadro,res:c.cons.res,_z:'cons'}:c}
+function llaveDe(c,z){if((z==='rp1'||z==='rp2')&&c[z]?.cuadro)return {...c,cuadro:c[z].cuadro,res:c[z].res,_z:z};return z==='cons'&&c.cons?{...c,cuadro:c.cons.cuadro,res:c.cons.res,_z:'cons'}:c}
+function cuadroRP(c,k){const z='rp'+k;if(!c[z]?.cuadro)return null;const L=llaveDe(c,z);const cb=calcularCuadro(L);if(!cb)return null;cb.rondas.forEach(f=>f.forEach(x=>x.rp=k));return {L,cb}}
 function cuadroCons(c){if(!c.cons) return null;const L=llaveDe(c,'cons');const cb=calcularCuadro(L);if(!cb) return null;cb.rondas.forEach(f=>f.forEach(x=>x.cons=true));return {L,cb}}
 function perdedoresPrimera(c){
   const cb=calcularCuadro(c);if(!cb) return [];const primero={};
@@ -1068,15 +1161,15 @@ function armarConsolacion(c){
   c.cons={cuadro:{...armarLlave(orden,0),creado:new Date().toISOString()},res:{}};
   return true;
 }
-function rondaDe(x,cb,corto){return x.grupo?(x.rr?'Round robin':'Grupo '+x.grupo):(x.cons?'Consolación · ':'')+nombreRonda(x.r,cb.R,corto)}
+function rondaDe(x,cb,corto){if(x.rp)return `RP${x.rp}${cb.R>1?' · Ronda '+(x.r+1):''}`;return x.grupo?(x.rr?'Round robin':'Grupo '+x.grupo):(x.cons?'Consolación · ':'')+nombreRonda(x.r,cb.R,corto)}
 /* Contexto de un partido para la hoja de resultado y la grilla: cuadro principal, consolación o grupo */
 function ctxPartido(cid,z,k){
   const c=T().categorias.find(x=>x.id===cid);if(!c) return null;
   if(z==='grupo'){const x=partidosGrupo(c).find(p=>p.key===k);if(!x) return null;
     return {c,L:c,x,cb:null,z,res:c.grupos.res,titulo:x.rr?'Round robin':'Grupo '+x.grupo,final:false,despues:false}}
   const L=llaveDe(c,z);const cb=calcularCuadro(L);if(!cb) return null;const [r,m]=k.split('-').map(Number);const x=cb.rondas[r]?.[m];if(!x) return null;
-  if(z==='cons')x.cons=true;
-  return {c,L,x,cb,z:z||'',res:L.res,titulo:(z==='cons'?'Consolación · ':'')+nombreRonda(r,cb.R),final:!z&&r===cb.R-1,
+  if(z==='cons')x.cons=true;if(z==='rp1'||z==='rp2')x.rp=+z[2];
+  return {c,L,x,cb,z:z||'',res:L.res,titulo:x.rp?rondaDe(x,cb):(z==='cons'?'Consolación · ':'')+nombreRonda(r,cb.R),final:!z&&r===cb.R-1,
     despues:x.estado==='jugado'&&!!cb.rondas[r+1]&&cb.rondas[r+1][Math.floor(m/2)].estado==='jugado'};
 }
 
@@ -1084,14 +1177,15 @@ function setsGanados(res){let a=0,b=0;(res.s||[]).forEach(([x,y])=>{if(x==null||
 
 function calcularCuadro(cat){
   const c=cat.cuadro; if(!c) return null;
-  const R=Math.log2(c.N); const rondas=[];
+  const R=c.hasta||Math.log2(c.N); const rondas=[];
   for(let r=0;r<R;r++){
     const cant=c.N/2**(r+1); const fila=[];
     for(let m=0;m<cant;m++){
-      let a,b; if(r===0){a=c.slots[2*m];b=c.slots[2*m+1]}else{a=rondas[r-1][2*m].g;b=rondas[r-1][2*m+1].g}
+      let a,b; if(r===0){a=resolverSlot(cat,c.slots[2*m]);b=resolverSlot(cat,c.slots[2*m+1])}else{a=rondas[r-1][2*m].g;b=rondas[r-1][2*m+1].g}
       const key=r+'-'+m; const res=cat.res?.[key];
       const x={key,r,m,a,b,res:null,g:null,estado:'espera'};
       if(r===0&&(!a||!b)){x.estado='bye';x.g=a||b||null}
+      else if(a&&b&&(esRP(a)||esRP(b))){x.estado='espera';if(res&&(res.cancha||res.hora||res.dia))x.res={cancha:res.cancha,hora:res.hora,dia:res.dia}}
       else if(a&&b){
         if(res&&(res.g===a||res.g===b)){x.res=res;x.g=res.g;x.estado='jugado'}
         else{x.estado='pendiente'; if(res&&(res.cancha||res.hora||res.dia))x.res={cancha:res.cancha,hora:res.hora,dia:res.dia}}
@@ -1101,7 +1195,7 @@ function calcularCuadro(cat){
     rondas.push(fila);
   }
   const final=rondas[R-1][0];
-  return {R,rondas,campeon:final.estado==='jugado'?final.g:null};
+  return {R,rondas,campeon:!c.hasta&&final.estado==='jugado'?final.g:null};
 }
 function nombreRonda(r,R,corto){const f=R-1-r;return (corto?NOMBRES_CORTOS:NOMBRES_RONDA)[f]||`Ronda ${r+1}`}
 
@@ -1236,6 +1330,7 @@ function separar(S){
   (pub.jugadores||[]).forEach(p=>{const x={};CAMPOS_PRIV.forEach(k=>{if(p[k]!=null&&p[k]!==''){x[k]=p[k]}delete p[k]});
     const e=edadDe(x.nacimiento);if(e!=null)p.edad=e;else delete p.edad;if(Object.keys(x).length)priv[p.id]=x});
   (pub.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(c.pagos){priv._pagos=priv._pagos||{};priv._pagos[c.id]=c.pagos;delete c.pagos}}));
+  (pub.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(c.pagosRP){priv._pagosRP=priv._pagosRP||{};priv._pagosRP[c.id]=c.pagosRP;delete c.pagosRP}}));
   if(pub.finanzas){priv._fin=pub.finanzas;delete pub.finanzas}
   delete pub.admin;
   return {pub,priv};
@@ -1243,6 +1338,7 @@ function separar(S){
 let privMap=null;
 function mezclarPriv(){if(!S||!privMap)return;(S.jugadores||[]).forEach(p=>{const x=privMap[p.id];if(x)Object.assign(p,x)});
   const pg=privMap._pagos||{};(S.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(pg[c.id])c.pagos=pg[c.id]}));
+  const pr=privMap._pagosRP||{};(S.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(pr[c.id])c.pagosRP=pr[c.id]}));
   if(privMap._fin)S.finanzas=privMap._fin}
 async function cargarPriv(){
   if(!sb||!logueado){privMap=null;return}
@@ -1543,8 +1639,9 @@ function todosLosPartidos(t){
   const out=[];
   t.categorias.forEach(c=>{
     partidosGrupo(c).forEach(x=>out.push({c,x,cb:null,z:'grupo'}));
-    const cb=calcularCuadro(c);if(cb)cb.rondas.forEach(f=>f.forEach(x=>{if(x.estado!=='bye')out.push({c,x,cb,z:''})}));
+    const cb=calcularCuadro(c);if(cb)cb.rondas.forEach(f=>f.forEach(x=>{if(x.estado!=='bye'&&!esRP(x.a)&&!esRP(x.b))out.push({c,x,cb,z:''})}));
     const cc=cuadroCons(c);if(cc)cc.cb.rondas.forEach(f=>f.forEach(x=>{if(x.estado!=='bye')out.push({c:cc.L,x,cb:cc.cb,z:'cons'})}));
+    [1,2].forEach(k=>{const q=cuadroRP(c,k);if(q)q.cb.rondas.forEach(f=>f.forEach(x=>{if(x.estado!=='bye')out.push({c:q.L,x,cb:q.cb,z:'rp'+k})}))});
   });
   return out;
 }
@@ -1953,7 +2050,7 @@ function datosPerfil(pid){
       ms.push({e,c,cb,x,i,ent,riv,gano:x.g===ent.id,t:x.res.t||base+((x.r+1)*100+x.m)*60000,
         comp:ent.j.find(id=>id!==pid)||null,stb:c.superTB&&c.sets===3});
     }));
-    const extra=[...partidosGrupo(c).map(x=>({x,cbx:null})),...(cuadroCons(c)?.cb.rondas.flat().map(x=>({x,cbx:cuadroCons(c).cb}))||[])];
+    const extra=[...partidosGrupo(c).map(x=>({x,cbx:null})),...(cuadroCons(c)?.cb.rondas.flat().map(x=>({x,cbx:cuadroCons(c).cb}))||[]),...[1,2].flatMap(k=>{const q=cuadroRP(c,k);return q?q.cb.rondas.flat().map(x=>({x,cbx:q.cb})):[]})];
     extra.forEach(({x,cbx})=>{if(x.estado!=='jugado'||(x.a!==ent.id&&x.b!==ent.id))return;const i=x.a===ent.id?0:1;
       ms.push({e,c,cb:cbx,x,i,ent,riv:i===0?x.b:x.a,gano:x.g===ent.id,t:x.res.t||base+(x.grupo?50:300)*60000,comp:ent.j.find(id=>id!==pid)||null,stb:c.superTB&&c.sets===3})});
     let etiq='Inscripto',pts=0;
@@ -2341,6 +2438,7 @@ function aniosTemporada(){return [...new Set(todasCats().map(anioDe).filter(Bool
 function jugadosDe(c){
   const xs=[...partidosGrupo(c)];const cb=calcularCuadro(c);if(cb)cb.rondas.forEach(f=>f.forEach(x=>xs.push(x)));
   const cc=cuadroCons(c);if(cc)cc.cb.rondas.forEach(f=>f.forEach(x=>xs.push(x)));
+  [1,2].forEach(k=>{const q=cuadroRP(c,k);if(q)q.cb.rondas.forEach(f=>f.forEach(x=>xs.push(x)))});
   return xs.filter(x=>x.estado==='jugado'&&x.a&&x.b);
 }
 function datosTemporada(anio){
@@ -2618,7 +2716,7 @@ function detalleTorneo(t,c){
     </div>
     ${ui.sub==='insc'?seccionInscriptos(t,c,cb)
       :ui.sub==='grupos'&&c.grupos?seccionGrupos(c)
-      :cb?seccionCuadro(c,cb,c.grupos?'Llaves':'Cuadro')+seccionConsolacion(c,cb)
+      :cb?seccionCuadro(c,cb,c.grupos?'Llaves':'Cuadro')+seccionRP(c,cb)+seccionConsolacion(c,cb)
       :c.grupos?previaLlaves(c)
       :`<div class="panel muted">El cuadro todavía no está generado. ${c.formato==='grupos'?'Inscribí a los jugadores y tocá "Armar round robin" en Inscripción. Cuando terminen los grupos se arman las llaves.':puedeEditar?'Inscribí a los jugadores y tocá "Generar cuadro" en Inscripción.':''}</div>`}`;
 }
@@ -2741,12 +2839,13 @@ function datosFinanzas(anio,cat){
     const camp=campeonDe(c);const premTot=(+c.premios?.campeon||0)+(+c.premios?.finalista||0);
     const mi=ms.filter(m=>m.c===c.id&&m.tipo==='ing'),me=ms.filter(m=>m.c===c.id&&m.tipo==='egr');
     const otrosIng=mi.reduce((a,m)=>a+(+m.monto||0),0),otrosEgr=me.reduce((a,m)=>a+(+m.monto||0),0);
-    const insc=cuota*pag,premios=camp?premTot:0;
-    suma(comp.ing,'Inscripciones',insc);mi.forEach(m=>suma(comp.ing,m.concepto||'Otro ingreso',+m.monto||0));
+    const prp=pagosRPDe(c),cRP=+c.cuotaRP||0,inscRP=cRP*prp.pag;
+    const insc=cuota*pag+inscRP,premios=camp?premTot:0;
+    suma(comp.ing,'Inscripciones',cuota*pag);suma(comp.ing,'Inscripciones RP',inscRP);mi.forEach(m=>suma(comp.ing,m.concepto||'Otro ingreso',+m.monto||0));
     suma(comp.egr,'Premios',premios);me.forEach(m=>suma(comp.egr,m.concepto||'Otro gasto',+m.monto||0));
     const ing=insc+otrosIng,egr=premios+otrosEgr;
-    return {c,jug:jugs.length,cuota,pag,insc,inscEsp:cuota*jugs.length,otrosIng,otrosEgr,premios,premTot,ing,egr,res:ing-egr,
-      ingProy:cuota*jugs.length+otrosIng,egrProy:premTot+otrosEgr,fin:!!camp};
+    return {c,jug:jugs.length,cuota,pag,insc,inscEsp:cuota*jugs.length+cRP*prp.jug,otrosIng,otrosEgr,premios,premTot,ing,egr,res:ing-egr,
+      ingProy:cuota*jugs.length+cRP*prp.jug+otrosIng,egrProy:premTot+otrosEgr,fin:!!camp};
   });
   const gen=ms.filter(m=>!m.c);
   gen.forEach(m=>suma(m.tipo==='ing'?comp.ing:comp.egr,(m.concepto||(m.tipo==='ing'?'Otro ingreso':'Otro gasto')),+m.monto||0));
@@ -2923,7 +3022,8 @@ const MANUAL=[
   'Con los inscriptos listos, en <b>Inscripción</b> tocá <b>Generar cuadro</b> (llaves) o <b>Armar round robin</b> (grupos).',
   'Las llaves ubican a los mejores del ranking como cabezas de serie y completan con byes si hace falta.',
   'En round robin, cuando se juegan todos los partidos de los grupos, <b>las llaves se arman solas</b> con los clasificados (sin cruzar a dos del mismo grupo en primera ronda).',
-  'Cuando termina la primera ronda, podés armar un <b>cuadro de consolación</b> para los que perdieron su primer partido.'],
+  'Cuando termina la primera ronda, podés armar un <b>cuadro de consolación</b> para los que perdieron su primer partido.',
+  'Si el torneo tiene <b>rondas de perdedores</b> (se marca al crearlo, con su costo), al generar el cuadro elegís cuántos lugares libres quedan como <b>RP1</b> y <b>RP2</b>. Después de la 1.ª ronda, en <b>Llaves → Rondas de perdedores</b> marcás quiénes juegan la RP y si pagaron, y tocás <b>Armar RP1</b>. Los ganadores entran solos a los lugares RP1; los que pierden la RP1 juegan la <b>RP2</b> sin volver a pagar.'],
   tips:['Si te equivocaste de inscriptos, podés tocar <b>Rehacer cuadro</b> mientras no haya ningún resultado.','<b>Con un solo resultado cargado, el cuadro queda fijo</b>. Si cargaste algo por error, abrí ese partido y tocá <b>Borrar resultado</b>.']},
  {id:'partidos',t:'Horarios y resultados',d:'Lo que más vas a usar durante el torneo.',pasos:[
   'Tocá cualquier partido del cuadro (o de la sección <b>Partidos</b>).',
@@ -3076,7 +3176,8 @@ function seccionInscriptos(t,c,cb){
         <option value="sorteo" ${ui.modoCuadro==='sorteo'?'selected':''}>Cabezas de serie por ranking, resto por sorteo</option></select></div></div>
       ${c.formato==='rr'?`<div class="btns"><button class="btn pri" data-act="armar-rr" ${n<3?'disabled':''}>Armar round robin</button></div>`
         :c.formato==='grupos'?`<div class="btns"><button class="btn pri" data-act="armar-grupos" ${n<4?'disabled':''}>Armar round robin</button>${c.grupos?'<span class="small muted">Los grupos ya están armados: volver a armarlos borra sus resultados.</span>':''}</div>`
-        :`<div class="btns"><button class="btn pri" data-act="generar" ${n<2?'disabled':''}>Generar cuadro</button></div>`}
+        :`${c.conRP&&n>=2?(()=>{const B=tamCuadro(n)-n;const d2=Math.floor(B/3),d1=B-d2;return B?`<div class="grid2 rp-gen"><div class="field"><label for="rp-n1">Lugares RP1</label><input type="number" id="rp-n1" min="0" max="${B}" value="${d1}"></div><div class="field"><label for="rp-n2">Lugares RP2</label><input type="number" id="rp-n2" min="0" max="${B}" value="${d2}"></div></div><span class="small muted">Con ${n} inscriptos el cuadro es de ${tamCuadro(n)}: hay ${B} lugar${B===1?'':'es'} libre${B===1?'':'s'} para repartir entre RP1 y RP2. Los que no uses quedan como libres (bye).</span>`:`<div class="note warn">Con ${n} inscriptos el cuadro de ${tamCuadro(n)} queda completo: no hay lugares para RP. Con menos inscriptos (o más lugares) quedan huecos para RP1 y RP2.</div>`})():''}
+          <div class="btns"><button class="btn pri" data-act="generar" ${n<2?'disabled':''}>Generar cuadro</button></div>`}
       <span class="small muted">${c.formato==='rr'?(n<3?'Necesitás al menos 3 inscriptos para un round robin.':`Todos contra todos: ${n*(n-1)/2} partidos. Gana quien termine primero en la tabla (partidos ganados, después el partido entre ellos, sets y games).`):c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para el round robin.':`Round robin: ${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. En cada grupo juegan todos contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`}</span></div>`;
   } else {
     cuerpo=(emp&&puedeEditar?`<div class="note">${ICO_LOCK}El torneo ya tiene resultados cargados: no se pueden cambiar los inscriptos ni rehacer ${c.grupos&&!cb?'el round robin':'el cuadro'}. Si cargaste un resultado por error, abrí ese partido y tocá "Borrar resultado".</div>`:'')+(n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>');
@@ -3124,15 +3225,18 @@ function seccionCuadro(c,cb,titulo='Cuadro'){
   const ns=c.sets;
   const fila=(x,lado)=>{
     const e=x[lado];const r0=x.r===0;
+    if(esRP(e)) return `<div class="mrow"><span class="sd"></span><span class="nm tbd rp-lugar">Ganador ${e.slice(0,3)}</span>${'<span class="sc"></span>'.repeat(ns)}</div>`;
     if(!e) return `<div class="mrow"><span class="sd"></span><span class="nm tbd">${r0?'Bye':'A definir'}</span>${'<span class="sc"></span>'.repeat(ns)}</div>`;
     const w=x.g===e&&x.estado!=='bye';const i=lado==='a'?0:1;
     const sets=x.estado==='jugado'?(x.res.tipo==='wo'?[]:(x.res.s||[])):[];
     let celdas='';for(let k=0;k<ns;k++){const s=sets[k];if(s&&s[0]!==''&&s[0]!=null){const v=s[i],o=s[1-i];celdas+=`<span class="sc ${+v>+o?'won':''}">${esc(v)}${s[2]!=null?`<sup>${esc(tbDe(s,i))}</sup>`:''}</span>`}else celdas+=`<span class="sc">${k===0&&x.estado==='jugado'&&x.res.tipo==='wo'&&w?'WO':''}</span>`}
     const sd=c.cuadro.sem?.[e];
-    return `<div class="mrow ${w?'w':''}"><span class="sd">${sd||''}</span><span class="nm" title="${esc(etiqueta(S,c,e))}"><span class="nmt">${esc(etiqueta(S,c,e,true))}</span>${banderasEntrada(c,e)}</span>${celdas}</div>`;
+    const viaRP=r0&&!c._z?c.cuadro.slots[2*x.m+(lado==='a'?0:1)]:null;const tagRP=esRP(viaRP)?`<span class="rp-tag">${viaRP.slice(0,3)}</span>`:'';
+    return `<div class="mrow ${w?'w':''}"><span class="sd">${sd||''}</span><span class="nm" title="${esc(etiqueta(S,c,e))}"><span class="nmt">${esc(etiqueta(S,c,e,true))}</span>${tagRP}${banderasEntrada(c,e)}</span>${celdas}</div>`;
   };
-  const cols=cb.rondas.map((f,r)=>`<div class="col"><div class="col-h">${nombreRonda(r,cb.R)}</div><div class="col-b">
-    ${f.map(x=>{const clic=puedeEditar&&x.estado!=='bye'&&(x.a||x.b);
+  const rpZ=c._z==='rp1'||c._z==='rp2';
+  const cols=cb.rondas.map((f,r)=>`<div class="col"><div class="col-h">${rpZ?(cb.R>1?'Ronda '+(r+1):'Partidos'):nombreRonda(r,cb.R)}</div><div class="col-b">
+    ${f.map(x=>{const clic=puedeEditar&&x.estado!=='bye'&&(x.a||x.b)&&!esRP(x.a)&&!esRP(x.b);
       const meta=[x.res?.cancha?esc(txtCancha(x.res.cancha)):'',x.res?.hora?esc(x.res.hora):''].filter(Boolean).join(' · ');
       const extra=x.estado==='jugado'&&x.res.tipo==='ret'?'Retiro':x.estado==='jugado'&&x.res.tipo==='wo'?'W.O.':'';
       return `<div class="mw"><button class="match ${x.estado==='bye'?'bye':''} ${!clic?'wait':''} ${ui.pop===(c._z||'')+x.key?'pop':''}" style="--ns:${ns}" ${clic?`data-act="partido" data-c="${c.id}" data-z="${c._z||''}" data-k="${x.key}"`:'tabindex="-1"'} aria-label="${esc(nombreRonda(r,cb.R))}">
@@ -3140,6 +3244,7 @@ function seccionCuadro(c,cb,titulo='Cuadro'){
   </div></div>`).join('');
   const r0=cb.rondas[0].length;
   if(cb.campeon&&!c._z) festejarUnaVez(c,cb);
+  if(rpZ) return `<div class="sec"><div class="sec-hd"><h3>${titulo}</h3><span class="small muted">Los ganadores de la última columna pasan a los lugares ${c._z.toUpperCase()} del cuadro.</span></div><div class="draw-scroll"><div class="draw" style="height:${r0*(c.cuadro.N>2?88:96)+30}px">${cols}</div></div></div>`;
   const champ=cb.campeon?`<div class="champ"><button class="box" data-act="festejar" data-n="${esc(etiqueta(S,c,cb.campeon))}" title="Festejar de nuevo"><small>${c._z?'Campeón consolación':'Campeón'}</small><b><span class="ballico"></span> ${esc(etiqueta(S,c,cb.campeon))}</b></button></div>`:`<div class="champ"><div class="box"><small>Campeón</small><b>—</b></div></div>`;
   return `<div class="sec"><div class="sec-hd"><h3>${titulo}</h3><span class="small muted">${puedeEditar?'Tocá un partido para cargar el resultado, la cancha y la hora.':''}</span></div>
     <div class="draw-scroll"><div class="draw" style="height:${r0*(c.cuadro.N>2?88:96)+30}px">${cols}${champ}</div></div></div>`;
@@ -3226,6 +3331,8 @@ function renderSheet(){
       <div class="grid2"><div class="field"><label for="c-ini">Desde</label><input type="date" id="c-ini" value="${esc(c.inicio||'')}"></div>
       <div class="field"><label for="c-fin">Hasta</label><input type="date" id="c-fin" value="${esc(c.fin||'')}"></div>
       <div class="field"><label for="c-sede">Sede</label><input type="text" id="c-sede" value="${esc(c.sede||'')}" placeholder="Ej.: Asunción"></div></div>
+      <label class="check"><input type="checkbox" id="c-rp" ${c.conRP?'checked':''} ${fmt!=='elim'?'disabled':''}> Tiene rondas de perdedores (RP1 y RP2)${fmt!=='elim'?' · solo para llaves':''}</label>
+      <div class="field" id="c-rp-costo" ${c.conRP?'':'hidden'}><label for="c-cuotarp">Costo de la RP por jugador (${esc(simMon())}) · una sola vez para RP1 y RP2</label><input type="text" inputmode="decimal" id="c-cuotarp" value="${esc(valMonto(c.cuotaRP))}" placeholder="${ejMonto('Ej.: 50.000','Ej.: 10')}"></div>
       <div class="field"><label for="c-cuota">Costo de inscripción por jugador (${esc(simMon())})</label><input type="text" inputmode="decimal" id="c-cuota" value="${esc(valMonto(c.cuota))}" placeholder="${ejMonto('Ej.: 100.000','Ej.: 25')} · vacío si es gratis"></div>
     </div>
     <details class="mas" ${s.id&&(c.premios?.campeon||c.online)?'open':''}><summary>Más opciones: premios, sets e inscripción online</summary>
@@ -3440,7 +3547,7 @@ document.addEventListener('click',ev=>{
   const t=ev.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act;
   if(a==='ov'){if(ev.target===t)cerrar();return}
-  if(a==='insc'||a==='pago'||a==='pago-all') return;
+  if(a==='insc'||a==='pago'||a==='pago-all'||a==='rp-ins'||a==='rp-pago') return;
   const cat=()=>T().categorias.find(c=>c.id===ui.cat);
   switch(a){
     case 'man-ir':{const el=document.getElementById('m-'+t.dataset.k);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});break}
@@ -3490,6 +3597,11 @@ document.addEventListener('click',ev=>{
     case 'festejar':festejo(t.dataset.n);break;
     case 'club-alta':altaClub();break;
     case 'mas':abrir({t:'mas'});break;
+    case 'rp-armar':{const c=todasCats().find(x=>x.id===t.dataset.c);const k=+t.dataset.k;if(!c)break;
+      const jug=k===1?(c.rpIns||[]).filter(e=>perdedoresR1(c).ls.includes(e)):perdedoresRP(c,1);
+      armarRP(c,k,jug);toast(c['rp'+k].cuadro?`RP${k} armada.`:`RP${k}: ${jug.length?'pasaron directo al cuadro':'lugares libres'}.`);cambiar();break}
+    case 'rp-deshacer':{const c=todasCats().find(x=>x.id===t.dataset.c);const k=+t.dataset.k;if(!c||rpTieneResultadosEnCuadro(c,k))break;
+      lugaresRP(c,k).forEach(l=>{if(c.rpAsig)delete c.rpAsig[l]});if(c.rpCerr)delete c.rpCerr[k];if(c['rp'+k]&&!c['rp'+k].cuadro)delete c['rp'+k];toast('Se deshizo el pase al cuadro.');cambiar();break}
     case 'fondo':ui.fondoPend=t.dataset.k;aplicarFondo(ui.fondoPend,ui.veloPend??S.fondoVelo);renderSheet();break;
     case 'pago-todos':{const c=todasCats().find(x=>x.id===t.dataset.c);if(!c)break;c.pagos=c.pagos||{};const f=c.fin&&c.fin<hoyISO()?c.fin:hoyISO();inscriptosJug(c).forEach(p=>{if(!c.pagos[p.id])c.pagos[p.id]=f});const y=window.scrollY;cambiar();window.scrollTo({top:y});toast('Todos marcados como pagados.');break}
     case 'copiar':{const v=t.dataset.v;(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(()=>toast('Enlace copiado.'),()=>toast(v,6000));break}
@@ -3666,7 +3778,7 @@ document.addEventListener('click',ev=>{
       else S.jugadores.push({id:uid(),...d});
       ui.sheet=null;ui.msg=null;cambiar();break}
     case 'guardar-cat':{
-      const d={nombre:val('c-nom'),inicio:val('c-ini'),fin:val('c-fin'),sede:val('c-sede'),sets:+val('c-sets'),superTB:document.getElementById('c-tb').checked,formato:radioVal('c-fmt')||'elim',gtam:+val('c-gtam')||4,gpasan:+val('c-gpas')||2,online:!!document.getElementById('c-online')?.checked,cuota:parseMonto(val('c-cuota')),premios:{campeon:parseMonto(val('c-pc')),finalista:parseMonto(val('c-pf'))}};
+      const d={nombre:val('c-nom'),inicio:val('c-ini'),fin:val('c-fin'),sede:val('c-sede'),sets:+val('c-sets'),superTB:document.getElementById('c-tb').checked,formato:radioVal('c-fmt')||'elim',gtam:+val('c-gtam')||4,gpasan:+val('c-gpas')||2,online:!!document.getElementById('c-online')?.checked,cuota:parseMonto(val('c-cuota')),conRP:!!document.getElementById('c-rp')?.checked&&(radioVal('c-fmt')||'elim')==='elim',cuotaRP:parseMonto(val('c-cuotarp')),premios:{campeon:parseMonto(val('c-pc')),finalista:parseMonto(val('c-pf'))}};
       const bloq=!!document.querySelector('input[name=c-mod]:disabled');const mod={value:radioVal('c-mod')||'S',disabled:bloq},ram={value:radioVal('c-rama')||'M'},niv=document.getElementById('c-niv');
       if(!d.nombre){avisar('Poné un nombre al torneo.');break}
       if(document.querySelector('input[name=c-fmt]:disabled')){const c0=T().categorias.find(x=>x.id===ui.sheet.id);if(c0)d.formato=c0.formato||'elim'}
@@ -3699,17 +3811,18 @@ document.addEventListener('click',ev=>{
     case 'desde-grupos':{const c=cat();if(!generarDesdeGrupos(c)){toast('Todavía no hay clasificados.');break}ui.sub='cuadro';cambiar();break}
     case 'armar-rr':{const c=cat();if(!armarRR(c)){toast('Hacen falta al menos 3 inscriptos.');break}ui.sub='grupos';cambiar();break}
     case 'armar-cons':{const c=cat();if(Object.values(c.cons?.res||{}).some(r=>r&&r.g))break;if(!armarConsolacion(c)){toast('Hacen falta al menos 2 perdedores de primera ronda.');break}cambiar();break}
-    case 'generar':{const c=cat();if(empezo(c)||c.cuadro)break;generarCuadro(S,T(),c,val('modoCuadro')||'ranking');ui.sub='cuadro';cambiar();break}
+    case 'generar':{const c=cat();if(empezo(c)||c.cuadro)break;const n1=+val('rp-n1')||0,n2=+val('rp-n2')||0;generarCuadro(S,T(),c,val('modoCuadro')||'ranking');if(c.conRP&&c.cuadro)aplicarLugaresRP(c,Math.max(0,n1),Math.max(0,n2));ui.sub='cuadro';cambiar();break}
     case 'arm':{const w=t.dataset.w;if(ui.armado!==w){ui.armado=w;render();break}
       ui.armado=null;
       if(w==='del-foto'){const f=(S.galeria||[]).find(x=>x.id===ui.sheet.id);S.galeria=(S.galeria||[]).filter(x=>x!==f);if(f&&f.a&&assetsApi)assetsApi.delete(f.a).catch(()=>{});ui.sheet=null;cambiar()}
       if(w.startsWith('del-club-')){bajaClub(w.slice(9));break}
+      if(w==='rp-cerrar-1'){const c=cat();armarRP(c,1,[]);cambiar();break}
       if(w.startsWith('pago-ninguno-')){const c=todasCats().find(x=>x.id===w.slice(13));if(c){c.pagos={};cambiar()}break}
       if(w==='del-mov'){S.finanzas.movs=movs().filter(x=>x.id!==ui.sheet.id);ui.sheet=null;toast('Movimiento borrado.');cambiar();break}
       if(w.startsWith('del-sp-')){const id=w.slice(7);S.sponsors=(S.sponsors||[]).filter(x=>x.id!==id);cambiar()}
       if(w.startsWith('del-n-')){const id=w.slice(6);S.noticias=(S.noticias||[]).filter(n=>n.id!==id);cambiar()}
       if((w==='rehacer'||w==='rehacer-grupos')&&empezo(cat())){toast('El torneo ya tiene resultados cargados: no se puede rehacer.');render();break}
-      if(w==='rehacer'){const c=cat();ui.sub=c.grupos?'grupos':'insc';c.cuadro=null;c.res={};delete c.cons;cambiar()}
+      if(w==='rehacer'){const c=cat();ui.sub=c.grupos?'grupos':'insc';c.cuadro=null;c.res={};delete c.cons;limpiarRP(c);cambiar()}
       if(w==='rehacer-grupos'){const c=cat();delete c.grupos;c.cuadro=null;c.res={};delete c.cons;ui.sub='insc';cambiar()}
       if(w==='deshacer-cons'){const c=cat();if(c.cons&&!Object.values(c.cons.res||{}).some(r=>r&&r.g)){delete c.cons;toast('Consolación deshecha.')}cambiar()}
       if(w==='rehacer-cons'){const c=cat();if(!Object.values(c.cons?.res||{}).some(r=>r&&r.g))armarConsolacion(c);cambiar()}
@@ -3748,6 +3861,7 @@ document.addEventListener('click',ev=>{
       } else {g=val('p-gan');if(!g){avisar('Elegí quién gana por '+(tipo==='wo'?'W.O.':'retiro')+'.');return}}
       R[x.key]={s:tipo==='wo'?[]:s,g,tipo,...base,t:Date.now()};
       if(P.z!=='grupo')limpiarSiguientes(P.L);ui.sheet=null;ui.msg=null;
+      if((P.z==='rp1'||P.z==='rp2')&&revisarRP(c,+P.z[2]))setTimeout(()=>toast(`Terminó la ${P.z.toUpperCase()}: los ganadores ya están en el cuadro.`,6000),200);
       if(P.z==='grupo'&&!esRR(c)&&!c.cuadro&&gruposCompletos(c)&&generarDesdeGrupos(c)){ui.sub='cuadro';setTimeout(()=>toast('Terminó el round robin: ya están armadas las llaves con los clasificados.',6000),200)}
       else if(P.z==='grupo'&&esRR(c)&&gruposCompletos(c)){const cp=campeonDe(c);marcarFestejo(c.id+'-'+cp);setTimeout(()=>festejo(etiqueta(S,c,cp)),120)}
       else if(P.final){marcarFestejo(c.id+'-'+g);setTimeout(()=>festejo(etiqueta(S,c,g)),120)} else {ui.pop=P.z+x.key;setTimeout(()=>{ui.pop=null},1500)}
@@ -3936,8 +4050,10 @@ function inscriptosJug(c){return [...new Set(c.inscriptos.flatMap(e=>e.j))].map(
 function seccionPagos(c){
   if(!puedeEditar||!c.inscriptos.length) return '';
   const cuota=+c.cuota||0;const ps=inscriptosJug(c);const pag=c.pagos||{};const n=ps.filter(p=>pag[p.id]).length;const deben=ps.length-n;
+  const prp=c.conRP?pagosRPDe(c):null;
   return `<div class="panel sec"><div class="sec-hd"><h3>Pagos de inscripción</h3><span class="small muted">${cuota?`Inscripción ${fmtMon(cuota)} por jugador`:'Sin costo de inscripción: cargalo en Editar → Costo de inscripción'}</span></div>
     <div class="pay-res"><div><b>${n}</b><span>pagaron</span></div><div><b>${deben}</b><span>deben</span></div>${cuota?`<div><b>${fmtMon(n*cuota)}</b><span>recaudado de ${fmtMon(ps.length*cuota)}</span></div>`:''}</div>
+    ${prp&&prp.jug?`<div class="note small">Rondas de perdedores: ${prp.pag} de ${prp.jug} pagaron la RP${+c.cuotaRP?` · ${fmtMon(prp.pag*c.cuotaRP)} recaudado`:''}. Se marcan en Llaves → Rondas de perdedores.</div>`:''}
     <label class="check pay-all"><input type="checkbox" data-act="pago-all" data-c="${c.id}" ${n===ps.length?'checked':''} ${n&&n<ps.length?'data-mixto="1"':''}> <span><b>Todos pagaron</b><small>${n===ps.length?'Desmarcá para quitar todos los pagos':'Marcá para poner a todos como pagados'}</small></span></label>
     <div class="list pay-list" data-scroll-key="pagos-${c.id}">${ps.map(p=>`<div class="pay-row ${pag[p.id]?'ok':''}"><label class="check"><input type="checkbox" data-act="pago" data-c="${c.id}" data-pid="${p.id}" ${pag[p.id]?'checked':''}> <span><b>${esc(nombreCompleto(p))}</b>${pag[p.id]?`<small>Pagó${typeof pag[p.id]==='string'?' el '+esc(fmtFecha(pag[p.id])):''}</small>`:'<small>Debe</small>'}</span></label>
       ${!pag[p.id]?(p.telefono?`<button class="btn sm" data-act="wa-pago" data-c="${c.id}" data-pid="${p.id}">${ICO_WA}Recordar</button>`:'<span class="small muted">Sin teléfono</span>'):''}</div>`).join('')}</div>
@@ -3964,6 +4080,10 @@ function limpiarSiguientes(c){
 }
 document.addEventListener('change',ev=>{
   const t=ev.target;
+  if(t.dataset.act==='rp-ins'||t.dataset.act==='rp-pago'){const c=todasCats().find(x=>x.id===t.dataset.c);if(c){const e=t.dataset.e;
+      if(t.dataset.act==='rp-ins'){c.rpIns=(c.rpIns||[]).filter(x=>x!==e);if(t.checked)c.rpIns.push(e)}
+      else{c.pagosRP=c.pagosRP||{};(inscripto(c,e)?.j||[]).forEach(id=>{if(t.checked)c.pagosRP[id]=hoyISO();else delete c.pagosRP[id]})}
+      const y=window.scrollY;cambiar();window.scrollTo({top:y})}return}
   if(t.dataset.act==='pago-all'){const c=todasCats().find(x=>x.id===t.dataset.c);if(c){const f=c.fin&&c.fin<hoyISO()?c.fin:hoyISO();
       if(t.checked){c.pagos=c.pagos||{};inscriptosJug(c).forEach(p=>{if(!c.pagos[p.id])c.pagos[p.id]=f});toast('Todos marcados como pagados.')}else{c.pagos={};toast('Se quitaron todos los pagos.')}
       const y=window.scrollY;cambiar();window.scrollTo({top:y})}return}
@@ -3972,6 +4092,7 @@ document.addEventListener('change',ev=>{
     if(t.checked){if(!c.inscriptos.some(e=>e.id===pid))c.inscriptos.push({id:pid,j:[pid]})}else c.inscriptos=c.inscriptos.filter(e=>e.id!==pid);
     const y=window.scrollY;cambiar();window.scrollTo({top:y});}
   if(t.id==='modoCuadro')ui.modoCuadro=t.value;
+  if(t.id==='c-rp'){const f=document.getElementById('c-rp-costo');if(f)f.hidden=!t.checked}
   if(t.id==='tmp-anio'&&ui.sheet){ui.sheet.anio=t.value;renderSheet()}
   if(t.id==='fin-anio'){ui.finAnio=t.value;render()}
   if(t.id==='fin-cat'){ui.finCat=t.value;render();window.scrollTo({top:0})}
