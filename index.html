@@ -276,7 +276,6 @@ button.hrow:hover b{color:var(--link)}
 .reel .ph-it{width:260px;flex:none}
 .reel.quieto{overflow-x:auto;-webkit-mask-image:none;mask-image:none;padding-bottom:6px}.reel.quieto .reel-track{animation:none}
 @keyframes reel{to{transform:translateX(calc(-50% - 5px))}}
-@media (prefers-reduced-motion:reduce){.reel{overflow-x:auto;-webkit-mask-image:none;mask-image:none}.reel-track{animation:none}}
 @media (max-width:640px){.reel .ph-it{width:200px}}
 .prz{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:10px;background:var(--soft)}
 .logoed{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
@@ -1394,8 +1393,8 @@ function resumenClub(){
 }
 function srcFoto(f){return f.a?blobUrl(f.a):(f.src||'')}
 function reel(g){
-  // Con pocas fotos o con "reducir movimiento" se muestran una sola vez, sin repetir
-  let quieto=g.length<5;try{if(matchMedia('(prefers-reduced-motion: reduce)').matches)quieto=true}catch(e){}
+  // Con pocas fotos se muestran una sola vez, quietas; con 5 o más pasan solas en bucle (pausa al pasar el mouse)
+  const quieto=g.length<5;
   const base=[...g];
   const it=(f,dup)=>`<button class="ph-it" ${dup?'aria-hidden="true" tabindex="-1"':''} data-act="ver-foto" data-id="${f.id}" aria-label="${esc(f.titulo||'Foto')}"><img src="${esc(srcFoto(f))}" alt="${dup?'':esc(f.titulo||'Foto del club')}" loading="lazy"><span>${esc(f.titulo||'')}</span></button>`;
   if(quieto) return `<div class="reel quieto"><div class="reel-track">${g.map(f=>it(f,false)).join('')}</div></div>`;
