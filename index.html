@@ -828,6 +828,12 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 @media (min-width:1100px){.kpis-jug{grid-template-columns:repeat(6,1fr)}}
 .wl.g{background:#1f8a4c;color:#fff}.wl.p{background:#c62828;color:#fff}
 .forma{display:flex;align-items:center;gap:4px;margin-top:8px;flex-wrap:wrap}.forma .wl{width:19px;height:19px;border-radius:5px;font-size:10px}.forma-l{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-right:4px}
+.mv-filas{display:flex;flex-direction:column;gap:10px}
+.mv-fila{position:relative;display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px 10px;padding:12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface)}
+.mv-fila .mv-otro{grid-column:1;grid-row:2}
+.mv-fila .mv-quitar{position:absolute;top:4px;right:6px}
+.mv-tot{margin-left:auto}
+@media (max-width:560px){.mv-fila{grid-template-columns:1fr 1fr}.mv-fila>.field:first-child,.mv-fila .mv-otro{grid-column:1/-1;grid-row:auto}}
 </style>
 
 <div class="app">
@@ -2806,20 +2812,33 @@ function vistaFinanzas(){
     </section>
     <p class="small muted">Solo el administrador ve esta sección. No incluye datos personales.</p>`;
 }
+function filaVacia(){return {con:'',otro:'',monto:'',nota:''}}
+function leerFilasMov(){const s=ui.sheet;if(!s||s.t!=='mov'||!s.filas)return;
+  s.filas=s.filas.map((f,i)=>({con:val('mv-con-'+i),otro:val('mv-otro-'+i),monto:val('mv-monto-'+i),nota:val('mv-nota-'+i)}));
+  s.fecha=val('mv-fecha');s.cat=document.getElementById('mv-cat')?.value??s.cat}
 function hojaMov(s){
-  const m=s.id?movs().find(x=>x.id===s.id):{tipo:s.tipo||'egr',concepto:'',monto:0,c:(ui.tab==='finanzas'&&ui.finCat)||'',fecha:hoyISO()};if(!m) return '';
-  const tipo=s.tipo||m.tipo;const lista=tipo==='ing'?CONCEPTOS_ING:CONCEPTOS_EGR;
+  const ed=s.id?movs().find(x=>x.id===s.id):null;if(s.id&&!ed) return '';
+  if(!s.filas){const tipo0=ed?ed.tipo:'egr';const l0=tipo0==='ing'?CONCEPTOS_ING:CONCEPTOS_EGR;
+    s.tipo=s.tipo||tipo0;s.fecha=ed?ed.fecha:hoyISO();s.cat=ed?ed.c:((ui.tab==='finanzas'&&ui.finCat)||'');
+    s.filas=ed?[{con:l0.includes(ed.concepto)?ed.concepto:'__otro',otro:l0.includes(ed.concepto)?'':ed.concepto,monto:valMonto(ed.monto),nota:ed.nota||''}]:[filaVacia()]}
+  const tipo=s.tipo;const lista=tipo==='ing'?CONCEPTOS_ING:CONCEPTOS_EGR;
   const cats=todasCats().sort((a,b)=>(b.inicio||'').localeCompare(a.inicio||''));
-  return `<div class="sheet-hd"><h2>${s.id?'Editar movimiento':'Cargar ingreso o gasto'}</h2><button class="x" data-act="cerrar" aria-label="Cerrar">×</button></div>
-    <div class="opts" role="radiogroup" aria-label="Tipo"><label class="opt"><input type="radio" name="mv-tipo" value="ing" ${tipo==='ing'?'checked':''}><span>Ingreso</span></label><label class="opt"><input type="radio" name="mv-tipo" value="egr" ${tipo==='egr'?'checked':''}><span>Gasto</span></label></div>
-    <div class="field"><label for="mv-con">Concepto</label><input type="text" id="mv-con" list="mv-lista" value="${esc(m.concepto||'')}" placeholder="${tipo==='ing'?'Ej.: Auspicio':'Ej.: Pelotas'}"><datalist id="mv-lista">${lista.map(x=>`<option value="${esc(x)}">`).join('')}</datalist></div>
-    <div class="chips">${lista.map(x=>`<button class="chip" data-act="mv-chip" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>
-    <div class="grid2"><div class="field"><label for="mv-monto">Monto (${esc(simMon())})</label><input type="text" inputmode="decimal" id="mv-monto" value="${esc(valMonto(m.monto))}"></div>
-    <div class="field"><label for="mv-fecha">Fecha</label><input type="date" id="mv-fecha" value="${esc(m.fecha||'')}"></div></div>
-    <div class="field"><label for="mv-cat">Torneo</label><select id="mv-cat"><option value="">General del club (no es de un torneo)</option>${cats.map(c=>`<option value="${c.id}" ${m.c===c.id?'selected':''}>${esc(c.nombre)}</option>`).join('')}</select></div>
-    <div class="field"><label for="mv-nota">Nota (opcional)</label><input type="text" id="mv-nota" value="${esc(m.nota||'')}" placeholder="Ej.: 6 tubos de pelotas"></div>
-    <div class="btns"><button class="btn pri" data-act="mov-guardar">Guardar</button>${s.id?`<button class="btn danger ${ui.armado==='del-mov'?'arm':''}" data-act="arm" data-w="del-mov">${ui.armado==='del-mov'?'Tocá de nuevo para borrar':'Borrar'}</button>`:''}</div>
-    <span class="small muted">Las inscripciones y los premios se calculan solos: acá cargá lo demás.</span>`;
+  const fila=(f,i)=>`<div class="mv-fila">
+      <div class="field"><label for="mv-con-${i}">${s.filas.length>1?`${tipo==='ing'?'Ingreso':'Gasto'} ${i+1}`:'Concepto'}</label><select id="mv-con-${i}" data-mv-con="${i}"><option value="">Elegí…</option>${lista.map(x=>`<option ${f.con===x?'selected':''}>${esc(x)}</option>`).join('')}<option value="__otro" ${f.con==='__otro'?'selected':''}>Otro (escribir)</option></select></div>
+      <div class="field mv-otro" ${f.con==='__otro'?'':'hidden'}><label for="mv-otro-${i}">¿Cuál?</label><input type="text" id="mv-otro-${i}" value="${esc(f.otro||'')}" placeholder="${tipo==='ing'?'Ej.: Inscripción a clínica':'Ej.: Cuerdas, transporte'}"></div>
+      <div class="field"><label for="mv-monto-${i}">Monto (${esc(simMon())})</label><input type="text" inputmode="decimal" id="mv-monto-${i}" value="${esc(f.monto||'')}"></div>
+      <div class="field"><label for="mv-nota-${i}">Nota</label><input type="text" id="mv-nota-${i}" value="${esc(f.nota||'')}" placeholder="Opcional"></div>
+      ${s.filas.length>1?`<button class="x mv-quitar" data-act="mv-quitar" data-i="${i}" aria-label="Quitar esta línea" title="Quitar">×</button>`:''}
+    </div>`;
+  const tot=s.filas.reduce((a,f)=>a+parseMonto(f.monto),0);
+  return `<div class="sheet-hd"><h2>${s.id?'Editar movimiento':'Cargar ingresos o gastos'}</h2><button class="x" data-act="cerrar" aria-label="Cerrar">×</button></div>
+    <div class="opts" role="radiogroup" aria-label="Tipo"><label class="opt"><input type="radio" name="mv-tipo" value="egr" ${tipo==='egr'?'checked':''}><span>Gastos</span></label><label class="opt"><input type="radio" name="mv-tipo" value="ing" ${tipo==='ing'?'checked':''}><span>Ingresos</span></label></div>
+    <div class="grid2"><div class="field"><label for="mv-fecha">Fecha</label><input type="date" id="mv-fecha" value="${esc(s.fecha||'')}"></div>
+    <div class="field"><label for="mv-cat">Torneo</label><select id="mv-cat"><option value="">General del club (no es de un torneo)</option>${cats.map(c=>`<option value="${c.id}" ${s.cat===c.id?'selected':''}>${esc(c.nombre)}</option>`).join('')}</select></div></div>
+    <div class="mv-filas">${s.filas.map(fila).join('')}</div>
+    ${s.id?'':`<div class="btns"><button class="btn sm" data-act="mv-agregar">+ Agregar otro ${tipo==='ing'?'ingreso':'gasto'}</button>${s.filas.length>1?`<span class="small muted mv-tot">Total: <b>${fmtMon(tot)}</b></span>`:''}</div>`}
+    <div class="btns"><button class="btn pri" data-act="mov-guardar">${s.id||s.filas.length===1?'Guardar':`Guardar ${s.filas.length} ${tipo==='ing'?'ingresos':'gastos'}`}</button>${s.id?`<button class="btn danger ${ui.armado==='del-mov'?'arm':''}" data-act="arm" data-w="del-mov">${ui.armado==='del-mov'?'Tocá de nuevo para borrar':'Borrar'}</button>`:''}</div>
+    <span class="small muted">Las inscripciones y los premios se calculan solos: acá cargá lo demás. Fecha y torneo valen para todas las líneas.</span>`;
 }
 function finanzasPDF(){
   const d=datosFinanzas(ui.finAnio,ui.finCat),T=d.T;const uno=ui.finCat&&todasCats().find(c=>c.id===ui.finCat);
@@ -2922,7 +2941,7 @@ const MANUAL=[
   'Abrí <b>Finanzas</b> (en el celular, desde <b>Más</b>) y elegí la temporada. En <b>Torneo</b> elegís ver el <b>global</b> de todos los torneos o los números de <b>un solo torneo</b> (también tocando su nombre en la tabla).',
   'Arriba ves los indicadores: ingresos, egresos, resultado, margen, cobranza, torneos rentables, ingreso y costo por jugador, y el resultado proyectado.',
   'Las <b>inscripciones cobradas</b> y los <b>premios</b> de los torneos con campeón se suman solos.',
-  'Para lo demás tocá <b>Cargar ingreso o gasto</b>: auspicios, cantina, pelotas, trofeos, juez, alquiler de canchas… Elegí si es de un torneo o general del club.',
+  'Para lo demás tocá <b>Cargar ingreso o gasto</b>: elegí el concepto de la lista (pelotas, trofeos, juez, auspicio…) o <b>Otro</b> para escribirlo. Con <b>+ Agregar otro gasto</b> cargás varios de una vez; la fecha y el torneo valen para todos.',
   'Tocá un movimiento de la lista para corregirlo o borrarlo. Con <b>Reporte PDF</b> o <b>Excel</b> descargás lo que estés viendo (global o un torneo).'],
   tips:['Las finanzas son privadas: solo las ve el administrador.','El resultado proyectado supone que pagan todos los inscriptos y que se entregan todos los premios.']},
  {id:'ranking',t:'Ranking, campeones y ascensos',d:'Lo que se calcula solo.',pasos:[
@@ -3479,15 +3498,18 @@ document.addEventListener('click',ev=>{
     case 'fin-cat':ui.finCat=t.dataset.id||'';render();window.scrollTo({top:0});break;
     case 'mov-nuevo':abrir({t:'mov'});break;
     case 'mov-edit':abrir({t:'mov',id:t.dataset.id});break;
-    case 'mv-chip':{const i=document.getElementById('mv-con');if(i){i.value=t.dataset.v;document.getElementById('mv-monto')?.focus()}break}
-    case 'mov-guardar':{const tipo=radioVal('mv-tipo')||'egr',concepto=val('mv-con'),monto=parseMonto(val('mv-monto'));
-      if(!concepto){avisar('Poné el concepto.');break}
-      if(!(monto>0)){avisar('Poné el monto.');break}
+    case 'mv-agregar':leerFilasMov();ui.sheet.filas.push(filaVacia());renderSheet();setTimeout(()=>document.getElementById('mv-con-'+(ui.sheet.filas.length-1))?.focus(),30);break;
+    case 'mv-quitar':leerFilasMov();ui.sheet.filas.splice(+t.dataset.i,1);renderSheet();break;
+    case 'mov-guardar':{leerFilasMov();const sh=ui.sheet,tipo=sh.tipo||'egr';
+      const filas=sh.filas.map(f=>({concepto:(f.con==='__otro'?f.otro:f.con).trim(),monto:parseMonto(f.monto),nota:(f.nota||'').trim(),vacia:!f.con&&!f.monto&&!f.otro&&!f.nota}));
+      const usar=filas.filter(f=>!f.vacia);
+      if(!usar.length){avisar('Completá al menos una línea.');break}
+      const mal=usar.findIndex(f=>!f.concepto||!(f.monto>0));
+      if(mal>=0){avisar(`Revisá la línea ${filas.indexOf(usar[mal])+1}: falta ${!usar[mal].concepto?'el concepto':'el monto'}.`);break}
       S.finanzas=S.finanzas||{movs:[]};S.finanzas.movs=S.finanzas.movs||[];
-      const d={tipo,concepto,monto,fecha:val('mv-fecha'),c:val('mv-cat'),nota:val('mv-nota')};
-      const ex=ui.sheet.id&&S.finanzas.movs.find(x=>x.id===ui.sheet.id);
-      if(ex)Object.assign(ex,d);else S.finanzas.movs.push({id:uid(),...d});
-      ui.sheet=null;toast(tipo==='ing'?'Ingreso guardado.':'Gasto guardado.');cambiar();break}
+      if(sh.id){const ex=S.finanzas.movs.find(x=>x.id===sh.id);if(ex)Object.assign(ex,{tipo,concepto:usar[0].concepto,monto:usar[0].monto,nota:usar[0].nota,fecha:sh.fecha,c:sh.cat||''})}
+      else usar.forEach(f=>S.finanzas.movs.push({id:uid(),tipo,concepto:f.concepto,monto:f.monto,nota:f.nota,fecha:sh.fecha,c:sh.cat||''}));
+      ui.sheet=null;toast(usar.length>1?`${usar.length} ${tipo==='ing'?'ingresos guardados':'gastos guardados'}.`:(tipo==='ing'?'Ingreso guardado.':'Gasto guardado.'));cambiar();break}
     case 'tmp-pdf':repTemporadaPDF(ui.sheet.anio);break;
     case 'tmp-xlsx':repTemporadaXLSX(ui.sheet.anio);break;
     case 'wa-hora':{const P=ctxPartido(ui.sheet.c,ui.sheet.z,ui.sheet.k);if(!P)break;const p=jug(S,t.dataset.pid);
@@ -3952,8 +3974,9 @@ document.addEventListener('change',ev=>{
   if(t.id==='tmp-anio'&&ui.sheet){ui.sheet.anio=t.value;renderSheet()}
   if(t.id==='fin-anio'){ui.finAnio=t.value;render()}
   if(t.id==='fin-cat'){ui.finCat=t.value;render();window.scrollTo({top:0})}
-  if(t.name==='mv-tipo'&&ui.sheet&&ui.sheet.t==='mov'){const keep={con:val('mv-con'),monto:val('mv-monto'),fecha:val('mv-fecha'),cat:val('mv-cat'),nota:val('mv-nota')};ui.sheet.tipo=t.value;renderSheet();
-    ['con','monto','fecha','cat','nota'].forEach(k=>{const el=document.getElementById('mv-'+k);if(el)el.value=keep[k]})}
+  if(t.name==='mv-tipo'&&ui.sheet&&ui.sheet.t==='mov'){leerFilasMov();const nl=t.value==='ing'?CONCEPTOS_ING:CONCEPTOS_EGR;
+    ui.sheet.filas.forEach(f=>{if(f.con&&f.con!=='__otro'&&!nl.includes(f.con)){f.otro=f.con;f.con='__otro'}});ui.sheet.tipo=t.value;renderSheet()}
+  if(t.dataset&&t.dataset.mvCon!==undefined){const o=t.closest('.mv-fila')?.querySelector('.mv-otro');if(o){o.hidden=t.value!=='__otro';if(t.value==='__otro')o.querySelector('input')?.focus()}}
   if(t.id==='c-niv'){const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido()}
   if(t.id==='sp-logo'&&t.files[0]){const f=t.files[0];t.value='';reducir(f,240).then(cv=>{let d=cv.toDataURL('image/png');if(d.length>120000)d=cv.toDataURL('image/jpeg',.86);ui.spLogo=d;const im=document.getElementById('sp-prev');if(im){im.src=d;im.hidden=false}}).catch(()=>avisar('No se pudo leer esa imagen. Probá con PNG o JPG.'))}
   if(t.id==='g-dia'&&t.value){ui.gdia=t.value;render()}
@@ -3982,6 +4005,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(!t.name||!/^c-(fmt|
   const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido();
 });
 document.addEventListener('input',ev=>{
+  if(/^mv-monto-/.test(ev.target.id)&&ui.sheet&&ui.sheet.filas){const tt=[...document.querySelectorAll('[id^="mv-monto-"]')].reduce((a,e)=>a+parseMonto(e.value),0);const b=document.querySelector('.mv-tot b');if(b)b.textContent=fmtMon(tt)}
   if(ev.target.id==='l-velo'){ui.veloPend=+ev.target.value;aplicarFondo(ui.fondoPend??S.fondo,ui.veloPend);return}
   if(ev.target.id==='c-nom')delete ev.target.dataset.auto;
   if(/^s-[01]-\d$/.test(ev.target.id||''))syncTB();
