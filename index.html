@@ -1219,7 +1219,7 @@ function resumenClub(){
   const pr=premiosEntregados();
   return `<section class="kpis club" aria-label="El club en números">
     <div><b>${S.jugadores.length}</b><span>Jugadores registrados</span><em>${(()=>{const h=S.jugadores.filter(p=>p.sexo!=='F').length,m=S.jugadores.length-h;return `${h} ${h===1?'hombre':'hombres'} · ${m} ${m===1?'mujer':'mujeres'}`})()}</em></div>
-    <div><b>${nT}</b><span>Torneos creados</span><em>${(()=>{const fin=S.torneos.reduce((a,e)=>a+e.categorias.filter(c=>campeonDe(c)).length,0);return `${fin} finalizado${fin===1?'':'s'} · ${nT-fin} en curso`})()}</em></div>
+    <div><b>${nT}</b><span>Torneos creados</span><em>${(()=>{const fin=S.torneos.reduce((a,e)=>a+e.categorias.filter(c=>campeonDe(c)).length,0);const h=hoyISO();const cur=todasCats().filter(c=>estadoTorneo(c,h)==='curso').length;const res=nT-fin-cur;return `${fin} finalizado${fin===1?'':'s'} · ${cur} en curso${res?` · ${res} por comenzar`:''}`})()}</em></div>
     <div class="gsk"><b>Gs. ${fmtCI(pr.gs)||0}</b><span>Entregados en premios</span><em>${pr.n} torneo${pr.n===1?'':'s'} con premio pagado</em></div>
   </section>`;
 }
@@ -1343,7 +1343,9 @@ function filaTorneo(c,ev){
     if(cp){st=`<span class="ballico"></span> Campeón: ${esc(etiqueta(S,c,cp))}`;on=true}else st=`Round robin · ${jg}/${tot}`}
   if(cb){if(cb.campeon){st=`<span class="ballico"></span> Campeón: ${esc(etiqueta(S,c,cb.campeon))}`;on=true}
     else{let r=-1;cb.rondas.forEach((f,i)=>{if(r<0&&f.some(x=>x.estado==='pendiente'))r=i});st=r>=0?`En juego · ${nombreRonda(r,cb.R)}`:'Esperando resultados'}}
-  if(estadoTorneo(c,hoyISO())==='prox'){const d=Math.round((Date.parse(c.inicio)-Date.parse(hoyISO()))/86400000);st=`Próximo · empieza ${d===1?'mañana':'en '+d+' días'}`;on=false}
+  const est=estadoTorneo(c,hoyISO());
+  if(est==='listo'){st=cb?`Por comenzar · ${c.grupos?'llaves armadas':'cuadro armado'}`:c.grupos?'Por comenzar · round robin armado':'Por comenzar · inscribí jugadores y armá el cuadro';on=false}
+  if(est==='prox'){const d=Math.round((Date.parse(c.inicio)-Date.parse(hoyISO()))/86400000);st=`Próximo · empieza ${d===1?'mañana':'en '+d+' días'}`;on=false}
   const pct=tot?Math.round(jg/tot*100):0;
   return `<button class="tr" data-act="ver-cat" data-id="${c.id}" ${ev?`data-ev="${ev.id}"`:''}>
     <span class="nm">${esc(c.nombre)}${ev?` <span class="small muted" style="font-weight:500">· ${esc(ev.nombre)}</span>`:''}</span>
@@ -1561,7 +1563,8 @@ function vistaResumen(){
         ${destacados(t)}
         ${(()=>{const act=todasCats().filter(c=>estadoTorneo(c,hoy)==='curso');
           return `<section class="sec"><div class="sec-hd"><h2>Torneos en curso <span class="ct">${act.length}</span></h2>${puedeEditar?'<button class="btn sm" data-act="nueva-cat">Nuevo torneo</button>':''}</div>
-          ${act.length?`<div class="list">${act.map(c=>filaTorneo(c)).join('')}</div>`:'<div class="panel muted">No hay torneos en curso.</div>'}</section>`})()}
+          ${act.length?`<div class="list">${act.map(c=>filaTorneo(c)).join('')}</div>`:'<div class="panel muted">No hay torneos en curso.</div>'}</section>`
+          +(()=>{const lis=todasCats().filter(c=>estadoTorneo(c,hoy)==='listo');return lis.length?`<section class="sec"><div class="sec-hd"><h2>Por comenzar <span class="ct">${lis.length}</span></h2></div><div class="list">${lis.map(c=>filaTorneo(c)).join('')}</div></section>`:''})()})()}
         <section class="sec"><div class="sec-hd"><h2>Próximos partidos <span class="ct">${prox.length}</span></h2>${prox.length>5?'<button class="btn sm" data-act="tab" data-k="partidos">Ver todos</button>':''}</div>
           ${prox.length?`<div class="list">${prox.slice(0,5).map(itemPartido).join('')}</div>`:'<div class="panel muted">No hay partidos listos para jugar.</div>'}
         </section>
@@ -1646,12 +1649,14 @@ function kpisTorneo(c){
 
 
 /* ---- Eventos ---- */
+/* fin: tiene campeón · curso: ya hay algún resultado · listo: por comenzar (cuadro armado o ya llegó la fecha, sin resultados) · prox: empieza más adelante · sin: sin fecha ni cuadro */
 function estadoTorneo(c,hoy){
   if(campeonDe(c)) return 'fin';
-  if(c.cuadro||c.grupos) return 'curso';
-  if(!c.inicio&&!c.fin) return 'sin';
+  if(empezo(c)) return 'curso';
   const ini=c.inicio||c.fin;
-  return ini>hoy?'prox':'curso';
+  if(ini&&ini>hoy) return 'prox';
+  if(c.cuadro||c.grupos||ini) return 'listo';
+  return 'sin';
 }
 function todasCats(){return S.torneos.flatMap(e=>e.categorias)}
 function estadoEvento(e,hoy){
@@ -1661,7 +1666,7 @@ function estadoEvento(e,hoy){
 }
 function vistaEventos(){
   const hoy=hoyISO();const act=T();
-  const grupos=[['curso','En curso'],['prox','Próximos'],['sin','Sin fecha'],['fin','Finalizados']];
+  const grupos=[['curso','En curso'],['listo','Por comenzar'],['prox','Próximos'],['sin','Sin fecha'],['fin','Finalizados']];
   const fila=e=>{const cats=e.categorias.length;const camp=e.categorias.filter(c=>calcularCuadro(c)?.campeon).length;
     return `<div class="evrow"><button class="evmain" data-act="sel-ev" data-id="${e.id}">
       <span class="n">${esc(e.nombre)}${act&&e.id===act.id?' <span class="tag on">Abierto</span>':''}</span>
@@ -2265,7 +2270,7 @@ function vistaCategorias(){
   ui.cat=null;
   const hoy=hoyISO();
   const tabs='';
-  const grupos=[['curso','En curso'],['prox','Próximos'],['sin','Sin fecha'],['fin','Finalizados']];
+  const grupos=[['curso','En curso'],['listo','Por comenzar'],['prox','Próximos'],['sin','Sin fecha'],['fin','Finalizados']];
   const html=grupos.map(([k,l])=>{const xs=t.categorias.filter(c=>estadoTorneo(c,hoy)===k).sort((a,b)=>k==='fin'?(b.inicio||'').localeCompare(a.inicio||''):(a.inicio||'').localeCompare(b.inicio||''));
     return xs.length?`<section class="sec"><h3>${l} · ${xs.length}</h3><div class="list">${xs.map(c=>filaTorneo(c)).join('')}</div></section>`:''}).join('');
   return `${encabezado('Torneos',{sb:`${t.categorias.length} torneo${t.categorias.length===1?'':'s'} del club`,acc:(puedeEditar?'<button class="btn pri" data-act="nueva-cat">Nuevo torneo</button>':'')})}
