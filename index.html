@@ -826,6 +826,7 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 @media (min-width:560px){.kpis-jug{grid-template-columns:repeat(3,1fr)}}
 @media (min-width:1100px){.kpis-jug{grid-template-columns:repeat(6,1fr)}}
 .wl.g{background:#1f8a4c;color:#fff}.wl.p{background:#c62828;color:#fff}
+.forma{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}.forma .wl{width:34px;height:34px;border-radius:8px;font-size:15px}.forma-l{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-right:4px}
 </style>
 
 <div class="app">
@@ -1979,6 +1980,9 @@ function datosPerfil(pid){
 }
 /* Premios en plata: campeón y vicecampeón de torneos terminados (en dobles, el premio de la pareja) */
 function premiosDe(parts){let tot=0,n=0;parts.forEach(x=>{if(!campeonDe(x.c))return;const v=x.camp?(+x.c.premios?.campeon||0):x.final?(+x.c.premios?.finalista||0):0;if(v){tot+=v;n++}});return {tot,n}}
+/* Últimos 5 partidos: G verde / P roja, de más viejo a más nuevo (el último a la derecha) */
+function formaReciente(ms){const u=ms.slice(-5);if(!u.length)return '';
+  return `<div class="forma" aria-label="Últimos ${u.length} partidos"><span class="forma-l">Últimos ${u.length}</span>${u.map(m=>`<span class="wl ${m.gano?'g':'p'}" title="${esc((m.gano?'Le ganó a ':'Perdió con ')+etiqueta(S,m.c,m.riv)+' · '+marcadorPropio(m))}">${m.gano?'G':'P'}</span>`).join('')}</div>`}
 function marcadorPropio(m){
   if(m.x.res.tipo==='wo') return 'W.O.';
   return (m.x.res.s||[]).filter(v=>v[0]!==''&&v[0]!=null).map(v=>`${v[m.i]}-${v[1-m.i]}`+(v[2]!=null?`(${tbDe(v,m.i)}-${tbDe(v,1-m.i)})`:'')).join(' ')+(m.x.res.tipo==='ret'?' ret.':'');
@@ -2021,7 +2025,7 @@ function perfilJugador(pid){
 
   const hist=[...ms].reverse();
   return `<button class="back" data-act="volver-jug">‹ Jugadores</button>
-    <div class="ph-perfil">${bloqueAvatar(p)}${encabezado(esc(nombreCompleto(p))+bandera(p.pais,'big'),{ey:p.sexo==='F'?'Jugadora':'Jugador',sb:esc([paisNombre(p.pais),p.club||'Sin club',p.categoria?'Categoría '+p.categoria:'',p.sexo==='F'?'Damas':'Caballeros',edadJug(p)!=null?edadJug(p)+' años':'',p.altura?(p.altura/100).toFixed(2).replace('.',',')+' m':'',p.mano==='D'?(p.sexo==='F'?'Diestra':'Diestro'):p.mano==='Z'?(p.sexo==='F'?'Zurda':'Zurdo'):''].filter(Boolean).join(' · ')),acc:`<button class="btn sm ${sigo(p.id)?'on':''} btn-seg" data-act="seguir" data-id="${p.id}" aria-pressed="${sigo(p.id)}">${ICO_STAR}${sigo(p.id)?'Siguiendo':'Seguir'}</button><button class="btn sm" data-act="h2h" data-id="${p.id}">Cara a cara</button><button class="btn sm pdf" data-act="rep-jug" data-id="${p.id}">${ICO_PDF}Descargar estadísticas (PDF)</button>`+(puedeEditar?`<button class="btn sm" data-act="edit-jug" data-id="${p.id}">Editar datos</button>`:'')})}</div>
+    <div class="ph-perfil">${bloqueAvatar(p)}${encabezado(esc(nombreCompleto(p))+bandera(p.pais,'big'),{ey:p.sexo==='F'?'Jugadora':'Jugador',sb:esc([paisNombre(p.pais),p.club||'Sin club',p.categoria?'Categoría '+p.categoria:'',p.sexo==='F'?'Damas':'Caballeros',edadJug(p)!=null?edadJug(p)+' años':'',p.altura?(p.altura/100).toFixed(2).replace('.',',')+' m':'',p.mano==='D'?(p.sexo==='F'?'Diestra':'Diestro'):p.mano==='Z'?(p.sexo==='F'?'Zurda':'Zurdo'):''].filter(Boolean).join(' · '))+formaReciente(ms),acc:`<button class="btn sm ${sigo(p.id)?'on':''} btn-seg" data-act="seguir" data-id="${p.id}" aria-pressed="${sigo(p.id)}">${ICO_STAR}${sigo(p.id)?'Siguiendo':'Seguir'}</button><button class="btn sm" data-act="h2h" data-id="${p.id}">Cara a cara</button><button class="btn sm pdf" data-act="rep-jug" data-id="${p.id}">${ICO_PDF}Descargar estadísticas (PDF)</button>`+(puedeEditar?`<button class="btn sm" data-act="edit-jug" data-id="${p.id}">Editar datos</button>`:'')})}</div>
     <section class="kpis kpis-jug" aria-label="Resumen del jugador">
       <div><b>${st.pj}</b><span>Partidos</span></div>
       <div><b>${st.pg}<small>-${pp}</small></b><span>Ganados y perdidos</span><em>${pct(st.pg,st.pj)} de victorias</em></div>
