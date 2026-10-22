@@ -780,7 +780,8 @@ details.mas[open] summary{margin-bottom:4px}
 a.btn{text-decoration:none}
 
 /* Finanzas */
-.fin-top{display:flex;gap:12px;align-items:end;margin-bottom:4px}.fin-top .field{min-width:200px}
+.fin-top{display:flex;gap:12px;align-items:end;margin-bottom:4px;flex-wrap:wrap}.fin-top .field{min-width:200px}.fin-top .fin-cat{flex:1;max-width:460px}
+.fin-uno{margin-bottom:4px}
 .fin-kpis{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
 .fin-kpis b{font-size:24px;white-space:nowrap}
 .fin-tabla td .lnk2{display:block;text-align:left;font-weight:600;padding:0}
@@ -2723,10 +2724,10 @@ const CONCEPTOS_ING=['Auspicio','Cantina','Venta de entradas','Rifa o sorteo','A
 const CONCEPTOS_EGR=['Pelotas','Trofeos y medallas','Juez o árbitro','Alquiler de canchas','Remeras','Comida y bebida','Publicidad','Otro gasto'];
 function movs(){return (S.finanzas&&S.finanzas.movs)||[]}
 function pctTxt(a,b){return b?Math.round(a/b*100)+'%':'—'}
-function datosFinanzas(anio){
-  const cats=todasCats().filter(c=>!anio||anioDe(c)===anio).sort((a,b)=>(a.inicio||'9').localeCompare(b.inicio||'9'));
+function datosFinanzas(anio,cat){
+  const cats=todasCats().filter(c=>(!anio||anioDe(c)===anio)&&(!cat||c.id===cat)).sort((a,b)=>(a.inicio||'9').localeCompare(b.inicio||'9'));
   const ids=new Set(cats.map(c=>c.id));
-  const ms=movs().filter(m=>m.c?ids.has(m.c):(!anio||(m.fecha||'').slice(0,4)===anio));
+  const ms=movs().filter(m=>m.c?ids.has(m.c):(!cat&&(!anio||(m.fecha||'').slice(0,4)===anio)));
   const comp={ing:{},egr:{}};const suma=(o,k,v)=>{if(v)o[k]=(o[k]||0)+v};
   const tor=cats.map(c=>{
     const jugs=inscriptosJug(c),cuota=+c.cuota||0,pag=jugs.filter(p=>c.pagos?.[p.id]).length;
@@ -2756,13 +2757,16 @@ function barrasComp(lista,total,clase){
 }
 function vistaFinanzas(){
   const an=aniosTemporada();if(ui.finAnio===undefined)ui.finAnio=an[0]||'';
-  const d=datosFinanzas(ui.finAnio),T=d.T;
+  const delAnio=todasCats().filter(c=>!ui.finAnio||anioDe(c)===ui.finAnio).sort((a,b)=>(a.inicio||'9').localeCompare(b.inicio||'9'));
+  if(ui.finCat&&!delAnio.some(c=>c.id===ui.finCat))ui.finCat='';
+  const uno=ui.finCat?delAnio.find(c=>c.id===ui.finCat):null;
+  const d=datosFinanzas(ui.finAnio,ui.finCat),T=d.T;
   const k=(lbl,val,sub,cls='')=>`<div class="${cls}"><span>${lbl}</span><b>${val}</b>${sub?`<em>${sub}</em>`:''}</div>`;
   const margen=T.ing?Math.round(T.res/T.ing*100):null;
   const cobranza=T.inscEsp?Math.round(T.insc/T.inscEsp*100):null;
   const maxAbs=Math.max(1,...d.tor.map(t=>Math.max(t.ing,t.egr)));
   const filas=d.tor.map(t=>{const m=t.ing?Math.round(t.res/t.ing*100):null;
-    return `<tr><td><button class="lnk2" data-act="ver-cat" data-id="${t.c.id}">${esc(t.c.nombre)}</button><small>${t.fin?'Finalizado':'En curso o por empezar'} · ${t.jug} jug.</small></td>
+    return `<tr><td><button class="lnk2" data-act="fin-cat" data-id="${t.c.id}">${esc(t.c.nombre)}</button><small>${t.fin?'Finalizado':'En curso o por empezar'} · ${t.jug} jug.</small></td>
       <td class="num">${fmtMon(t.ing)}<span class="fin-mini"><i class="ing" style="width:${Math.round(t.ing/maxAbs*100)}%"></i></span></td>
       <td class="num">${fmtMon(t.egr)}<span class="fin-mini"><i class="egr" style="width:${Math.round(t.egr/maxAbs*100)}%"></i></span></td>
       <td class="num ${t.res<0?'neg':t.res>0?'pos':''}"><b>${fmtMon(t.res)}</b></td><td class="num">${m==null?'—':m+'%'}</td>
@@ -2770,14 +2774,16 @@ function vistaFinanzas(){
   const nomCat=id=>{const c=todasCats().find(x=>x.id===id);return c?c.nombre:'General del club'};
   const listaMovs=[...d.ms].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
   return `${encabezado('Finanzas',{ey:'Solo administrador',sb:'Ingresos, gastos y rentabilidad de los torneos',acc:`<button class="btn" data-act="fin-xlsx">${ICO_PDF}Excel</button><button class="btn pri" data-act="mov-nuevo">Cargar ingreso o gasto</button>`})}
-    <div class="fin-top"><div class="field"><label for="fin-anio">Temporada</label><select id="fin-anio">${an.map(a=>`<option value="${a}" ${ui.finAnio===a?'selected':''}>${a}</option>`).join('')}<option value="" ${ui.finAnio===''?'selected':''}>Todos los torneos</option></select></div></div>
+    <div class="fin-top"><div class="field"><label for="fin-anio">Temporada</label><select id="fin-anio">${an.map(a=>`<option value="${a}" ${ui.finAnio===a?'selected':''}>${a}</option>`).join('')}<option value="" ${ui.finAnio===''?'selected':''}>Todas las temporadas</option></select></div>
+      <div class="field fin-cat"><label for="fin-cat">Torneo</label><select id="fin-cat"><option value="">Global: todos los torneos</option>${delAnio.map(c=>`<option value="${c.id}" ${ui.finCat===c.id?'selected':''}>${esc(c.nombre)}</option>`).join('')}</select></div></div>
+    ${uno?`<div class="note fin-uno">Estás viendo solo <b>${esc(uno.nombre)}</b>. <button class="lnk2" data-act="fin-cat" data-id="">Ver global</button></div>`:''}
     <section class="kpis fin-kpis" aria-label="Indicadores financieros">
       ${k('Ingresos',fmtMon(T.ing),`Inscripciones ${fmtMon(T.insc)}`)}
       ${k('Egresos',fmtMon(T.egr),`Premios entregados y gastos`)}
       ${k('Resultado',fmtMon(T.res),T.res>=0?'Ganancia':'Pérdida',T.res<0?'neg':'pos')}
       ${k('Margen',margen==null?'—':margen+'%','Resultado sobre ingresos',margen!=null&&margen<0?'neg':'')}
       ${k('Cobranza',cobranza==null?'—':cobranza+'%',`Falta cobrar ${fmtMon(T.porCobrar)}`)}
-      ${k('Torneos rentables',`${d.rentables}<small>/${d.conMov}</small>`,'Con resultado positivo')}
+      ${uno?k('Inscriptos',String(d.tor[0]?.jug||0),`${d.tor[0]?.pag||0} pagaron · cuota ${fmtMon(d.tor[0]?.cuota||0)}`):k('Torneos rentables',`${d.rentables}<small>/${d.conMov}</small>`,'Con resultado positivo')}
     </section>
     <section class="kpis fin-kpis2">
       ${k('Ingreso por jugador',T.jug?fmtMon(Math.round(T.ing/T.jug)):'—','')}
@@ -2785,11 +2791,11 @@ function vistaFinanzas(){
       ${k('Resultado proyectado',fmtMon(T.proyRes),'Si todos pagan y se entregan todos los premios',T.proyRes<0?'neg':'')}
       ${k('Retorno sobre gastos',T.egr?Math.round(T.res/T.egr*100)+'%':'—','Resultado / egresos')}
     </section>
-    <section class="sec"><div class="sec-hd"><h2>Por torneo</h2></div>
+    ${uno?'':`<section class="sec"><div class="sec-hd"><h2>Por torneo</h2><span class="small muted">Tocá un torneo para ver solo sus números</span></div>
       ${d.tor.length?`<div class="panel fin-tabla"><table><thead><tr><th>Torneo</th><th class="num">Ingresos</th><th class="num">Egresos</th><th class="num">Resultado</th><th class="num">Margen</th><th class="num">Cobranza</th></tr></thead><tbody>${filas}</tbody>
       ${d.gen.length?`<tfoot><tr><td>Movimientos generales del club</td><td class="num">${fmtMon(d.gen.filter(m=>m.tipo==='ing').reduce((a,m)=>a+(+m.monto||0),0))}</td><td class="num">${fmtMon(d.gen.filter(m=>m.tipo==='egr').reduce((a,m)=>a+(+m.monto||0),0))}</td><td colspan="3"></td></tr></tfoot>`:''}</table></div>`:'<div class="panel muted">No hay torneos en esta temporada.</div>'}
       <p class="small muted">Ingresos: inscripciones marcadas como pagadas más los ingresos cargados. Egresos: premios de los torneos con campeón más los gastos cargados.</p>
-    </section>
+    </section>`}
     <div class="fin-cols">
       <section class="sec"><div class="sec-hd"><h2>De dónde entra la plata</h2></div><div class="panel">${barrasComp(d.ordenComp('ing'),T.ing,'ing')}</div></section>
       <section class="sec"><div class="sec-hd"><h2>En qué se gasta</h2></div><div class="panel">${barrasComp(d.ordenComp('egr'),T.egr,'egr')}</div></section>
@@ -2801,7 +2807,7 @@ function vistaFinanzas(){
     <p class="small muted">Solo el administrador ve esta sección. No incluye datos personales.</p>`;
 }
 function hojaMov(s){
-  const m=s.id?movs().find(x=>x.id===s.id):{tipo:s.tipo||'egr',concepto:'',monto:0,c:'',fecha:hoyISO()};if(!m) return '';
+  const m=s.id?movs().find(x=>x.id===s.id):{tipo:s.tipo||'egr',concepto:'',monto:0,c:(ui.tab==='finanzas'&&ui.finCat)||'',fecha:hoyISO()};if(!m) return '';
   const tipo=s.tipo||m.tipo;const lista=tipo==='ing'?CONCEPTOS_ING:CONCEPTOS_EGR;
   const cats=todasCats().sort((a,b)=>(b.inicio||'').localeCompare(a.inicio||''));
   return `<div class="sheet-hd"><h2>${s.id?'Editar movimiento':'Cargar ingreso o gasto'}</h2><button class="x" data-act="cerrar" aria-label="Cerrar">×</button></div>
@@ -2816,12 +2822,13 @@ function hojaMov(s){
     <span class="small muted">Las inscripciones y los premios se calculan solos: acá cargá lo demás.</span>`;
 }
 async function finanzasXLSX(){
-  const d=datosFinanzas(ui.finAnio);toast('Generando Excel…',0);
+  const d=datosFinanzas(ui.finAnio,ui.finCat);toast('Generando Excel…',0);
   try{await cargarXLSX()}catch(e){toast('No se pudo cargar el generador de Excel. Revisá la conexión.');return}
   const U=XLSX.utils,wb=U.book_new(),sm=simMon();
   const hoja=(n,f,w)=>{const ws=U.aoa_to_sheet(f);ws['!cols']=w.map(x=>({wch:x}));U.book_append_sheet(wb,ws,n)};
   const T=d.T;
-  hoja('Indicadores',[[nombreApp()+' · Finanzas '+(d.anio||'(todas)')],[],['Indicador','Valor'],[`Ingresos (${sm})`,T.ing],[`Egresos (${sm})`,T.egr],[`Resultado (${sm})`,T.res],['Margen (%)',T.ing?Math.round(T.res/T.ing*100):''],
+  const cn=ui.finCat&&todasCats().find(c=>c.id===ui.finCat);
+  hoja('Indicadores',[[nombreApp()+' · Finanzas '+(cn?cn.nombre:(d.anio||'(todas)'))],[],['Indicador','Valor'],[`Ingresos (${sm})`,T.ing],[`Egresos (${sm})`,T.egr],[`Resultado (${sm})`,T.res],['Margen (%)',T.ing?Math.round(T.res/T.ing*100):''],
     ['Cobranza de inscripciones (%)',T.inscEsp?Math.round(T.insc/T.inscEsp*100):''],[`Por cobrar (${sm})`,T.porCobrar],[`Resultado proyectado (${sm})`,T.proyRes],['Torneos rentables',`${d.rentables} de ${d.conMov}`]],[34,18]);
   hoja('Por torneo',[['Torneo','Jugadores',`Cuota (${sm})`,'Pagaron',`Inscripciones (${sm})`,`Otros ingresos (${sm})`,`Premios (${sm})`,`Otros gastos (${sm})`,`Ingresos (${sm})`,`Egresos (${sm})`,`Resultado (${sm})`,'Margen (%)'],
     ...d.tor.map(t=>[t.c.nombre,t.jug,t.cuota,t.pag,t.insc,t.otrosIng,t.premios,t.otrosEgr,t.ing,t.egr,t.res,t.ing?Math.round(t.res/t.ing*100):''])],[40,10,12,9,15,15,13,15,13,13,13,11]);
@@ -2880,7 +2887,7 @@ const MANUAL=[
   'Con <b>Pantalla TV</b> (en Inicio) la app pasa sola resultados, próximos partidos y auspiciantes: ideal para un televisor en el club.'],
   tips:['Para la comisión directiva: en <b>Torneos → Resumen de temporada</b> descargás el informe del año en PDF o Excel, con recaudación, participación y jugadores más activos.','Publicá <b>Noticias</b> y subí fotos a la <b>Galería</b> desde el Inicio.','Los jugadores pueden tocar <b>Seguir</b> en un perfil y activar los avisos para enterarse de sus partidos.']},
  {id:'finanzas',t:'Finanzas',d:'Cuánto entra, cuánto sale y cuánto deja cada torneo.',pasos:[
-  'Abrí <b>Finanzas</b> (en el celular, desde <b>Más</b>) y elegí la temporada.',
+  'Abrí <b>Finanzas</b> (en el celular, desde <b>Más</b>) y elegí la temporada. En <b>Torneo</b> elegís ver el <b>global</b> de todos los torneos o los números de <b>un solo torneo</b> (también tocando su nombre en la tabla).',
   'Arriba ves los indicadores: ingresos, egresos, resultado, margen, cobranza, torneos rentables, ingreso y costo por jugador, y el resultado proyectado.',
   'Las <b>inscripciones cobradas</b> y los <b>premios</b> de los torneos con campeón se suman solos.',
   'Para lo demás tocá <b>Cargar ingreso o gasto</b>: auspicios, cantina, pelotas, trofeos, juez, alquiler de canchas… Elegí si es de un torneo o general del club.',
@@ -3436,6 +3443,7 @@ document.addEventListener('click',ev=>{
     case 'copiar':{const v=t.dataset.v;(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(()=>toast('Enlace copiado.'),()=>toast(v,6000));break}
     case 'temporada':abrir({t:'temporada'});break;
     case 'fin-xlsx':finanzasXLSX();break;
+    case 'fin-cat':ui.finCat=t.dataset.id||'';render();window.scrollTo({top:0});break;
     case 'mov-nuevo':abrir({t:'mov'});break;
     case 'mov-edit':abrir({t:'mov',id:t.dataset.id});break;
     case 'mv-chip':{const i=document.getElementById('mv-con');if(i){i.value=t.dataset.v;document.getElementById('mv-monto')?.focus()}break}
@@ -3910,6 +3918,7 @@ document.addEventListener('change',ev=>{
   if(t.id==='modoCuadro')ui.modoCuadro=t.value;
   if(t.id==='tmp-anio'&&ui.sheet){ui.sheet.anio=t.value;renderSheet()}
   if(t.id==='fin-anio'){ui.finAnio=t.value;render()}
+  if(t.id==='fin-cat'){ui.finCat=t.value;render();window.scrollTo({top:0})}
   if(t.name==='mv-tipo'&&ui.sheet&&ui.sheet.t==='mov'){const keep={con:val('mv-con'),monto:val('mv-monto'),fecha:val('mv-fecha'),cat:val('mv-cat'),nota:val('mv-nota')};ui.sheet.tipo=t.value;renderSheet();
     ['con','monto','fecha','cat','nota'].forEach(k=>{const el=document.getElementById('mv-'+k);if(el)el.value=keep[k]})}
   if(t.id==='c-niv'){const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido()}
