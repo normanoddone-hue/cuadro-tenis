@@ -2310,7 +2310,7 @@ function detalleTorneo(t,c){
     ${c.online&&!cb&&!c.grupos?`<div class="panel insc-on"><div><b>Inscripción abierta</b><div class="small muted">Pedí tu lugar desde acá. El club confirma la inscripción y te aparece en la lista.</div></div><button class="btn pri" data-act="solicitar" data-id="${c.id}">Quiero anotarme</button></div>`:''}
     ${kpisTorneo(c)}
     <div class="seg" role="group" aria-label="Sección del torneo">
-      <button data-act="sub" data-k="insc" aria-pressed="${ui.sub==='insc'}">Inscripción · ${n}</button>
+      <button data-act="sub" data-k="insc" aria-pressed="${ui.sub==='insc'}">${puedeEditar?'Inscripción y pagos':'Inscripción'} · ${n}</button>
       ${c.grupos?`<button data-act="sub" data-k="grupos" aria-pressed="${ui.sub==='grupos'}">${esRR(c)?'Round robin':'Round robin · '+c.grupos.lista.length+' grupos'}</button>`:''}
       ${esRR(c)||(c.formato==='rr'&&!cb)?'':`<button data-act="sub" data-k="cuadro" aria-pressed="${ui.sub==='cuadro'}">${c.formato==='grupos'||c.grupos?'Llaves':'Cuadro'}${cb?'':c.grupos?' (después del round robin)':' (sin generar)'}</button>`}
     </div>
