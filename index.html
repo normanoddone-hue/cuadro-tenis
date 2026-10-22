@@ -2536,12 +2536,12 @@ function seccionInscriptos(t,c,cb){
         :`<div class="btns"><button class="btn pri" data-act="generar" ${n<2?'disabled':''}>Generar cuadro</button></div>`}
       <span class="small muted">${c.formato==='rr'?(n<3?'Necesitás al menos 3 inscriptos para un round robin.':`Todos contra todos: ${n*(n-1)/2} partidos. Gana quien termine primero en la tabla (partidos ganados, después el partido entre ellos, sets y games).`):c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para el round robin.':`Round robin: ${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. En cada grupo juegan todos contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`}</span></div>`;
   } else {
-    cuerpo=(emp&&puedeEditar?`<div class="note">El torneo ya empezó: para cambiar los inscriptos tocá "${c.grupos&&!cb?'Deshacer round robin':'Rehacer cuadro'}" (se borran los resultados).</div>`:'')+(n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>');
+    cuerpo=(emp&&puedeEditar?`<div class="note">${ICO_LOCK}El torneo ya tiene resultados cargados: no se pueden cambiar los inscriptos ni rehacer ${c.grupos&&!cb?'el round robin':'el cuadro'}. Si cargaste un resultado por error, abrí ese partido y tocá "Borrar resultado".</div>`:'')+(n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>');
   }
-  const aviso=puedeEditar&&cb&&!c.grupos&&(c.formato==='grupos'||c.formato==='rr')?`<div class="note warn">Elegiste <b>round robin</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "Armar round robin".</div>`
+  const aviso=puedeEditar&&cb&&!c.grupos&&!emp&&(c.formato==='grupos'||c.formato==='rr')?`<div class="note warn">Elegiste <b>round robin</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "Armar round robin".</div>`
     :puedeEditar&&cb&&c.online?`<div class="note">La inscripción online está activada, pero el cuadro ya está armado: el botón "Quiero anotarme" solo aparece mientras no hay cuadro.</div>`:'';
   return `${aviso}${!emp&&puedeEditar?seccionSolicitudes(c):''}${seccionPagos(c)}<div class="panel sec"><div class="sec-hd"><h3>Inscriptos · ${n} ${D?'parejas':'jugadores'}</h3>
-    ${cb&&puedeEditar?`<button class="btn danger ${ui.armado==='rehacer'?'arm':''}" data-act="arm" data-w="rehacer">${ui.armado==='rehacer'?'Tocá de nuevo: se borran los resultados':'Rehacer cuadro'}</button>`:''}</div>${cuerpo}</div>`;
+    ${cb&&puedeEditar&&!emp?`<button class="btn danger ${ui.armado==='rehacer'?'arm':''}" data-act="arm" data-w="rehacer">${ui.armado==='rehacer'?'Tocá de nuevo: se borran los resultados':'Rehacer cuadro'}</button>`:''}</div>${cuerpo}</div>`;
 }
 function seccionGrupos(c){
   const G=c.grupos;const pasan=G.pasan||2;const completos=gruposCompletos(c);const ps=partidosGrupo(c);
@@ -2573,7 +2573,7 @@ function seccionConsolacion(c,cb){
     if(!cc&&ls.length>=2) html+=`<div class="panel cons-box"><div><b>Cuadro de consolación</b><div class="small muted">${ls.length} ${c.modalidad==='D'?'parejas perdieron':'jugadores perdieron'} su primer partido. Armá un segundo cuadro para que jueguen al menos un partido más. No suma puntos al ranking.</div></div><div class="btns"><button class="btn pri" data-act="armar-cons">Armar consolación</button></div></div>`;
     else if(cc){const dentro=new Set(c.cons.cuadro.slots.filter(Boolean));const nuevos=ls.filter(e=>!dentro.has(e)).length;const conRes=Object.values(c.cons.res||{}).some(r=>r&&r.g);
       if(!conRes) html+=`<div class="btns"><button class="btn danger ${ui.armado==='deshacer-cons'?'arm':''}" data-act="arm" data-w="deshacer-cons">${ui.armado==='deshacer-cons'?'Tocá de nuevo para deshacer la consolación':'Deshacer consolación'}</button></div>`;
-      if(nuevos) html+=`<div class="panel cons-box"><div class="small muted">${nuevos} ${nuevos===1?'perdedor nuevo todavía no está':'perdedores nuevos todavía no están'} en la consolación.</div><div class="btns"><button class="btn ${conRes?'danger':''} ${ui.armado==='rehacer-cons'?'arm':''}" data-act="${conRes?'arm':'armar-cons'}" data-w="rehacer-cons">${ui.armado==='rehacer-cons'?'Tocá de nuevo: se borran sus resultados':'Rehacer consolación'}</button></div></div>`}
+      if(nuevos&&!conRes) html+=`<div class="panel cons-box"><div class="small muted">${nuevos} ${nuevos===1?'perdedor nuevo todavía no está':'perdedores nuevos todavía no están'} en la consolación.</div><div class="btns"><button class="btn" data-act="armar-cons">Rehacer consolación</button></div></div>`}
   }
   return html;
 }
@@ -3103,20 +3103,21 @@ document.addEventListener('click',ev=>{
       if(c.rama==='X'&&jug(S,a1).sexo===jug(S,a2).sexo){ui.msg='En mixtos la pareja es una dama y un caballero.';render();break}
       ui.msg=null;desarmar(c);c.inscriptos.push({id:uid(),j:[a1,a2]});cambiar();break}
     case 'del-pareja':{const c=cat();desarmar(c);c.inscriptos=c.inscriptos.filter(e=>e.id!==t.dataset.id);cambiar();break}
-    case 'armar-grupos':{const c=cat();if(!armarGrupos(c,c.gtam||4,c.gpasan||2)){toast('Hacen falta más inscriptos para armar grupos.');break}ui.sub='grupos';cambiar();break}
+    case 'armar-grupos':{const c=cat();if(empezo(c)||c.cuadro)break;if(!armarGrupos(c,c.gtam||4,c.gpasan||2)){toast('Hacen falta más inscriptos para armar grupos.');break}ui.sub='grupos';cambiar();break}
     case 'desde-grupos':{const c=cat();if(!generarDesdeGrupos(c)){toast('Todavía no hay clasificados.');break}ui.sub='cuadro';cambiar();break}
     case 'armar-rr':{const c=cat();if(!armarRR(c)){toast('Hacen falta al menos 3 inscriptos.');break}ui.sub='grupos';cambiar();break}
-    case 'armar-cons':{const c=cat();if(!armarConsolacion(c)){toast('Hacen falta al menos 2 perdedores de primera ronda.');break}cambiar();break}
-    case 'generar':{const c=cat();generarCuadro(S,T(),c,val('modoCuadro')||'ranking');ui.sub='cuadro';cambiar();break}
+    case 'armar-cons':{const c=cat();if(Object.values(c.cons?.res||{}).some(r=>r&&r.g))break;if(!armarConsolacion(c)){toast('Hacen falta al menos 2 perdedores de primera ronda.');break}cambiar();break}
+    case 'generar':{const c=cat();if(empezo(c)||c.cuadro)break;generarCuadro(S,T(),c,val('modoCuadro')||'ranking');ui.sub='cuadro';cambiar();break}
     case 'arm':{const w=t.dataset.w;if(ui.armado!==w){ui.armado=w;render();break}
       ui.armado=null;
       if(w==='del-foto'){const f=(S.galeria||[]).find(x=>x.id===ui.sheet.id);S.galeria=(S.galeria||[]).filter(x=>x!==f);if(f&&f.a&&assetsApi)assetsApi.delete(f.a).catch(()=>{});ui.sheet=null;cambiar()}
       if(w.startsWith('del-sp-')){const id=w.slice(7);S.sponsors=(S.sponsors||[]).filter(x=>x.id!==id);cambiar()}
       if(w.startsWith('del-n-')){const id=w.slice(6);S.noticias=(S.noticias||[]).filter(n=>n.id!==id);cambiar()}
+      if((w==='rehacer'||w==='rehacer-grupos')&&empezo(cat())){toast('El torneo ya tiene resultados cargados: no se puede rehacer.');render();break}
       if(w==='rehacer'){const c=cat();ui.sub=c.grupos?'grupos':'insc';c.cuadro=null;c.res={};delete c.cons;cambiar()}
       if(w==='rehacer-grupos'){const c=cat();delete c.grupos;c.cuadro=null;c.res={};delete c.cons;ui.sub='insc';cambiar()}
       if(w==='deshacer-cons'){const c=cat();if(c.cons&&!Object.values(c.cons.res||{}).some(r=>r&&r.g)){delete c.cons;toast('Consolación deshecha.')}cambiar()}
-      if(w==='rehacer-cons'){const c=cat();armarConsolacion(c);cambiar()}
+      if(w==='rehacer-cons'){const c=cat();if(!Object.values(c.cons?.res||{}).some(r=>r&&r.g))armarConsolacion(c);cambiar()}
       if(w==='del-torneo'){S.torneos=S.torneos.filter(x=>x.id!==ui.sheet.id);ui.torneo=null;ui.sheet=null;ui.tab='resumen';cambiar()}
       if(w==='del-cat'){const tt=T();tt.categorias=tt.categorias.filter(c=>c.id!==ui.sheet.id);ui.sheet=null;ui.cat=null;cambiar()}
       if(w==='quitar-ej'){const quedan=S.jugadores.filter(p=>p.ejemplo&&enCuadro(p.id));
