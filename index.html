@@ -840,6 +840,11 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 .rp-sec{margin-top:8px}.rp-sec>.panel{margin-top:10px}
 .rp-gen{margin-bottom:4px}
 .rp-tag{font-size:9px;font-weight:800;letter-spacing:.04em;background:var(--link);color:#fff;border-radius:4px;padding:1px 4px;margin-left:5px;vertical-align:1px}
+
+.legal{text-align:center;margin:28px 0 8px;font-size:13px}
+.priv-txt{line-height:1.6;font-size:14.5px}.priv-txt p{margin:0 0 8px}.priv-txt p:last-child{margin:0}.priv-txt ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.priv-sec{margin-top:4px}
+.priv-ok{align-items:flex-start;font-size:13px;line-height:1.45}.priv-ok a{color:var(--link)}
 </style>
 
 <div class="app">
@@ -865,6 +870,7 @@ const CLUB=(()=>{const ok=c=>/^[a-z0-9-]{2,30}$/.test(c)&&c!=='privado';let c=''
 const ID_PUB=CLUB==='principal'?'principal':CLUB, ID_PRIV=CLUB==='principal'?'privado':CLUB+':privado';
 const KEY='cuadro-tenis-pwa'+(CLUB==='principal'?'':':'+CLUB);
 let clubInfo={nombre:'',existe:CLUB==='principal'};
+if(location.hash==='#privacidad'){try{setTimeout(()=>{ui.tab='privacidad';render()},0)}catch(e){}}
 function linkClub(slug){const u=new URL(location.origin+location.pathname);u.searchParams.set('club',slug||'principal');return u.toString()}
 const PUNTOS_CAMPEON=100;
 const PUNTOS_RONDA=[70,45,25,15,8,4,2]; // perdedor según rondas desde el final
@@ -1607,11 +1613,11 @@ function render(){
   if(!cargado){m.innerHTML='<div class="sk" style="height:96px" aria-label="Cargando"></div><div class="sk" style="height:220px"></div><div class="sk" style="height:160px"></div>';return}
   if(!clubInfo.existe&&cargado&&sb){m.innerHTML=`<div class="panel empty"><h2>Club no encontrado</h2><p class="muted">No hay ningún club con el código "${esc(CLUB)}". Revisá la dirección que te pasaron.</p></div>`;renderSheet();return}
   if(!S){m.innerHTML=vistaVacia();renderSheet();return}
-  if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='manual'&&ui.tab!=='finanzas'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
+  if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='manual'&&ui.tab!=='finanzas'&&ui.tab!=='privacidad'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
   if((ui.tab==='manual'||ui.tab==='finanzas')&&!puedeEditar) ui.tab='resumen';
-  const v={finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
+  const v={privacidad:vistaPrivacidad,finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
   const scr=[...m.querySelectorAll('[data-scroll-key]')].map(e=>[e.dataset.scrollKey,e.scrollTop]);
-  m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'');
+  m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'')+(ui.tab!=='privacidad'?`<p class="legal"><button class="lnk2" data-act="tab" data-k="privacidad">Política de privacidad</button></p>`:'');
   scr.forEach(([k,y])=>{const e=m.querySelector(`[data-scroll-key="${k}"]`);if(e)e.scrollTop=y});
   m.querySelectorAll('[data-mixto]').forEach(e=>e.indeterminate=true);
   renderSheet();
@@ -2828,6 +2834,41 @@ function textoFiltrosJug(){
   const f=[ui.fsexo==='M'?'Caballeros':ui.fsexo==='F'?'Damas':'',ui.fniv?(ui.fniv==='-'?'Sin categoría':'Categoría '+ui.fniv):'',ui.q?`Búsqueda "${ui.q}"`:''].filter(Boolean);
   return f.join(' · ');
 }
+/* ===================== Política de privacidad (pública) ===================== */
+const PRIV_ACT='23 de octubre de 2026';
+function vistaPrivacidad(){
+  const club=esc(nombreApp());const cont=S&&S.contacto?esc(S.contacto):'';
+  const contacto=cont?`<b>${cont}</b>`:'el administrador del club, por los medios de contacto habituales del club';
+  const sec=(t,h)=>`<section class="sec priv-sec"><div class="sec-hd"><h2>${t}</h2></div><div class="panel priv-txt">${h}</div></section>`;
+  return `${encabezado('Política de privacidad',{ey:club,sb:'Cómo se usan los datos personales en esta app · Última actualización: '+PRIV_ACT})}
+    ${sec('1. Quién es responsable',`<p><b>${club}</b> usa esta aplicación para organizar sus torneos de tenis y es el responsable de los datos personales de sus jugadores. La aplicación es provista por un proveedor tecnológico que guarda y procesa los datos por cuenta del club, solo para prestar este servicio.</p>`)}
+    ${sec('2. Qué datos se guardan',`<ul>
+      <li><b>Datos del jugador:</b> nombre, apellido, sexo, categoría, club, país, foto, altura y mano hábil.</li>
+      <li><b>Datos de contacto e identificación:</b> número de cédula, teléfono y fecha de nacimiento.</li>
+      <li><b>Datos deportivos:</b> torneos en los que participa, resultados, horarios, estadísticas y ranking.</li>
+      <li><b>Datos administrativos:</b> pagos de inscripción (si pagó o no y la fecha).</li>
+      <li><b>Pedidos de inscripción online:</b> los datos que la persona completa al pedir anotarse y un comentario opcional.</li>
+      <li><b>Administradores:</b> correo electrónico y contraseña para ingresar (la contraseña se guarda cifrada).</li></ul>`)}
+    ${sec('3. Para qué se usan',`<ul>
+      <li>Inscribir jugadores y controlar que cumplan la categoría y la rama del torneo.</li>
+      <li>Armar cuadros y grupos, programar partidos y publicar resultados, ranking, estadísticas y campeones.</li>
+      <li>Avisar horarios y recordar pagos por WhatsApp.</li>
+      <li>Llevar el control de inscripciones cobradas y las finanzas de los torneos.</li></ul>
+      <p>No se usan para publicidad y no se venden ni se ceden a terceros con fines comerciales.</p>`)}
+    ${sec('4. Qué es público y qué es privado',`<p><b>Público</b> (lo puede ver cualquier persona que entre a la app, sin cuenta): nombre, apellido, foto, club, país, categoría, edad (no la fecha de nacimiento), altura, mano hábil, resultados, estadísticas, ranking, campeones, noticias y fotos de la galería.</p>
+      <p><b>Privado</b> (solo lo ven los administradores del club): cédula, teléfono, fecha de nacimiento, pagos, finanzas y pedidos de inscripción. La búsqueda por cédula al inscribirse solo confirma si la persona ya está registrada, sin mostrar cédulas a otras personas.</p>`)}
+    ${sec('5. Dónde se guardan',`<p>Los datos se guardan en servicios en la nube de terceros (Supabase para la base de datos y las fotos, y Vercel para alojar la app), que pueden tener sus servidores fuera de Paraguay. La conexión está cifrada (https) y solo las cuentas de administrador del club pueden modificar la información o ver la parte privada.</p>`)}
+    ${sec('6. WhatsApp',`<p>Cuando el administrador avisa un horario o recuerda un pago, la app abre WhatsApp con el mensaje escrito y el administrador lo envía desde su propia cuenta. La app no envía datos a WhatsApp por su cuenta.</p>`)}
+    ${sec('7. Datos en tu dispositivo',`<p>Para funcionar más rápido y sin conexión, la app guarda en el navegador una copia de la información pública, los jugadores que seguís y algunas preferencias (por ejemplo, el último club que abriste). Si activás los avisos, el navegador te pide permiso para mostrar notificaciones. La app no usa cookies de publicidad ni herramientas de rastreo o analítica. Podés borrar estos datos desde la configuración de tu navegador.</p>`)}
+    ${sec('8. Cuánto tiempo se guardan',`<p>Los datos del jugador y su historial deportivo se guardan mientras forme parte del registro del club o hasta que pida que se eliminen. Los pedidos de inscripción online se borran cuando el club los aprueba o rechaza. Los resultados ya publicados pueden mantenerse como parte del historial de los torneos.</p>`)}
+    ${sec('9. Menores de edad',`<p>Si el jugador es menor de 18 años, sus datos se cargan con la autorización de su madre, padre o tutor, que puede ejercer los derechos de esta política en su nombre.</p>`)}
+    ${sec('10. Tus derechos',`<p>Podés pedir <b>ver</b> qué datos tuyos hay, <b>corregirlos o actualizarlos</b>, pedir que se <b>eliminen</b> o <b>oponerte</b> a algún uso, según la Ley N° 7.593/2025 de Protección de Datos Personales de Paraguay. Para hacerlo, comunicate con ${contacto}.</p>
+      <p>Al inscribirte desde la app aceptás que tus datos se usen como se explica en esta política.</p>`)}
+    ${sec('11. Cambios',`<p>Si esta política cambia, se publica acá mismo con la nueva fecha de actualización.</p>`)}
+    <p class="small muted">Esta política describe cómo funciona la app. No reemplaza el asesoramiento de un profesional del derecho.</p>`;
+}
+function linkPrivacidad(){return `${location.origin}${location.pathname}?club=${encodeURIComponent(CLUB)}#privacidad`}
+
 /* ===================== Finanzas (solo administrador; se guardan en la parte privada) ===================== */
 const CONCEPTOS_ING=['Auspicio','Cantina','Venta de entradas','Rifa o sorteo','Aporte del club','Otro ingreso'];
 const CONCEPTOS_EGR=['Pelotas','Trofeos y medallas','Juez o árbitro','Alquiler de canchas','Remeras','Comida y bebida','Publicidad','Otro gasto'];
@@ -3059,6 +3100,7 @@ const MANUAL=[
   ['¿Quién ve las cédulas y teléfonos?','Solo el administrador. Se guardan aparte de los datos públicos.'],
   ['Cargué mal un resultado, ¿qué hago?','Abrí el partido, corregí los números y guardá. Si cambia el ganador, se borran los resultados siguientes de esa llave.'],
   ['No veo un cambio en mi celular','Cerrá la app y volvé a abrirla para que cargue la última versión.'],
+  ['¿Dónde está la política de privacidad?','Al pie de cada pantalla hay un enlace <b>Política de privacidad</b>. Cargá en <b>Club y cuenta → Contacto para datos personales</b> el correo o teléfono al que los jugadores pueden escribir. En la inscripción online, el jugador tiene que aceptarla para enviar el pedido.'],
   ['¿Cuál es la dirección de mi club?','La encontrás en <b>Club y cuenta → Dirección del club</b>, con un botón para copiarla y mandarla a los jugadores.'],
   ['¿Puedo usarla en la computadora y en el celular?','Sí, es la misma app y los datos se sincronizan.']]}
 ];
@@ -3423,6 +3465,7 @@ function renderSheet(){
       <div class="field"><label>Fondo de la app</label><div class="fondos">${FONDOS.map(([k,n,id])=>`<button class="fondo-op" data-act="fondo" data-k="${k}" aria-pressed="${(ui.fondoPend??S.fondo??'cancha')===k}">${id?`<img src="${urlFondo(id,320)}" alt="" loading="lazy">`:'<span class="fo-c"></span>'}${esc(n)}</button>`).join('')}</div>
         ${(ui.fondoPend??S.fondo??'cancha')!=='cancha'?`<label for="l-velo" class="small muted">Velo sobre la foto (más a la derecha, más clarito)</label><input type="range" id="l-velo" min="0.3" max="0.9" step="0.05" value="${ui.veloPend??S.fondoVelo??0.6}">`:''}
         <span class="small muted">Se ve al instante para probar; tocá Guardar para dejarlo para todos.</span></div>
+      <div class="field"><label for="l-contacto">Contacto para datos personales</label><input type="text" id="l-contacto" value="${esc(S.contacto||'')}" placeholder="Ej.: secretaria@club.com.py o 0981 123 456"><span class="small muted">Aparece en la política de privacidad para que los jugadores pidan ver, corregir o borrar sus datos.</span></div>
       <div class="field"><label for="l-mon">Moneda</label><select id="l-mon">${MONEDAS.map(([k,n,sim])=>`<option value="${k}" ${mon()[0]===k?'selected':''}>${esc(n)} · ${esc(sim)}</option>`).join('')}</select>
         <span class="small muted">Se usa en inscripciones, premios, pagos y reportes. Cambiarla no convierte los montos ya cargados.</span></div>
       <div class="grid2"><div class="field"><label for="l-p">Nueva contraseña</label><input type="password" id="l-p" autocomplete="new-password" placeholder="Dejala vacía para no cambiarla"></div>
@@ -3499,7 +3542,7 @@ function renderSheet(){
     else h=`<div class="sheet-hd"><div><h2>Quiero anotarme</h2>${sub}</div>${cerrarBtn}</div>
       ${s.r1.existe?encontrado(1,s.r1):registro(1,s.r1)}${D?(s.r2.existe?encontrado(2,s.r2):registro(2,s.r2)):''}
       <div class="field"><label for="s-nota">Comentario (opcional)</label><input type="text" id="s-nota" placeholder="Ej.: no puedo jugar el sábado de mañana"></div>
-      <span class="small muted">Tus datos solo los ve el administrador del club.</span>${err}
+      <label class="check priv-ok"><input type="checkbox" id="s-priv"> <span>Acepto la <a href="${esc(linkPrivacidad())}" target="_blank" rel="noopener">política de privacidad</a>. La cédula, el teléfono y la fecha de nacimiento solo los ve el administrador del club.</span></label>${err}
       <div class="btns"><button class="btn pri" data-act="enviar-sol" data-primary>${(s.r1.existe&&(!D||s.r2.existe))?'Enviar pedido':'Registrarme y enviar pedido'}</button><button class="btn" data-act="sol-volver">Cambiar cédula</button></div>`;
   }
   if(s.t==='compartir'){const c=todasCats().find(x=>x.id===s.c);const o=c?opcionesCompartir(c):{ps:[]};
@@ -3668,6 +3711,7 @@ document.addEventListener('click',ev=>{
       const datosDe=(n,r)=>r.existe?{cedula:r.ci,nombre:r.nombre||'',registrado:true}
         :{cedula:r.ci,nombre:val(`s${n}-nom`),apellido:val(`s${n}-ape`),nacimiento:val(`s${n}-nac`),sexo:val(`s${n}-sexo`),categoria:val(`s${n}-cat`),club:val(`s${n}-club`),telefono:val(`s${n}-tel`),pais:val(`s${n}-pais`),mano:val(`s${n}-mano`),altura:val(`s${n}-alt`)?+val(`s${n}-alt`):'',registrado:false};
       const d={j1:datosDe(1,sh.r1),j2:D?datosDe(2,sh.r2):null,nota:val('s-nota').slice(0,200)};
+      if(!document.getElementById('s-priv')?.checked){avisar('Para enviar el pedido, aceptá la política de privacidad.');return}
       const nuevos=[d.j1,d.j2].filter(j=>j&&!j.registrado);
       for(const j of nuevos){
         if(!j.nombre||!j.apellido){avisar('Completá nombre y apellido.');return}
@@ -3738,7 +3782,7 @@ document.addEventListener('click',ev=>{
       if(pw!==pw2){avisar('Las contraseñas no coinciden.');break}
       (async()=>{
         if(pw){const {error}=await sb.auth.updateUser({password:pw});if(error){avisar('No se pudo cambiar la contraseña: '+error.message);return}}
-        S.club=club;const mo=val('l-mon');if(mo)S.moneda=mo;if(ui.fondoPend!==undefined)S.fondo=ui.fondoPend;if(ui.veloPend!==undefined)S.fondoVelo=ui.veloPend;ui.fondoPend=ui.veloPend=undefined;if(ui.logoPend!==undefined){S.logo=ui.logoPend||null;ui.logoPend=undefined}
+        S.club=club;S.contacto=val('l-contacto');const mo=val('l-mon');if(mo)S.moneda=mo;if(ui.fondoPend!==undefined)S.fondo=ui.fondoPend;if(ui.veloPend!==undefined)S.fondoVelo=ui.veloPend;ui.fondoPend=ui.veloPend=undefined;if(ui.logoPend!==undefined){S.logo=ui.logoPend||null;ui.logoPend=undefined}
         ui.sheet=null;ui.msg=null;toast(pw?'Datos y contraseña actualizados.':'Datos actualizados.');cambiar();
       })();
       break}
