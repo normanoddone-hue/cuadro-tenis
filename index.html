@@ -3211,6 +3211,10 @@ function seccionGrupos(c){
 }
 function seccionConsolacion(c,cb){
   const cc=cuadroCons(c);const ls=perdedoresPrimera(c);
+  // Con rondas de perdedores no hay consolación: serían los mismos jugadores
+  if(c.conRP&&lugaresRP(c,1).length+lugaresRP(c,2).length){if(!cc)return '';
+    const conRes=Object.values(c.cons.res||{}).some(r=>r&&r.g);
+    return seccionCuadro(cc.L,cc.cb,'Cuadro de consolación')+(puedeEditar?`<div class="note warn">Este torneo ya tiene rondas de perdedores: la consolación repite a los mismos jugadores.${!conRes?` <button class="lnk2" data-act="arm" data-w="deshacer-cons">${ui.armado==='deshacer-cons'?'Tocá de nuevo para quitarla':'Quitar consolación'}</button>`:''}</div>`:'')}
   let html='';
   if(cc) html+=seccionCuadro(cc.L,cc.cb,'Cuadro de consolación');
   if(puedeEditar){
