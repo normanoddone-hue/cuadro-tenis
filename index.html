@@ -1017,6 +1017,8 @@ function armarRR(c){
   c.cuadro=null;c.res={};delete c.cons;return true;
 }
 function empezo(c){const hay=r=>Object.values(r||{}).some(x=>x&&x.g);return hay(c.res)||hay(c.grupos?.res)||hay(c.cons?.res)||hay(c.rp1?.res)||hay(c.rp2?.res)}
+function dondeHayResultados(c){const hay=r=>Object.values(r||{}).some(x=>x&&x.g);const d=[];
+  if(hay(c.grupos?.res))d.push('round robin');if(hay(c.res))d.push(c.grupos?'llaves':'cuadro principal');if(hay(c.rp1?.res))d.push('RP1');if(hay(c.rp2?.res))d.push('RP2');if(hay(c.cons?.res))d.push('consolación');return d}
 function limpiarRP(c){delete c.rp1;delete c.rp2;delete c.rpAsig;delete c.rpCerr;c.rpIns=[]}
 function desarmar(c){if(empezo(c)||!(c.cuadro||c.grupos))return;const g=!!c.grupos;c.cuadro=null;c.res={};delete c.grupos;delete c.cons;toast(`Cambiaron los inscriptos: se deshizo ${g?'el round robin':'el cuadro'}. Volvé a armarlo cuando termines.`,5000)}
 function esRR(c){return !!c.grupos?.rr}
@@ -1142,6 +1144,8 @@ function seccionRP(c,cb){
       if(c.rpCerr?.[2]){const pas=lugaresRP(c,2).map(l=>c.rpAsig?.[l]).filter(Boolean);if(pas.length)h+=`<div class="note"><b>Pasaron al cuadro por RP2:</b> ${pas.map(nom).join(', ')}.${puedeEditar&&!rpTieneResultadosEnCuadro(c,2)?` <button class="lnk2" data-act="rp-deshacer" data-c="${c.id}" data-k="2">Deshacer pase</button>`:''}</div>`}
     }
   }
+  if(puedeEditar&&(c.rp1||c.rp2)&&!rpTieneResultadosEnCuadro(c,1)&&!rpTieneResultadosEnCuadro(c,2))
+    h+=`<div class="btns"><button class="btn sm danger ${ui.armado==='rp-reset'?'arm':''}" data-act="arm" data-w="rp-reset">${ui.armado==='rp-reset'?'Tocá de nuevo: se borran RP1 y RP2 con sus resultados':'Deshacer rondas de perdedores'}</button><span class="small muted">Quedan los anotados y los pagos; los lugares RP vuelven a esperar.</span></div>`;
   return h+'</div>';
 }
 function pagosRPDe(c){if(!c.rpIns?.length)return {jug:0,pag:0};const ps=[...new Set(c.rpIns.flatMap(e=>inscripto(c,e)?.j||[]))];return {jug:ps.length,pag:ps.filter(id=>c.pagosRP?.[id]).length}}
@@ -3180,7 +3184,7 @@ function seccionInscriptos(t,c,cb){
           <div class="btns"><button class="btn pri" data-act="generar" ${n<2?'disabled':''}>Generar cuadro</button></div>`}
       <span class="small muted">${c.formato==='rr'?(n<3?'Necesitás al menos 3 inscriptos para un round robin.':`Todos contra todos: ${n*(n-1)/2} partidos. Gana quien termine primero en la tabla (partidos ganados, después el partido entre ellos, sets y games).`):c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para el round robin.':`Round robin: ${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. En cada grupo juegan todos contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`}</span></div>`;
   } else {
-    cuerpo=(emp&&puedeEditar?`<div class="note">${ICO_LOCK}El torneo ya tiene resultados cargados: no se pueden cambiar los inscriptos ni rehacer ${c.grupos&&!cb?'el round robin':'el cuadro'}. Si cargaste un resultado por error, abrí ese partido y tocá "Borrar resultado".</div>`:'')+(n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>');
+    cuerpo=(emp&&puedeEditar?`<div class="note">${ICO_LOCK}El torneo ya tiene resultados cargados: no se pueden cambiar los inscriptos ni rehacer ${c.grupos&&!cb?'el round robin':'el cuadro'}. ${(()=>{const d=dondeHayResultados(c);return d.length?` Hay resultados en: <b>${d.join(', ')}</b>.`:''})()} Si cargaste un resultado por error, abrí ese partido y tocá "Borrar resultado"${c.rp1||c.rp2?', o deshacé las rondas de perdedores en Llaves':''}.</div>`:'')+(n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>');
   }
   const aviso=puedeEditar&&cb&&!c.grupos&&!emp&&(c.formato==='grupos'||c.formato==='rr')?`<div class="note warn">Elegiste <b>round robin</b>, pero este torneo ya tiene el cuadro armado. Tocá "Rehacer cuadro" (se borran los resultados) y después "Armar round robin".</div>`
     :puedeEditar&&cb&&c.online?`<div class="note">La inscripción online está activada, pero el cuadro ya está armado: el botón "Quiero anotarme" solo aparece mientras no hay cuadro.</div>`:'';
@@ -3821,6 +3825,7 @@ document.addEventListener('click',ev=>{
       if(w==='del-foto'){const f=(S.galeria||[]).find(x=>x.id===ui.sheet.id);S.galeria=(S.galeria||[]).filter(x=>x!==f);if(f&&f.a&&assetsApi)assetsApi.delete(f.a).catch(()=>{});ui.sheet=null;cambiar()}
       if(w.startsWith('del-club-')){bajaClub(w.slice(9));break}
       if(w==='rp-cerrar-1'){const c=cat();armarRP(c,1,[]);cambiar();break}
+      if(w==='rp-reset'){const c=cat();delete c.rp1;delete c.rp2;c.rpAsig={};c.rpCerr={};if(!lugaresRP(c,1).length)c.rpCerr[1]=true;if(!lugaresRP(c,2).length)c.rpCerr[2]=true;toast('Se deshicieron las rondas de perdedores.');cambiar();break}
       if(w.startsWith('pago-ninguno-')){const c=todasCats().find(x=>x.id===w.slice(13));if(c){c.pagos={};cambiar()}break}
       if(w==='del-mov'){S.finanzas.movs=movs().filter(x=>x.id!==ui.sheet.id);ui.sheet=null;toast('Movimiento borrado.');cambiar();break}
       if(w.startsWith('del-sp-')){const id=w.slice(7);S.sponsors=(S.sponsors||[]).filter(x=>x.id!==id);cambiar()}
