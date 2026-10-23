@@ -845,6 +845,14 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 .priv-txt{line-height:1.6;font-size:14.5px}.priv-txt p{margin:0 0 8px}.priv-txt p:last-child{margin:0}.priv-txt ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .priv-sec{margin-top:4px}
 .priv-ok{align-items:flex-start;font-size:13px;line-height:1.45}.priv-ok a{color:var(--link)}
+.kq-wrap{position:relative}.kq-wrap>span{padding-right:24px}
+.kq{position:absolute;top:10px;right:10px}
+.kq summary{list-style:none;cursor:pointer;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+.kq summary::-webkit-details-marker{display:none}
+.kq[open] summary{background:var(--court);color:#fff;border-color:var(--court)}
+.kq-pop{position:absolute;right:0;top:26px;z-index:20;width:260px;max-width:70vw;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:10px 12px;font-size:13px;line-height:1.45;font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--f-body)}
+.kq-pop b{font-family:var(--f-body);font-size:13px;font-style:normal;display:inline;font-weight:700}
+.fin-kpis,.fin-kpis2{overflow:visible}
 </style>
 
 <div class="app">
@@ -2912,7 +2920,20 @@ function vistaFinanzas(){
   if(ui.finCat&&!delAnio.some(c=>c.id===ui.finCat))ui.finCat='';
   const uno=ui.finCat?delAnio.find(c=>c.id===ui.finCat):null;
   const d=datosFinanzas(ui.finAnio,ui.finCat),T=d.T;
-  const k=(lbl,val,sub,cls='')=>`<div class="${cls}"><span>${lbl}</span><b>${val}</b>${sub?`<em>${sub}</em>`:''}</div>`;
+  const M=fmtMon,pc=(a,b)=>b?Math.round(a/b*100)+'%':'—',nj=T.jug;
+  const FORM={
+    'Ingresos':`Inscripciones cobradas (jugadores marcados como pagados × cuota${d.tor.some(t=>t.c.conRP)?', más las RP pagadas':''}) + otros ingresos cargados.<br><b>${M(T.insc)} + ${M(T.ing-T.insc)} = ${M(T.ing)}</b>`,
+    'Egresos':`Premios de campeón y vicecampeón de los torneos que ya tienen campeón + gastos cargados.<br><b>= ${M(T.egr)}</b>`,
+    'Resultado':`Ingresos − Egresos.<br><b>${M(T.ing)} − ${M(T.egr)} = ${M(T.res)}</b>`,
+    'Margen':`Resultado ÷ Ingresos × 100. Cuánto queda de cada guaraní que entra.<br><b>${M(T.res)} ÷ ${M(T.ing)} = ${pc(T.res,T.ing)}</b>`,
+    'Cobranza':`Inscripciones cobradas ÷ inscripciones esperadas (inscriptos × cuota) × 100.<br><b>${M(T.insc)} ÷ ${M(T.inscEsp)} = ${pc(T.insc,T.inscEsp)}</b>`,
+    'Torneos rentables':`Torneos con resultado mayor a 0 ÷ torneos que tienen algún ingreso o gasto.<br><b>${d.rentables} de ${d.conMov}</b>`,
+    'Inscriptos':`Jugadores anotados en el torneo (en dobles, cada jugador de la pareja) y cuántos ya pagaron.`,
+    'Ingreso por jugador':`Ingresos ÷ inscriptos. En el global se cuentan inscripciones: un jugador en 3 torneos cuenta 3 veces.<br><b>${M(T.ing)} ÷ ${nj} = ${nj?M(Math.round(T.ing/nj)):'—'}</b>`,
+    'Costo por jugador':`Egresos ÷ inscriptos.<br><b>${M(T.egr)} ÷ ${nj} = ${nj?M(Math.round(T.egr/nj)):'—'}</b>`,
+    'Resultado proyectado':`(Inscriptos × cuota + otros ingresos) − (todos los premios + gastos cargados). Supone que pagan todos y que se entregan todos los premios, aunque el torneo no haya terminado.<br><b>${M(T.proyIng)} − ${M(T.proyEgr)} = ${M(T.proyRes)}</b>`,
+    'Retorno sobre gastos':`Resultado ÷ Egresos × 100. Cuánto se gana por cada guaraní gastado.<br><b>${M(T.res)} ÷ ${M(T.egr)} = ${pc(T.res,T.egr)}</b>`};
+  const k=(lbl,val,sub,cls='')=>`<div class="${cls} kq-wrap"><span>${lbl}</span><b>${val}</b>${sub?`<em>${sub}</em>`:''}${FORM[lbl]?`<details class="kq"><summary aria-label="Cómo se calcula ${esc(lbl)}" title="Cómo se calcula">?</summary><div class="kq-pop">${FORM[lbl]}</div></details>`:''}</div>`;
   const margen=T.ing?Math.round(T.res/T.ing*100):null;
   const cobranza=T.inscEsp?Math.round(T.insc/T.inscEsp*100):null;
   const maxAbs=Math.max(1,...d.tor.map(t=>Math.max(t.ing,t.egr)));
@@ -3085,7 +3106,7 @@ const MANUAL=[
   tips:['Para la comisión directiva: en <b>Torneos → Resumen de temporada</b> descargás el informe del año en PDF o Excel, con recaudación, participación y jugadores más activos.','Publicá <b>Noticias</b> y subí fotos a la <b>Galería</b> desde el Inicio.','Los jugadores pueden tocar <b>Seguir</b> en un perfil y activar los avisos para enterarse de sus partidos.']},
  {id:'finanzas',t:'Finanzas',d:'Cuánto entra, cuánto sale y cuánto deja cada torneo.',pasos:[
   'Abrí <b>Finanzas</b> (en el celular, desde <b>Más</b>) y elegí la temporada. En <b>Torneo</b> elegís ver el <b>global</b> de todos los torneos o los números de <b>un solo torneo</b> (también tocando su nombre en la tabla).',
-  'Arriba ves los indicadores: ingresos, egresos, resultado, margen, cobranza, torneos rentables, ingreso y costo por jugador, y el resultado proyectado.',
+  'Arriba ves los indicadores: ingresos, egresos, resultado, margen, cobranza, torneos rentables, ingreso y costo por jugador, y el resultado proyectado. Tocá el <b>?</b> de cada uno para ver cómo se calcula, con tus números.',
   'Las <b>inscripciones cobradas</b> y los <b>premios</b> de los torneos con campeón se suman solos.',
   'Para lo demás tocá <b>Cargar ingreso o gasto</b>: elegí el concepto de la lista (pelotas, trofeos, juez, auspicio…) o <b>Otro</b> para escribirlo. Con <b>+ Agregar otro gasto</b> cargás varios de una vez; la fecha y el torneo valen para todos.',
   'Tocá un movimiento de la lista para corregirlo o borrarlo. Con <b>Reporte PDF</b> o <b>Excel</b> descargás lo que estés viendo (global o un torneo).'],
@@ -4131,6 +4152,7 @@ function seccionAscensos(){
 function limpiarSiguientes(c){
   let cambio=true;while(cambio){cambio=false;const cb=calcularCuadro(c);cb.rondas.forEach(f=>f.forEach(x=>{const r=c.res[x.key];if(r&&r.g&&r.g!==x.a&&r.g!==x.b){c.res[x.key]={cancha:r.cancha||'',hora:r.hora||''};cambio=true}}))}
 }
+document.addEventListener('toggle',ev=>{const d=ev.target;if(d.classList&&d.classList.contains('kq')&&d.open)document.querySelectorAll('details.kq[open]').forEach(x=>{if(x!==d)x.open=false})},true);
 document.addEventListener('change',ev=>{
   const t=ev.target;
   if(t.dataset.act==='rp-ins'||t.dataset.act==='rp-pago'){const c=todasCats().find(x=>x.id===t.dataset.c);if(c){const e=t.dataset.e;
