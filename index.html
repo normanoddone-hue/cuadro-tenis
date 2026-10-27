@@ -853,6 +853,26 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 .kq-pop{position:absolute;right:0;top:26px;z-index:20;width:260px;max-width:70vw;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:10px 12px;font-size:13px;line-height:1.45;font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--f-body)}
 .kq-pop b{font-family:var(--f-body)!important;font-size:13px!important;line-height:1.45!important;font-style:normal!important;display:block;margin-top:6px;font-weight:700;white-space:normal!important;overflow-wrap:anywhere;color:var(--ink)!important;letter-spacing:0!important}
 .fin-kpis,.fin-kpis2{overflow:visible}
+
+/* Agenda */
+.ag-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.ag-top .chips{flex:1;min-width:0;display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;scrollbar-width:none}.ag-top .chips .chip{flex:none}
+@media (max-width:560px){.ag-top .chips{order:5;flex-basis:100%}.ag-top input[type=date]{flex:1}}
+.ag-top input[type=date]{width:auto}
+.ag-sub{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:10px 0}
+.ag-sub h2{margin:0;font-family:var(--f-display);font-style:italic;font-weight:800;text-transform:uppercase;font-size:24px}
+.ag-sub .seg{margin-left:auto}
+.ag-list,.ag-col{display:flex;flex-direction:column;gap:8px}
+.ag-it{display:grid;grid-template-columns:96px 1fr auto;gap:12px;align-items:center;text-align:left;padding:12px 14px;border:1px solid var(--line);border-left:6px solid var(--court);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);cursor:pointer;width:100%}
+.ag-it:hover{border-color:var(--court)}
+.ag-h{font-family:var(--f-display);font-style:italic;font-weight:800;font-size:18px;white-space:nowrap}
+.ag-b{display:flex;flex-direction:column;gap:2px;min-width:0}.ag-b b{font-size:15px}.ag-b small{color:var(--muted);font-size:13px}
+.ag-torneo{border-left-color:#dcef3c}.ag-clase{border-left-color:#2f9e5b}.ag-reserva{border-left-color:#3b6fd8}.ag-amistoso{border-left-color:#e0803a}.ag-evento{border-left-color:#b04ad8}.ag-mant{border-left-color:#8a8f99}
+.ag-choque{background:color-mix(in srgb,var(--danger) 7%,var(--surface))}.ag-warn{color:var(--danger)!important;font-weight:600}
+.ag-cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.ag-col h3{margin:0 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.ag-col .ag-it{grid-template-columns:80px 1fr}.ag-col .ag-it .tag{display:none}
+@media (max-width:560px){.ag-it{grid-template-columns:72px 1fr}.ag-it .tag{display:none}.ag-h{font-size:15px}}
 </style>
 
 <div class="app">
@@ -1350,6 +1370,7 @@ function separar(S){
   (pub.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(c.pagos){priv._pagos=priv._pagos||{};priv._pagos[c.id]=c.pagos;delete c.pagos}}));
   (pub.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(c.pagosRP){priv._pagosRP=priv._pagosRP||{};priv._pagosRP[c.id]=c.pagosRP;delete c.pagosRP}}));
   if(pub.finanzas){priv._fin=pub.finanzas;delete pub.finanzas}
+  if(pub.agenda){priv._agenda=pub.agenda;delete pub.agenda}
   delete pub.admin;
   return {pub,priv};
 }
@@ -1357,7 +1378,8 @@ let privMap=null;
 function mezclarPriv(){if(!S||!privMap)return;(S.jugadores||[]).forEach(p=>{const x=privMap[p.id];if(x)Object.assign(p,x)});
   const pg=privMap._pagos||{};(S.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(pg[c.id])c.pagos=pg[c.id]}));
   const pr=privMap._pagosRP||{};(S.torneos||[]).forEach(t=>t.categorias.forEach(c=>{if(pr[c.id])c.pagosRP=pr[c.id]}));
-  if(privMap._fin)S.finanzas=privMap._fin}
+  if(privMap._fin)S.finanzas=privMap._fin;
+  if(privMap._agenda)S.agenda=privMap._agenda}
 async function cargarPriv(){
   if(!sb||!logueado){privMap=null;return}
   const {data}=await sb.from('tenis_estado').select('data').eq('id',ID_PRIV).maybeSingle();
@@ -1603,6 +1625,7 @@ const ICONOS={
   eventos:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
   reportes:'<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
   partidos:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
+  agenda:'<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4M7.5 14h3M7.5 17h6"/>',
   jugadores:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c1.8.7 3 2.4 3.5 5.2"/>',
   ranking:'<path d="M4 20v-8h4v8M10 20V5h4v15M16 20v-5h4v5"/>',
   finanzas:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/><path d="m3 9 6-5 6 6 6-5"/>',
@@ -1621,9 +1644,9 @@ function render(){
   if(!cargado){m.innerHTML='<div class="sk" style="height:96px" aria-label="Cargando"></div><div class="sk" style="height:220px"></div><div class="sk" style="height:160px"></div>';return}
   if(!clubInfo.existe&&cargado&&sb){m.innerHTML=`<div class="panel empty"><h2>Club no encontrado</h2><p class="muted">No hay ningún club con el código "${esc(CLUB)}". Revisá la dirección que te pasaron.</p></div>`;renderSheet();return}
   if(!S){m.innerHTML=vistaVacia();renderSheet();return}
-  if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='manual'&&ui.tab!=='finanzas'&&ui.tab!=='privacidad'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
-  if((ui.tab==='manual'||ui.tab==='finanzas')&&!puedeEditar) ui.tab='resumen';
-  const v={privacidad:vistaPrivacidad,finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
+  if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='manual'&&ui.tab!=='finanzas'&&ui.tab!=='privacidad'&&ui.tab!=='agenda'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
+  if((ui.tab==='manual'||ui.tab==='finanzas'||ui.tab==='agenda')&&!puedeEditar) ui.tab='resumen';
+  const v={agenda:vistaAgenda,privacidad:vistaPrivacidad,finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
   const scr=[...m.querySelectorAll('[data-scroll-key]')].map(e=>[e.dataset.scrollKey,e.scrollTop]);
   m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'')+(ui.tab!=='privacidad'?`<p class="legal"><button class="lnk2" data-act="tab" data-k="privacidad">Política de privacidad</button></p>`:'');
   scr.forEach(([k,y])=>{const e=m.querySelector(`[data-scroll-key="${k}"]`);if(e)e.scrollTop=y});
@@ -1635,7 +1658,7 @@ function renderShell(){
   const brand=`<div class="brand"><img class="logo" src="${esc((S&&S.logo)||LOGO)}" alt=""><span>${esc(nombreApp())}</span></div>`;
   const fechas=t?[t.sede,rangoFechas(t)].filter(Boolean).join(' · '):'';
   document.getElementById('side').innerHTML=`${brand}
-    ${S?`<nav class="snav" aria-label="Secciones">${[...SECCIONES,...(puedeEditar?[['finanzas','Finanzas'],['manual','Manual']]:[])].map(([k,l])=>`<button data-act="tab" data-k="${k}" ${ui.tab===k?'aria-current="page"':''}>${ico(k)}${l}</button>`).join('')}</nav>`:''}
+    ${S?`<nav class="snav" aria-label="Secciones">${[...SECCIONES,...(puedeEditar?[['agenda','Agenda'],['finanzas','Finanzas'],['manual','Manual']]:[])].map(([k,l])=>`<button data-act="tab" data-k="${k}" ${ui.tab===k?'aria-current="page"':''}>${ico(k)}${l}</button>`).join('')}</nav>`:''}
     <div class="sfoot">${installBtn()}${logueado?`<div class="adm-card"><div class="adm-who"><span class="adm-av" aria-hidden="true">${esc((adminEmail()[0]||'A').toUpperCase())}</span><span class="adm-tx"><b>Administrador</b><small title="${esc(adminEmail())}">${esc(adminEmail())}</small></span></div>
       <div class="adm-acc"><button class="sbtn" data-act="login">${ICO_GEAR}Club y cuenta</button><button class="sbtn ico-only" data-act="logout" aria-label="Cerrar sesión" title="Cerrar sesión">${ICO_SALIR}</button></div>
       <span class="adm-st"><i class="dot ${/Guardado/.test(statusTxt)?'ok':statusTxt?'wait':''}"></i><span class="stx">${esc(statusTxt||'Sin cambios')}</span></span></div>`
@@ -1643,7 +1666,7 @@ function renderShell(){
   document.getElementById('topbar').innerHTML=`${brand}${S?`<div class="tb-r">${deferredPrompt?'<button class="tbtn" data-act="instalar" aria-label="Instalar app">'+ICO_PDF+'</button>':''}${permisoPlat||logueado?`<button class="tbtn ${logueado?'on':''}" data-act="login" aria-label="${logueado?'Cuenta de administrador':'Ingresar como administrador'}">${ICO_LOCK}</button>`:''}</div>`:''}`;
   const bn=document.getElementById('bnav');
   bn.hidden=!S;
-  const MAS=['campeones','finanzas','manual'];
+  const MAS=['campeones','agenda','finanzas','manual'];
   const base=SECCIONES.filter(([k])=>k!=='eventos'&&k!=='reportes'&&!(puedeEditar&&k==='campeones'));
   bn.innerHTML=S?base.map(([k,l])=>`<button data-act="tab" data-k="${k}" ${ui.tab===k?'aria-current="page"':''}><span class="ico">${ico(k)}</span>${l}</button>`).join('')
     +(puedeEditar?`<button data-act="mas" ${MAS.includes(ui.tab)?'aria-current="page"':''}><span class="ico">${ICO_MAS}</span>Más</button>`:''):'';
@@ -2877,6 +2900,70 @@ function vistaPrivacidad(){
 }
 function linkPrivacidad(){return `${location.origin}${location.pathname}?club=${encodeURIComponent(CLUB)}#privacidad`}
 
+/* ===================== Agenda del día (solo administrador; se guarda en la parte privada) ===================== */
+const TIPOS_ACT=[['reserva','Reserva de cancha','📌'],['clase','Clase','🎓'],['amistoso','Partido amistoso','🤝'],['evento','Evento','🎉'],['mant','Mantenimiento','🛠️'],['otro','Otro','•']];
+function tipoAct(k){return TIPOS_ACT.find(t=>t[0]===k)||TIPOS_ACT[TIPOS_ACT.length-1]}
+function agenda(){return (S.agenda||[])}
+function canchasClub(){return [...new Set([...(S.canchas||['1','2','3','4']),...agenda().map(a=>a.cancha).filter(Boolean)])].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}))}
+function fechaLarga(d){if(!d)return '';const [y,m,dd]=d.split('-').map(Number);const f=new Date(y,m-1,dd);const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'],ms=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];return `${dias[f.getDay()]} ${dd} de ${ms[m-1]}`}
+function sumarDias(d,n){const [y,m,dd]=d.split('-').map(Number);const f=new Date(y,m-1,dd+n);return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`}
+/* Todo lo del día: actividades cargadas + partidos de torneo programados */
+function itemsDelDia(d){
+  const xs=agenda().filter(a=>a.fecha===d).map(a=>({k:'a',a,desde:a.desde||'',hasta:a.hasta||'',cancha:a.cancha||'',tipo:a.tipo}));
+  if(T())todosLosPartidos(T()).forEach(({c,x,cb,z})=>{if(x.res?.dia!==d||x.estado==='jugado'&&!x.res?.hora)return;
+    xs.push({k:'p',c,x,cb,z,desde:x.res.hora||'',hasta:'',cancha:x.res.cancha||'',tipo:'torneo'})});
+  xs.sort((a,b)=>(a.desde||'99').localeCompare(b.desde||'99')||String(a.cancha).localeCompare(String(b.cancha),undefined,{numeric:true}));
+  // choques: misma cancha y horarios que se pisan
+  const fin=i=>i.hasta||(i.desde?(()=>{const [h,m]=i.desde.split(':').map(Number);return `${String(h+(i.k==='p'?2:1)).padStart(2,'0')}:${String(m).padStart(2,'0')}`})():'');
+  xs.forEach((i,n)=>{if(!i.cancha||!i.desde)return;xs.forEach((j,m)=>{if(m<=n||!j.cancha||!j.desde||String(j.cancha)!==String(i.cancha))return;if(i.desde<fin(j)&&j.desde<fin(i)){i.choque=j.choque=true}})});
+  return xs;
+}
+function textoItem(i){
+  if(i.k==='p'){const L=i.c;return {tit:`${etiqueta(S,L,i.x.a)} vs ${etiqueta(S,L,i.x.b)}`,sub:`${L.nombre} · ${rondaDe(i.x,i.cb||{R:1},true)}`,ico:'🏆',tipo:'Torneo'}}
+  const t=tipoAct(i.a.tipo);return {tit:i.a.titulo||t[1],sub:[t[1]!==i.a.titulo?t[1]:'',i.a.quien,i.a.nota].filter(Boolean).join(' · '),ico:t[2],tipo:t[1]}
+}
+function vistaAgenda(){
+  if(!ui.agDia)ui.agDia=hoyISO();const d=ui.agDia;const xs=itemsDelDia(d);const modo=ui.agModo||'lista';
+  const hora=i=>i.desde?`${i.desde}${i.hasta?'–'+i.hasta:''}`:'Sin hora';
+  const card=i=>{const t=textoItem(i);return `<button class="ag-it ${i.k==='p'?'ag-torneo':'ag-'+i.tipo} ${i.choque?'ag-choque':''}" data-act="${i.k==='p'?'partido':'act-edit'}" ${i.k==='p'?`data-c="${i.c.id}" data-z="${i.z||''}" data-k="${i.x.key}"`:`data-id="${i.a.id}"`}>
+      <span class="ag-h">${esc(hora(i))}</span><span class="ag-b"><b>${esc(t.ico)} ${esc(t.tit)}</b><small>${esc([i.cancha?txtCancha(i.cancha):'',t.sub].filter(Boolean).join(' · '))}</small>${i.choque?'<small class="ag-warn">Se pisa con otra actividad en la misma cancha</small>':''}</span><span class="tag">${esc(t.tipo)}</span></button>`};
+  let cuerpo;
+  if(!xs.length) cuerpo=`<div class="panel muted">No hay nada cargado para ${esc(fechaLarga(d))}. Tocá <b>Nueva actividad</b> para agregar reservas, clases o lo que haya en el club.</div>`;
+  else if(modo==='lista') cuerpo=`<div class="ag-list">${xs.map(card).join('')}</div>`;
+  else {const cs=[...new Set([...canchasClub(),...xs.map(i=>String(i.cancha)).filter(Boolean)])];const sin=xs.filter(i=>!i.cancha);
+    cuerpo=`<div class="ag-cols">${cs.map(c=>{const ys=xs.filter(i=>String(i.cancha)===String(c));return `<div class="ag-col"><h3>${esc(txtCancha(c))}</h3>${ys.length?ys.map(card).join(''):'<p class="small muted">Libre todo el día</p>'}</div>`}).join('')}${sin.length?`<div class="ag-col"><h3>Sin cancha</h3>${sin.map(card).join('')}</div>`:''}</div>`}
+  const dias=[-1,0,1,2,3,4,5,6].map(n=>sumarDias(hoyISO(),n));
+  const nAct=xs.filter(i=>i.k==='a').length,nP=xs.length-nAct;
+  return `${encabezado('Agenda del día',{ey:'Solo administrador',sb:'Reservas, clases, partidos y todo lo que pasa en el club',acc:`<button class="btn" data-act="ag-copiar" ${xs.length?'':'disabled'}>Copiar texto</button><button class="btn wa" data-act="ag-wa" ${xs.length?'':'disabled'}>${ICO_WA}Compartir por WhatsApp</button><button class="btn pri" data-act="act-nueva">Nueva actividad</button>`})}
+    <div class="ag-top"><button class="btn sm" data-act="ag-dia" data-k="${sumarDias(d,-1)}" aria-label="Día anterior">‹</button>
+      <div class="chips">${dias.map(x=>`<button class="chip" aria-pressed="${x===d}" data-act="ag-dia" data-k="${x}">${x===hoyISO()?'Hoy':x===diaISO(1)?'Mañana':esc(fmtDia(x))}</button>`).join('')}</div>
+      <input type="date" id="ag-fecha" value="${d}" aria-label="Elegir día"><button class="btn sm" data-act="ag-dia" data-k="${sumarDias(d,1)}" aria-label="Día siguiente">›</button></div>
+    <div class="ag-sub"><h2>${esc(fechaLarga(d))}</h2><span class="small muted">${nAct} actividad${nAct===1?'':'es'}${nP?` · ${nP} partido${nP===1?'':'s'} de torneo`:''}</span>
+      <div class="seg" role="group" aria-label="Vista"><button data-act="ag-modo" data-k="lista" aria-pressed="${modo==='lista'}">Lista</button><button data-act="ag-modo" data-k="canchas" aria-pressed="${modo==='canchas'}">Por cancha</button></div></div>
+    ${cuerpo}
+    <p class="small muted">Los partidos de torneo con día y hora aparecen solos. La agenda solo la ve el administrador; se comparte cuando vos la mandás.</p>`;
+}
+function textoAgenda(d){
+  const xs=itemsDelDia(d);const lin=[`*${nombreApp()}*`,`*Agenda del ${fechaLarga(d)}*`,''];
+  xs.forEach(i=>{const t=textoItem(i);lin.push(`${t.ico} *${i.desde?i.desde+(i.hasta?'–'+i.hasta:''):'Sin hora'}*${i.cancha?' · '+txtCancha(i.cancha):''}`);lin.push(`${t.tit}${t.sub?' — '+t.sub:''}`);lin.push('')});
+  return lin.join('\n').trim();
+}
+function hojaAct(s,cerrarBtn){
+  const a=s.id?agenda().find(x=>x.id===s.id):{tipo:s.tipo||'reserva',fecha:ui.agDia||hoyISO(),desde:'',hasta:'',cancha:'',titulo:'',quien:'',nota:''};if(!a)return '';
+  const tipo=s.tipo||a.tipo;
+  return `<div class="sheet-hd"><h2>${s.id?'Editar actividad':'Nueva actividad'}</h2>${cerrarBtn}</div>
+    <div class="opts" role="radiogroup" aria-label="Tipo">${TIPOS_ACT.map(([k,l,ic])=>`<label class="opt"><input type="radio" name="ac-tipo" value="${k}" ${tipo===k?'checked':''}><span>${ic} ${l}</span></label>`).join('')}</div>
+    <div class="field"><label for="ac-tit">${tipo==='clase'?'Clase (profesor o grupo)':tipo==='reserva'?'Reservado por':'Título'}</label><input type="text" id="ac-tit" value="${esc(a.titulo||'')}" placeholder="${tipo==='clase'?'Ej.: Clase de menores · Prof. Gómez':tipo==='reserva'?'Ej.: Familia Benítez':tipo==='amistoso'?'Ej.: Dobles de los martes':tipo==='mant'?'Ej.: Pasar rastrillo y regar':'Ej.: Asado de fin de torneo'}"></div>
+    <div class="grid2"><div class="field"><label for="ac-fecha">Día</label><input type="date" id="ac-fecha" value="${esc(a.fecha||'')}"></div>
+      <div class="field"><label for="ac-can">Cancha</label><select id="ac-can"><option value="">Sin cancha</option>${canchasClub().map(c=>`<option value="${esc(c)}" ${String(a.cancha)===String(c)?'selected':''}>${esc(txtCancha(c))}</option>`).join('')}</select></div></div>
+    <div class="grid2"><div class="field"><label for="ac-desde">Desde</label><input type="time" id="ac-desde" value="${esc(a.desde||'')}"></div>
+      <div class="field"><label for="ac-hasta">Hasta</label><input type="time" id="ac-hasta" value="${esc(a.hasta||'')}"></div></div>
+    <div class="field"><label for="ac-quien">${tipo==='clase'?'Alumnos':'Participantes'} (opcional)</label><input type="text" id="ac-quien" value="${esc(a.quien||'')}" placeholder="Ej.: Ana, Luis y Marcos"></div>
+    <div class="field"><label for="ac-nota">Nota (opcional)</label><input type="text" id="ac-nota" value="${esc(a.nota||'')}" placeholder="Ej.: traer pelotas nuevas"></div>
+    ${s.id?'':`<div class="field"><label for="ac-rep">Repetir</label><select id="ac-rep"><option value="0">Solo este día</option>${[2,4,8,12,16].map(n=>`<option value="${n}">Cada semana, ${n} semanas</option>`).join('')}</select></div>`}
+    <div class="btns"><button class="btn pri" data-act="act-guardar">Guardar</button>${s.id?`<button class="btn danger ${ui.armado==='del-act'?'arm':''}" data-act="arm" data-w="del-act">${ui.armado==='del-act'?'Tocá de nuevo para borrar':'Borrar'}</button>`:''}</div>`;
+}
+
 /* ===================== Finanzas (solo administrador; se guardan en la parte privada) ===================== */
 const CONCEPTOS_ING=['Auspicio','Cantina','Venta de entradas','Rifa o sorteo','Aporte del club','Otro ingreso'];
 const CONCEPTOS_EGR=['Pelotas','Trofeos y medallas','Juez o árbitro','Alquiler de canchas','Remeras','Comida y bebida','Publicidad','Otro gasto'];
@@ -3104,6 +3191,13 @@ const MANUAL=[
   'Desde Ranking y desde cada jugador podés descargar su PDF.',
   'Con <b>Pantalla TV</b> (en Inicio) la app pasa sola resultados, próximos partidos y auspiciantes: ideal para un televisor en el club.'],
   tips:['Para la comisión directiva: en <b>Torneos → Resumen de temporada</b> descargás el informe del año en PDF o Excel, con recaudación, participación y jugadores más activos.','Publicá <b>Noticias</b> y subí fotos a la <b>Galería</b> desde el Inicio.','Los jugadores pueden tocar <b>Seguir</b> en un perfil y activar los avisos para enterarse de sus partidos.']},
+ {id:'agenda',t:'Agenda del día',d:'Todo lo que pasa en el club en un día, para compartir por WhatsApp.',pasos:[
+  'Abrí <b>Agenda</b> (en el celular, desde <b>Más</b>) y elegí el día.',
+  'Tocá <b>Nueva actividad</b>: reserva de cancha, clase, partido amistoso, evento o mantenimiento, con cancha y horario. Las clases fijas se pueden repetir cada semana.',
+  'Los <b>partidos de torneo</b> que tienen día y hora aparecen solos.',
+  'Mirala en <b>Lista</b> o <b>Por cancha</b>. Si dos cosas se pisan en la misma cancha, la app te avisa.',
+  'Tocá <b>Compartir por WhatsApp</b> para mandar la agenda del día al grupo del club, o <b>Copiar texto</b> para pegarla en otro lado.'],
+  tips:['La agenda es privada: solo la ve el administrador hasta que la compartís.']},
  {id:'finanzas',t:'Finanzas',d:'Cuánto entra, cuánto sale y cuánto deja cada torneo.',pasos:[
   'Abrí <b>Finanzas</b> (en el celular, desde <b>Más</b>) y elegí la temporada. En <b>Torneo</b> elegís ver el <b>global</b> de todos los torneos o los números de <b>un solo torneo</b> (también tocando su nombre en la tabla).',
   'Arriba ves los indicadores: ingresos, egresos, resultado, margen, cobranza, torneos rentables, ingreso y costo por jugador, y el resultado proyectado. Tocá el <b>?</b> de cada uno para ver cómo se calcula, con tus números.',
@@ -3461,9 +3555,11 @@ function renderSheet(){
     <div class="btns"><button class="btn pri" data-act="guardar-partido">Guardar</button>${res.g?'<button class="btn" data-act="borrar-res">Borrar resultado</button>':''}</div>`;
   }
   if(s.t==='mov'){h=hojaMov(s)}
+  if(s.t==='act'){h=hojaAct(s,cerrarBtn)}
   if(s.t==='mas'){const it=(k,l,d)=>`<button class="rowbtn mas-it" data-act="tab" data-k="${k}"><span class="mas-ico">${ico(k)}</span><span class="n">${l}</span><span class="d">${d}</span></button>`;
     h=`<div class="sheet-hd"><h2>Más</h2>${cerrarBtn}</div><div class="list">
       ${it('campeones','Campeones','Historial del club, año por año')}
+      ${it('agenda','Agenda del día','Reservas, clases y partidos para compartir')}
       ${it('finanzas','Finanzas','Ingresos, gastos y rentabilidad')}
       ${it('manual','Manual del usuario','Cómo usar la app paso a paso')}
       <button class="rowbtn mas-it" data-act="login"><span class="mas-ico">${ICO_GEAR}</span><span class="n">Club y cuenta</span><span class="d">Logo, moneda, contraseña, auspiciantes y clubes</span></button></div>`}
@@ -3669,6 +3765,20 @@ document.addEventListener('click',ev=>{
     case 'festejar':festejo(t.dataset.n);break;
     case 'club-alta':altaClub();break;
     case 'mas':abrir({t:'mas'});break;
+    case 'ag-dia':ui.agDia=t.dataset.k;render();break;
+    case 'ag-modo':ui.agModo=t.dataset.k;render();break;
+    case 'act-nueva':abrir({t:'act'});break;
+    case 'act-edit':abrir({t:'act',id:t.dataset.id});break;
+    case 'ag-wa':window.open('https://wa.me/?text='+encodeURIComponent(textoAgenda(ui.agDia||hoyISO())),'_blank','noopener');break;
+    case 'ag-copiar':{const v=textoAgenda(ui.agDia||hoyISO());(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(()=>toast('Agenda copiada: pegala donde quieras.'),()=>toast('No se pudo copiar.'));break}
+    case 'act-guardar':{const sh=ui.sheet;const d={tipo:radioVal('ac-tipo')||'otro',titulo:val('ac-tit'),fecha:val('ac-fecha'),cancha:val('ac-can'),desde:val('ac-desde'),hasta:val('ac-hasta'),quien:val('ac-quien'),nota:val('ac-nota')};
+      if(!d.fecha){avisar('Elegí el día.');break}
+      if(d.desde&&d.hasta&&d.hasta<=d.desde){avisar('La hora de fin tiene que ser después de la de inicio.');break}
+      if(!d.titulo)d.titulo=tipoAct(d.tipo)[1];
+      S.agenda=S.agenda||[];
+      if(sh.id){const ex=S.agenda.find(x=>x.id===sh.id);if(ex)Object.assign(ex,d)}
+      else{const n=Math.max(1,+val('ac-rep')||1);const serie=n>1?uid():undefined;for(let i=0;i<n;i++)S.agenda.push({id:uid(),...d,fecha:sumarDias(d.fecha,7*i),...(serie?{serie}:{})})}
+      ui.agDia=d.fecha;ui.sheet=null;toast(sh.id?'Actividad actualizada.':'Actividad agregada.');cambiar();break}
     case 'rp-armar':{const c=todasCats().find(x=>x.id===t.dataset.c);const k=+t.dataset.k;if(!c)break;
       const jug=k===1?(c.rpIns||[]).filter(e=>perdedoresR1(c).ls.includes(e)):perdedoresRP(c,1);
       armarRP(c,k,jug);toast(c['rp'+k].cuadro?`RP${k} armada.`:`RP${k}: ${jug.length?'pasaron directo al cuadro':'lugares libres'}.`);cambiar();break}
@@ -3892,6 +4002,7 @@ document.addEventListener('click',ev=>{
       if(w==='rp-cerrar-1'){const c=cat();armarRP(c,1,[]);cambiar();break}
       if(w==='rp-reset'){const c=cat();delete c.rp1;delete c.rp2;c.rpAsig={};c.rpCerr={};if(!lugaresRP(c,1).length)c.rpCerr[1]=true;if(!lugaresRP(c,2).length)c.rpCerr[2]=true;toast('Se deshicieron las rondas de perdedores.');cambiar();break}
       if(w.startsWith('pago-ninguno-')){const c=todasCats().find(x=>x.id===w.slice(13));if(c){c.pagos={};cambiar()}break}
+      if(w==='del-act'){S.agenda=agenda().filter(x=>x.id!==ui.sheet.id);ui.sheet=null;toast('Actividad borrada.');cambiar();break}
       if(w==='del-mov'){S.finanzas.movs=movs().filter(x=>x.id!==ui.sheet.id);ui.sheet=null;toast('Movimiento borrado.');cambiar();break}
       if(w.startsWith('del-sp-')){const id=w.slice(7);S.sponsors=(S.sponsors||[]).filter(x=>x.id!==id);cambiar()}
       if(w.startsWith('del-n-')){const id=w.slice(6);S.noticias=(S.noticias||[]).filter(n=>n.id!==id);cambiar()}
@@ -4170,6 +4281,8 @@ document.addEventListener('change',ev=>{
   if(t.id==='c-rp'){const f=document.getElementById('c-rp-costo');if(f)f.hidden=!t.checked}
   if(t.id==='tmp-anio'&&ui.sheet){ui.sheet.anio=t.value;renderSheet()}
   if(t.id==='fin-anio'){ui.finAnio=t.value;render()}
+  if(t.id==='ag-fecha'&&t.value){ui.agDia=t.value;render()}
+  if(t.name==='ac-tipo'&&ui.sheet&&ui.sheet.t==='act'){const keep=['ac-tit','ac-fecha','ac-can','ac-desde','ac-hasta','ac-quien','ac-nota','ac-rep'].map(id=>[id,document.getElementById(id)?.value]);ui.sheet.tipo=t.value;renderSheet();keep.forEach(([id,v])=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v})}
   if(t.id==='fin-cat'){ui.finCat=t.value;render();window.scrollTo({top:0})}
   if(t.name==='mv-tipo'&&ui.sheet&&ui.sheet.t==='mov'){leerFilasMov();const nl=t.value==='ing'?CONCEPTOS_ING:CONCEPTOS_EGR;
     ui.sheet.filas.forEach(f=>{if(f.con&&f.con!=='__otro'&&!nl.includes(f.con)){f.otro=f.con;f.con='__otro'}});ui.sheet.tipo=t.value;renderSheet()}
