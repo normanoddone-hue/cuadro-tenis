@@ -873,6 +873,9 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 .ag-col h3{margin:0 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .ag-col .ag-it{grid-template-columns:80px 1fr}.ag-col .ag-it .tag{display:none}
 @media (max-width:560px){.ag-it{grid-template-columns:72px 1fr}.ag-it .tag{display:none}.ag-h{font-size:15px}}
+.pass-w{position:relative}.pass-w input{padding-right:46px;width:100%}
+.pass-ojo{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:38px;height:38px;display:grid;place-items:center;border:0;background:transparent;color:var(--muted);border-radius:8px;cursor:pointer}
+.pass-ojo:hover,.pass-ojo[aria-pressed="true"]{color:var(--court)}
 </style>
 
 <div class="app">
@@ -1533,6 +1536,8 @@ const ICO_STAR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="
 const ICO_TV='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M8 21h8M12 17v4"/></svg>';
 const ICO_GEAR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
 const ICO_WA='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8.4 19z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1.2-1.4-1.8-.9-.8.8a4 4 0 0 1-2.3-2.3l.8-.8-.9-1.8z"/></svg>';
+const ICO_OJO='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const ICO_OJO_NO='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
 const ICO_MAS='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>';
 const ICO_LOCK='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const ICO_SALIR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/></svg>';
@@ -3697,6 +3702,9 @@ function renderSheet(){
     <span class="small muted">Aparece en Noticias, en el inicio.</span>`;
   }
   el.innerHTML=`<div class="ov" data-act="ov"><div class="sheet${s.t==='foto'?' wide':''}" role="dialog" aria-modal="true">${h}</div></div>`;
+  // botón para ver u ocultar la contraseña
+  el.querySelectorAll('input[type=password]').forEach(i=>{if(i.parentElement.classList.contains('pass-w'))return;const w=document.createElement('div');w.className='pass-w';i.replaceWith(w);w.appendChild(i);
+    w.insertAdjacentHTML('beforeend',`<button type="button" class="pass-ojo" data-act="ver-pass" aria-label="Mostrar contraseña" aria-pressed="false">${ICO_OJO}</button>`)});
   if(s.t==='partido') syncTB();
 }
 
@@ -3765,6 +3773,7 @@ document.addEventListener('click',ev=>{
     case 'festejar':festejo(t.dataset.n);break;
     case 'club-alta':altaClub();break;
     case 'mas':abrir({t:'mas'});break;
+    case 'ver-pass':{const i=t.parentElement.querySelector('input');if(!i)break;const ver=i.type==='password';i.type=ver?'text':'password';t.setAttribute('aria-pressed',String(ver));t.setAttribute('aria-label',ver?'Ocultar contraseña':'Mostrar contraseña');t.innerHTML=ver?ICO_OJO_NO:ICO_OJO;i.focus();break}
     case 'ag-dia':ui.agDia=t.dataset.k;render();break;
     case 'ag-modo':ui.agModo=t.dataset.k;render();break;
     case 'act-nueva':abrir({t:'act'});break;
