@@ -876,6 +876,7 @@ body[data-fondo] .sec-hd h2,body[data-fondo] .ph h1{text-shadow:0 1px 0 rgba(255
 .pass-w{position:relative}.pass-w input{padding-right:46px;width:100%}
 .pass-ojo{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:38px;height:38px;display:grid;place-items:center;border:0;background:transparent;color:var(--muted);border-radius:8px;cursor:pointer}
 .pass-ojo:hover,.pass-ojo[aria-pressed="true"]{color:var(--court)}
+.btns .olvido{margin-left:auto;font-size:13px}
 </style>
 
 <div class="app">
@@ -900,6 +901,7 @@ const CLUB=(()=>{const ok=c=>/^[a-z0-9-]{2,30}$/.test(c)&&c!=='privado';let c=''
   return c})();
 const ID_PUB=CLUB==='principal'?'principal':CLUB, ID_PRIV=CLUB==='principal'?'privado':CLUB+':privado';
 const KEY='cuadro-tenis-pwa'+(CLUB==='principal'?'':':'+CLUB);
+const RECUPERANDO=/type=recovery/.test(location.hash);
 let clubInfo={nombre:'',existe:CLUB==='principal'};
 if(location.hash==='#privacidad'){try{setTimeout(()=>{ui.tab='privacidad';render()},0)}catch(e){}}
 function linkClub(slug){const u=new URL(location.origin+location.pathname);u.searchParams.set('club',slug||'principal');return u.toString()}
@@ -1411,7 +1413,8 @@ async function init(){
   sb.auth.onAuthStateChange((ev,ses)=>{sesionSupa=ses;
     setTimeout(async()=>{
       try{
-        if(ev==='SIGNED_IN'||ev==='TOKEN_REFRESHED'){await verificarAdmin();actualizarPermisos();if(esAdmin&&!privMap)await cargarPriv()}
+        if(ev==='PASSWORD_RECOVERY'){try{history.replaceState(null,'',linkClub(CLUB))}catch(x){}if(!ui.sheet||ui.sheet.t!=='nueva-pass'){ui.sheet={t:'nueva-pass'};ui.msg=null;renderSheet()}}
+        if(ev==='SIGNED_IN'||ev==='TOKEN_REFRESHED'||ev==='PASSWORD_RECOVERY'){await verificarAdmin();actualizarPermisos();if(esAdmin&&!privMap)await cargarPriv()}
         if(ev==='SIGNED_OUT'){esAdmin=false;esSuper=false;privMap=null;lastSaved='';await cargarRemoto()}
       }catch(e){}
       renderFondo();
@@ -1419,6 +1422,7 @@ async function init(){
   if(CLUB!=='principal'){try{const {data,error}=await sb.from('tenis_clubes').select('nombre').eq('slug',CLUB).maybeSingle();clubInfo={nombre:data?.nombre||'',existe:error?true:!!data}}catch(e){clubInfo={nombre:'',existe:true}}}
   await cargarRemoto();
   if(sesionSupa){await verificarAdmin();actualizarPermisos();if(esAdmin)await cargarPriv();renderFondo()}
+  if(RECUPERANDO&&sesionSupa){ui.sheet={t:'nueva-pass'};ui.msg=null;renderSheet()}
   sb.channel('estado').on('postgres_changes',{event:'*',schema:'public',table:'tenis_estado',filter:'id=eq.'+ID_PUB},p=>{if(p.new&&p.new.data)aplicarRemoto(p.new.data)}).subscribe();
 }
 async function cargarRemoto(){
@@ -3220,6 +3224,7 @@ const MANUAL=[
   ['¿Quién ve las cédulas y teléfonos?','Solo el administrador. Se guardan aparte de los datos públicos.'],
   ['Cargué mal un resultado, ¿qué hago?','Abrí el partido, corregí los números y guardá. Si cambia el ganador, se borran los resultados siguientes de esa llave.'],
   ['No veo un cambio en mi celular','Cerrá la app y volvé a abrirla para que cargue la última versión.'],
+  ['Me olvidé la contraseña','En <b>Ingresar</b> tocá <b>¿Olvidaste tu contraseña?</b>, escribí tu correo y te llega un enlace para crear una nueva.'],
   ['¿Dónde está la política de privacidad?','Al pie de cada pantalla hay un enlace <b>Política de privacidad</b>. Cargá en <b>Club y cuenta → Contacto para datos personales</b> el correo o teléfono al que los jugadores pueden escribir. En la inscripción online, el jugador tiene que aceptarla para enviar el pedido.'],
   ['¿Cuál es la dirección de mi club?','La encontrás en <b>Club y cuenta → Dirección del club</b>, con un botón para copiarla y mandarla a los jugadores.'],
   ['¿Puedo usarla en la computadora y en el celular?','Sí, es la misma app y los datos se sincronizan.']]}
@@ -3560,6 +3565,16 @@ function renderSheet(){
     <div class="btns"><button class="btn pri" data-act="guardar-partido">Guardar</button>${res.g?'<button class="btn" data-act="borrar-res">Borrar resultado</button>':''}</div>`;
   }
   if(s.t==='mov'){h=hojaMov(s)}
+  if(s.t==='olvido'){h=`<div class="sheet-hd"><h2>Recuperar contraseña</h2>${cerrarBtn}</div>
+    ${s.enviado?`<div class="note">Si <b>${esc(s.mail)}</b> tiene una cuenta, en unos minutos te llega un correo con un enlace para crear una contraseña nueva. Revisá también la carpeta de spam.</div><div class="btns"><button class="btn" data-act="login">Volver a ingresar</button></div>`
+    :`<p class="small muted" style="margin:0">Escribí el correo con el que ingresás. Te mandamos un enlace para crear una contraseña nueva.</p>
+    <div class="field"><label for="o-u">Correo</label><input type="text" id="o-u" inputmode="email" autocomplete="username" value="${esc(s.mail||'')}"></div>${err}
+    <div class="btns"><button class="btn pri" data-act="olvido-enviar" data-primary ${s.enviando?'disabled':''}>${s.enviando?'Enviando…':'Enviar enlace'}</button><button class="btn" data-act="login">Volver</button></div>`}`}
+  if(s.t==='nueva-pass'){h=`<div class="sheet-hd"><h2>Nueva contraseña</h2>${cerrarBtn}</div>
+    <p class="small muted" style="margin:0">Elegí tu contraseña nueva. Mínimo 8 caracteres.</p>
+    <div class="field"><label for="np-1">Contraseña nueva</label><input type="password" id="np-1" autocomplete="new-password"></div>
+    <div class="field"><label for="np-2">Repetir contraseña</label><input type="password" id="np-2" autocomplete="new-password"></div>${err}
+    <div class="btns"><button class="btn pri" data-act="nueva-pass-ok" data-primary>Guardar contraseña</button></div>`}
   if(s.t==='act'){h=hojaAct(s,cerrarBtn)}
   if(s.t==='mas'){const it=(k,l,d)=>`<button class="rowbtn mas-it" data-act="tab" data-k="${k}"><span class="mas-ico">${ico(k)}</span><span class="n">${l}</span><span class="d">${d}</span></button>`;
     h=`<div class="sheet-hd"><h2>Más</h2>${cerrarBtn}</div><div class="list">
@@ -3609,7 +3624,7 @@ function renderSheet(){
       <div class="field"><label for="l-u">Correo</label><input type="text" id="l-u" inputmode="email" autocomplete="username"></div>
       <div class="field"><label for="l-p">Contraseña</label><input type="password" id="l-p" autocomplete="current-password"></div>
       ${err}
-      <div class="btns"><button class="btn pri" data-act="do-login" data-primary>Ingresar</button></div>`;
+      <div class="btns"><button class="btn pri" data-act="do-login" data-primary>Ingresar</button><button class="lnk2 olvido" data-act="olvido">¿Olvidaste tu contraseña?</button></div>`;
     }
   }
   if(s.t==='foto'){const f=(S.galeria||[]).find(x=>x.id===s.id);
@@ -3773,6 +3788,18 @@ document.addEventListener('click',ev=>{
     case 'festejar':festejo(t.dataset.n);break;
     case 'club-alta':altaClub();break;
     case 'mas':abrir({t:'mas'});break;
+    case 'olvido':abrir({t:'olvido',mail:val('l-u')});break;
+    case 'olvido-enviar':{const mail=val('o-u').trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(mail)){avisar('Revisá el correo.');break}
+      if(!sb){avisar('Falta configurar Supabase en config.js.');break}
+      ui.sheet.mail=mail;ui.sheet.enviando=true;renderSheet();
+      sb.auth.resetPasswordForEmail(mail,{redirectTo:linkClub(CLUB)}).then(({error})=>{if(!ui.sheet||ui.sheet.t!=='olvido')return;ui.sheet.enviando=false;
+        if(error&&/rate|limit|seconds|too many/i.test(error.message)){avisar('Se pidieron muchos enlaces seguidos. Esperá unos minutos y probá de nuevo.');renderSheet();return}
+        ui.sheet.enviado=true;ui.msg=null;renderSheet()}).catch(()=>{ui.sheet.enviando=false;avisar('No se pudo enviar. Revisá la conexión.')});break}
+    case 'nueva-pass-ok':{const a=document.getElementById('np-1')?.value||'',b=document.getElementById('np-2')?.value||'';
+      if(a.length<8){avisar('La contraseña tiene que tener al menos 8 caracteres.');break}
+      if(a!==b){avisar('Las dos contraseñas no coinciden.');break}
+      sb.auth.updateUser({password:a}).then(({error})=>{if(error){avisar(/different|same/i.test(error.message)?'La contraseña nueva tiene que ser distinta de la anterior.':'No se pudo cambiar: '+error.message);return}
+        ui.sheet=null;ui.msg=null;renderSheet();toast('Listo: tu contraseña quedó cambiada.',5000)});break}
     case 'ver-pass':{const i=t.parentElement.querySelector('input');if(!i)break;const ver=i.type==='password';i.type=ver?'text':'password';t.setAttribute('aria-pressed',String(ver));t.setAttribute('aria-label',ver?'Ocultar contraseña':'Mostrar contraseña');t.innerHTML=ver?ICO_OJO_NO:ICO_OJO;i.focus();break}
     case 'ag-dia':ui.agDia=t.dataset.k;render();break;
     case 'ag-modo':ui.agModo=t.dataset.k;render();break;
