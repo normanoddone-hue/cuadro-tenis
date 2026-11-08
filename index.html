@@ -810,6 +810,23 @@ i.ing{background:#2f9e5b}i.egr{background:#e0803a}
 @media (max-width:560px){.fin-bar{grid-template-columns:1fr auto}.fb-t{grid-column:1/-1;order:3}}
 .pay-all{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--soft);cursor:pointer}
 .pay-all span{display:flex;flex-direction:column}.pay-all small{font-size:12px;color:var(--muted)}
+.vivo-pill{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;background:#d0021b;color:#fff;font:700 11px/1 var(--f-body,inherit);letter-spacing:.08em;padding:7px 10px;cursor:pointer}
+.vdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 rgba(255,59,48,.6);animation:vpul 1.6s infinite;flex:none;margin-right:6px;vertical-align:middle}
+.vivo-pill .vdot{background:#fff;margin-right:0}
+@keyframes vpul{0%{box-shadow:0 0 0 0 rgba(255,59,48,.55)}70%{box-shadow:0 0 0 8px rgba(255,59,48,0)}100%{box-shadow:0 0 0 0 rgba(255,59,48,0)}}
+.vivo-ban{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;width:100%;text-align:left;margin:0 0 14px;padding:12px 14px;border:1px solid #d0021b;border-left:6px solid #d0021b;border-radius:var(--r-sm);background:var(--surface);color:var(--ink);cursor:pointer}
+.vivo-ban b{display:block}.vivo-ban small{display:block;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vivo-go{font-weight:700;color:#d0021b}
+.vivo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:16px;margin-top:12px}
+.vivo-card{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);overflow:hidden}
+.vivo-frame{position:relative;display:block;aspect-ratio:16/9;background:#000}
+.vivo-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vivo-ext{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#fff;text-decoration:none;font-weight:600}
+.vivo-ext .ic{width:40px;height:40px}
+.vivo-pie{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px}
+.vivo-pie h3{margin:0 0 2px;font-size:16px}
+.vivo-pasos{margin:8px 0 12px;padding-left:20px;line-height:1.6}
+@media (prefers-reduced-motion:reduce){.vdot{animation:none}}
 .mas-it{display:grid;grid-template-columns:36px 1fr;column-gap:12px;align-items:center;text-align:left}
 .mas-it .mas-ico{grid-row:span 2;display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--soft)}
 .mas-it .n,.mas-it .d{grid-column:2}
@@ -904,6 +921,7 @@ const KEY='cuadro-tenis-pwa'+(CLUB==='principal'?'':':'+CLUB);
 const RECUPERANDO=/type=recovery/.test(location.hash);
 let clubInfo={nombre:'',existe:CLUB==='principal'};
 if(location.hash==='#privacidad'){try{setTimeout(()=>{ui.tab='privacidad';render()},0)}catch(e){}}
+if(location.hash==='#vivo'){try{setTimeout(()=>{ui.tab='vivo';render()},0)}catch(e){}}
 function linkClub(slug){const u=new URL(location.origin+location.pathname);u.searchParams.set('club',slug||'principal');return u.toString()}
 const PUNTOS_CAMPEON=100;
 const PUNTOS_RONDA=[70,45,25,15,8,4,2]; // perdedor según rondas desde el final
@@ -1629,6 +1647,7 @@ async function subirFotos(files){
 
 /* ===================== Render ===================== */
 const ICONOS={
+  vivo:'<rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/><circle cx="7" cy="12" r="1.5"/>',
   resumen:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   categorias:'<path d="M3 4.5h6v5H3zM3 14.5h6v5H3zM9 7h3v10H9M12 12h3M15 9.5h6v5h-6z"/>',
   eventos:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -1641,7 +1660,7 @@ const ICONOS={
   manual:'<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M9 7h6M9 10.5h6"/>',
   campeones:'<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 3 3.5M17 6h2.5a2.5 2.5 0 0 1-3 3.5M12 14v3M8.5 20h7M9.5 17h5v3h-5z"/>'
 };
-const SECCIONES=[['resumen','Inicio'],['categorias','Torneos'],['partidos','Partidos'],['jugadores','Jugadores'],['ranking','Ranking'],['campeones','Campeones']];
+const SECCIONES=[['resumen','Inicio'],['categorias','Torneos'],['partidos','Partidos'],['vivo','En vivo'],['jugadores','Jugadores'],['ranking','Ranking'],['campeones','Campeones']];
 const ico=k=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[k]}</svg>`;
 
 function render(){
@@ -1653,9 +1672,9 @@ function render(){
   if(!cargado){m.innerHTML='<div class="sk" style="height:96px" aria-label="Cargando"></div><div class="sk" style="height:220px"></div><div class="sk" style="height:160px"></div>';return}
   if(!clubInfo.existe&&cargado&&sb){m.innerHTML=`<div class="panel empty"><h2>Club no encontrado</h2><p class="muted">No hay ningún club con el código "${esc(CLUB)}". Revisá la dirección que te pasaron.</p></div>`;renderSheet();return}
   if(!S){m.innerHTML=vistaVacia();renderSheet();return}
-  if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='manual'&&ui.tab!=='finanzas'&&ui.tab!=='privacidad'&&ui.tab!=='agenda'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
+  if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='manual'&&ui.tab!=='finanzas'&&ui.tab!=='privacidad'&&ui.tab!=='agenda'&&ui.tab!=='vivo'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
   if((ui.tab==='manual'||ui.tab==='finanzas'||ui.tab==='agenda')&&!puedeEditar) ui.tab='resumen';
-  const v={agenda:vistaAgenda,privacidad:vistaPrivacidad,finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
+  const v={vivo:vistaVivo,agenda:vistaAgenda,privacidad:vistaPrivacidad,finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
   const scr=[...m.querySelectorAll('[data-scroll-key]')].map(e=>[e.dataset.scrollKey,e.scrollTop]);
   m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'')+(ui.tab!=='privacidad'?`<p class="legal"><button class="lnk2" data-act="tab" data-k="privacidad">Política de privacidad</button></p>`:'');
   scr.forEach(([k,y])=>{const e=m.querySelector(`[data-scroll-key="${k}"]`);if(e)e.scrollTop=y});
@@ -1672,11 +1691,11 @@ function renderShell(){
       <div class="adm-acc"><button class="sbtn" data-act="login">${ICO_GEAR}Club y cuenta</button><button class="sbtn ico-only" data-act="logout" aria-label="Cerrar sesión" title="Cerrar sesión">${ICO_SALIR}</button></div>
       <span class="adm-st"><i class="dot ${/Guardado/.test(statusTxt)?'ok':statusTxt?'wait':''}"></i><span class="stx">${esc(statusTxt||'Sin cambios')}</span></span></div>`
       :`<button class="sbtn wide" data-act="login">${ICO_LOCK}Ingresar como administrador</button>`}</div>`;
-  document.getElementById('topbar').innerHTML=`${brand}${S?`<div class="tb-r">${deferredPrompt?'<button class="tbtn" data-act="instalar" aria-label="Instalar app">'+ICO_PDF+'</button>':''}${permisoPlat||logueado?`<button class="tbtn ${logueado?'on':''}" data-act="login" aria-label="${logueado?'Cuenta de administrador':'Ingresar como administrador'}">${ICO_LOCK}</button>`:''}</div>`:''}`;
+  document.getElementById('topbar').innerHTML=`${brand}${S?`<div class="tb-r">${vivos().length&&ui.tab!=='vivo'?`<button class="vivo-pill" data-act="tab" data-k="vivo"><i class="vdot"></i>EN VIVO</button>`:''}${deferredPrompt?'<button class="tbtn" data-act="instalar" aria-label="Instalar app">'+ICO_PDF+'</button>':''}${permisoPlat||logueado?`<button class="tbtn ${logueado?'on':''}" data-act="login" aria-label="${logueado?'Cuenta de administrador':'Ingresar como administrador'}">${ICO_LOCK}</button>`:''}</div>`:''}`;
   const bn=document.getElementById('bnav');
   bn.hidden=!S;
-  const MAS=['campeones','agenda','finanzas','manual'];
-  const base=SECCIONES.filter(([k])=>k!=='eventos'&&k!=='reportes'&&!(puedeEditar&&k==='campeones'));
+  const MAS=['campeones','vivo','agenda','finanzas','manual'];
+  const base=SECCIONES.filter(([k])=>k!=='eventos'&&k!=='reportes'&&k!=='vivo'&&!(puedeEditar&&k==='campeones'));
   bn.innerHTML=S?base.map(([k,l])=>`<button data-act="tab" data-k="${k}" ${ui.tab===k?'aria-current="page"':''}><span class="ico">${ico(k)}</span>${l}</button>`).join('')
     +(puedeEditar?`<button data-act="mas" ${MAS.includes(ui.tab)?'aria-current="page"':''}><span class="ico">${ICO_MAS}</span>Más</button>`:''):'';
 }
@@ -1924,7 +1943,7 @@ function vistaResumen(){
   const hoy=hoyISO();
   const proxT=todasCats().filter(c=>estadoTorneo(c,hoy)==='prox').sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
   const diasA=f=>Math.round((Date.parse(f)-Date.parse(hoy))/86400000);
-  return `${resumenClub()}<div class="dash">
+  return `${resumenClub()}${bannerVivo()}<div class="dash">
       <div class="dcol">
         ${seccionSiguiendo()}
         ${destacados(t)}
@@ -2912,6 +2931,67 @@ function linkPrivacidad(){return `${location.origin}${location.pathname}?club=${
 /* ===================== Agenda del día (solo administrador; se guarda en la parte privada) ===================== */
 const TIPOS_ACT=[['reserva','Reserva de cancha','📌'],['clase','Clase','🎓'],['amistoso','Partido amistoso','🤝'],['evento','Evento','🎉'],['mant','Mantenimiento','🛠️'],['otro','Otro','•']];
 function tipoAct(k){return TIPOS_ACT.find(t=>t[0]===k)||TIPOS_ACT[TIPOS_ACT.length-1]}
+function vivos(){return (S&&S.vivo)||[]}
+function infoVivo(u){
+  let url;try{url=new URL(u)}catch(e){return {tipo:'link',nom:'Enlace'}}
+  const h=url.hostname.replace(/^(www|m|music)\./,'');let id='';
+  if(h==='youtu.be')id=url.pathname.slice(1).split('/')[0];
+  else if(/(^|\.)youtube(-nocookie)?\.com$/.test(h)){
+    const m=url.pathname.match(/^\/(?:live|embed|shorts|v)\/([\w-]{6,})/);
+    if(m&&m[1]!=='live_stream')id=m[1];else if(url.searchParams.get('v'))id=url.searchParams.get('v');
+    const ch=url.pathname.match(/^\/channel\/(UC[\w-]+)/);
+    if(!id&&ch)return {tipo:'yt',nom:'YouTube',src:`https://www.youtube.com/embed/live_stream?channel=${ch[1]}&rel=0`};
+    if(!id)return {tipo:'link',nom:'YouTube'};
+  }
+  if(id&&/^[\w-]{6,}$/.test(id))return {tipo:'yt',nom:'YouTube',src:`https://www.youtube.com/embed/${id}?rel=0&playsinline=1`};
+  if(h==='twitch.tv'){const c=url.pathname.split('/')[1];if(c&&/^\w+$/.test(c))return {tipo:'tw',nom:'Twitch',src:`https://player.twitch.tv/?channel=${c}&parent=${location.hostname}&autoplay=false`}}
+  if(/(^|\.)facebook\.com$|^fb\.watch$/.test(h))return {tipo:'fb',nom:'Facebook',src:`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(u)}&show_text=false`};
+  if(/(^|\.)instagram\.com$/.test(h))return {tipo:'link',nom:'Instagram'};
+  if(/(^|\.)tiktok\.com$/.test(h))return {tipo:'link',nom:'TikTok'};
+  return {tipo:'link',nom:url.hostname.replace(/^www\./,'')};
+}
+function partidoEnCancha(cancha){
+  if(!cancha||!S)return null;const hoy=hoyISO();
+  const xs=S.torneos.flatMap(todosLosPartidos).filter(p=>p.x.estado!=='jugado'&&p.x.a&&p.x.b&&p.x.res&&p.x.res.dia===hoy&&String(p.x.res.cancha||'').replace(/^cancha\s*/i,'')===String(cancha).replace(/^cancha\s*/i,''));
+  xs.sort((a,b)=>(a.x.res.hora||'99').localeCompare(b.x.res.hora||'99'));return xs[0]||null;
+}
+function bannerVivo(){
+  const vs=vivos();if(!vs.length)return '';
+  return `<button class="vivo-ban" data-act="tab" data-k="vivo"><i class="vdot"></i><span><b>En vivo ahora</b><small>${esc(vs.map(v=>v.titulo).join(' · '))}</small></span><span class="vivo-go">Ver ›</span></button>`;
+}
+function vistaVivo(){
+  const vs=vivos();
+  const acc=puedeEditar?`<button class="btn pri" data-act="vivo-nueva">Agregar transmisión</button>`:'';
+  if(!vs.length) return `${encabezado('En vivo',{sb:'Partidos transmitidos desde el club'})}
+    ${puedeEditar?`<div class="panel vivo-vacio"><h2>Cómo transmitir un partido</h2>
+      <ol class="vivo-pasos"><li>Poné un celular en un trípode detrás de la cancha, en horizontal y enchufado.</li>
+      <li>Empezá un directo en <b>YouTube</b> (app de YouTube → <b>+</b> → <b>Emitir en directo</b>). También sirven Facebook o Twitch.</li>
+      <li>Copiá el enlace del directo (botón <b>Compartir</b>) y pegalo acá con <b>Agregar transmisión</b>.</li>
+      <li>Al terminar, quitá la transmisión para que deje de aparecer.</li></ol>
+      <p class="small muted">Los jugadores ven el partido dentro de la app, sin buscar nada. En YouTube elegí la visibilidad <b>Pública</b> o <b>No listada</b>: si es privada no se ve.</p>
+      <div class="btns">${acc}</div></div>`
+    :`<div class="panel empty"><h2>No hay partidos en vivo</h2><p class="muted">Cuando el club transmita un partido, lo vas a ver acá.</p></div>`}`;
+  const card=v=>{const i=infoVivo(v.url);const p=partidoEnCancha(v.cancha);
+    return `<article class="vivo-card">
+      ${i.src?`<div class="vivo-frame"><iframe src="${esc(i.src)}" title="${esc(v.titulo)}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`
+        :`<a class="vivo-frame vivo-ext" href="${esc(v.url)}" target="_blank" rel="noopener">${ico('vivo')}<span>Ver en ${esc(i.nom)}</span></a>`}
+      <div class="vivo-pie"><div style="min-width:0"><h3><i class="vdot"></i>${esc(v.titulo)}</h3>
+        <small class="muted">${esc([v.cancha&&v.titulo!==txtCancha(v.cancha)?txtCancha(v.cancha):'',p?`${etiqueta(S,p.c,p.x.a)} vs ${etiqueta(S,p.c,p.x.b)}${p.x.res.hora?' · '+p.x.res.hora:''}`:''].filter(Boolean).join(' · '))}</small></div>
+        <div class="btns"><a class="btn sm" href="${esc(v.url)}" target="_blank" rel="noopener">Abrir en ${esc(i.nom)}</a>${puedeEditar?`<button class="btn sm" data-act="vivo-edit" data-id="${v.id}">Editar</button>`:''}</div></div>
+    </article>`};
+  return `${encabezado('En vivo',{sb:`${vs.length} transmisi${vs.length===1?'ón':'ones'} ahora`,acc})}
+    <div class="vivo-grid">${vs.map(card).join('')}</div>
+    ${puedeEditar?'<p class="small muted">Cuando termine el partido, tocá Editar → Quitar para que deje de aparecer.</p>':''}`;
+}
+function hojaVivo(s,cerrarBtn){
+  const v=s.id?vivos().find(x=>x.id===s.id):{titulo:'',url:'',cancha:''};if(!v)return '';
+  return `<div class="sheet-hd"><h2>${s.id?'Editar transmisión':'Agregar transmisión'}</h2>${cerrarBtn}</div>
+    <div class="field"><label for="vv-url">Enlace del directo</label><input type="url" id="vv-url" value="${esc(v.url)}" placeholder="https://youtube.com/live/..." inputmode="url" autocomplete="off"><span class="small muted">De YouTube, Facebook o Twitch se ve dentro de la app. Otros enlaces se abren aparte.</span></div>
+    <div class="grid2"><div class="field"><label for="vv-can">Cancha</label><select id="vv-can"><option value="">Sin cancha</option>${canchasClub().map(c=>`<option value="${esc(c)}" ${String(v.cancha)===String(c)?'selected':''}>${esc(txtCancha(c))}</option>`).join('')}</select></div>
+      <div class="field"><label for="vv-tit">Título (opcional)</label><input type="text" id="vv-tit" value="${esc(v.titulo)}" placeholder="Ej.: Final Primera Caballeros"></div></div>
+    <p class="small muted">Si elegís la cancha, la app muestra solo qué partido del torneo se juega ahí hoy.</p>
+    <div class="btns"><button class="btn pri" data-act="vivo-guardar">${s.id?'Guardar':'Publicar'}</button>${s.id?`<button class="btn danger ${ui.armado==='del-vivo'?'arm':''}" data-act="arm" data-w="del-vivo">${ui.armado==='del-vivo'?'Tocá de nuevo para quitar':'Quitar transmisión'}</button>`:''}</div>`;
+}
 function agenda(){return (S.agenda||[])}
 function canchasClub(){return [...new Set([...(S.canchas||['1','2','3','4']),...agenda().map(a=>a.cancha).filter(Boolean)])].sort((a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true}))}
 function fechaLarga(d){if(!d)return '';const [y,m,dd]=d.split('-').map(Number);const f=new Date(y,m-1,dd);const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'],ms=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];return `${dias[f.getDay()]} ${dd} de ${ms[m-1]}`}
@@ -3200,6 +3280,13 @@ const MANUAL=[
   'Desde Ranking y desde cada jugador podés descargar su PDF.',
   'Con <b>Pantalla TV</b> (en Inicio) la app pasa sola resultados, próximos partidos y auspiciantes: ideal para un televisor en el club.'],
   tips:['Para la comisión directiva: en <b>Torneos → Resumen de temporada</b> descargás el informe del año en PDF o Excel, con recaudación, participación y jugadores más activos.','Publicá <b>Noticias</b> y subí fotos a la <b>Galería</b> desde el Inicio.','Los jugadores pueden tocar <b>Seguir</b> en un perfil y activar los avisos para enterarse de sus partidos.']},
+ {id:'vivo',t:'Partidos en vivo',d:'Transmitir partidos y que los jugadores los vean dentro de la app.',pasos:[
+  'Poné un celular en un trípode detrás de la cancha, en horizontal y enchufado, y empezá un directo en <b>YouTube</b> (también sirven Facebook o Twitch).',
+  'Copiá el enlace del directo con el botón <b>Compartir</b>.',
+  'En la app abrí <b>En vivo</b> (en el celular, desde <b>Más</b>) y tocá <b>Agregar transmisión</b>. Pegá el enlace, elegí la cancha y, si querés, un título.',
+  'Mientras haya una transmisión, todos ven un botón rojo <b>EN VIVO</b> arriba y un aviso en el Inicio. Si elegiste cancha, se muestra qué partido del torneo se juega ahí hoy.',
+  'Cuando termine, tocá <b>Editar → Quitar transmisión</b>.'],
+  tips:['En YouTube la visibilidad tiene que ser Pública o No listada; si es Privada no se ve.','Para transmitir desde el celular, YouTube puede pedir que el canal esté verificado o tenga una cantidad mínima de suscriptores. Si no te deja, usá Facebook en vivo o una app como Larix Broadcaster o Streamlabs.','Enlaces de Instagram o TikTok no se pueden ver dentro de la app: aparecen con un botón para abrirlos aparte.']},
  {id:'agenda',t:'Agenda del día',d:'Todo lo que pasa en el club en un día, para compartir por WhatsApp.',pasos:[
   'Abrí <b>Agenda</b> (en el celular, desde <b>Más</b>) y elegí el día.',
   'Tocá <b>Nueva actividad</b>: reserva de cancha, clase, partido amistoso, evento o mantenimiento, con cancha y horario. Las clases fijas se pueden repetir cada semana.',
@@ -3576,9 +3663,11 @@ function renderSheet(){
     <div class="field"><label for="np-2">Repetir contraseña</label><input type="password" id="np-2" autocomplete="new-password"></div>${err}
     <div class="btns"><button class="btn pri" data-act="nueva-pass-ok" data-primary>Guardar contraseña</button></div>`}
   if(s.t==='act'){h=hojaAct(s,cerrarBtn)}
+  if(s.t==='vivo'){h=hojaVivo(s,cerrarBtn)}
   if(s.t==='mas'){const it=(k,l,d)=>`<button class="rowbtn mas-it" data-act="tab" data-k="${k}"><span class="mas-ico">${ico(k)}</span><span class="n">${l}</span><span class="d">${d}</span></button>`;
     h=`<div class="sheet-hd"><h2>Más</h2>${cerrarBtn}</div><div class="list">
       ${it('campeones','Campeones','Historial del club, año por año')}
+      ${it('vivo','En vivo','Transmisiones de los partidos')}
       ${it('agenda','Agenda del día','Reservas, clases y partidos para compartir')}
       ${it('finanzas','Finanzas','Ingresos, gastos y rentabilidad')}
       ${it('manual','Manual del usuario','Cómo usar la app paso a paso')}
@@ -3803,6 +3892,16 @@ document.addEventListener('click',ev=>{
     case 'ver-pass':{const i=t.parentElement.querySelector('input');if(!i)break;const ver=i.type==='password';i.type=ver?'text':'password';t.setAttribute('aria-pressed',String(ver));t.setAttribute('aria-label',ver?'Ocultar contraseña':'Mostrar contraseña');t.innerHTML=ver?ICO_OJO_NO:ICO_OJO;i.focus();break}
     case 'ag-dia':ui.agDia=t.dataset.k;render();break;
     case 'ag-modo':ui.agModo=t.dataset.k;render();break;
+    case 'vivo-nueva':abrir({t:'vivo'});break;
+    case 'vivo-edit':abrir({t:'vivo',id:t.dataset.id});break;
+    case 'vivo-guardar':{const sh=ui.sheet;let url=val('vv-url').trim();const d={titulo:val('vv-tit').trim(),cancha:val('vv-can'),url};
+      if(!url){avisar('Pegá el enlace de la transmisión.');break}
+      if(!/^https?:\/\//i.test(url))d.url=url='https://'+url;
+      try{new URL(url)}catch(e){avisar('El enlace no parece válido. Copialo de nuevo desde YouTube.');break}
+      if(!d.titulo)d.titulo=d.cancha?txtCancha(d.cancha):'Transmisión en vivo';
+      S.vivo=S.vivo||[];
+      if(sh.id){const ex=S.vivo.find(x=>x.id===sh.id);if(ex)Object.assign(ex,d)}else S.vivo.push({id:uid(),...d,desde:Date.now()});
+      ui.sheet=null;ui.msg=null;toast(sh.id?'Transmisión actualizada.':'Transmisión publicada.');cambiar();break}
     case 'act-nueva':abrir({t:'act'});break;
     case 'act-edit':abrir({t:'act',id:t.dataset.id});break;
     case 'ag-wa':window.open('https://wa.me/?text='+encodeURIComponent(textoAgenda(ui.agDia||hoyISO())),'_blank','noopener');break;
@@ -4038,6 +4137,7 @@ document.addEventListener('click',ev=>{
       if(w==='rp-cerrar-1'){const c=cat();armarRP(c,1,[]);cambiar();break}
       if(w==='rp-reset'){const c=cat();delete c.rp1;delete c.rp2;c.rpAsig={};c.rpCerr={};if(!lugaresRP(c,1).length)c.rpCerr[1]=true;if(!lugaresRP(c,2).length)c.rpCerr[2]=true;toast('Se deshicieron las rondas de perdedores.');cambiar();break}
       if(w.startsWith('pago-ninguno-')){const c=todasCats().find(x=>x.id===w.slice(13));if(c){c.pagos={};cambiar()}break}
+      if(w==='del-vivo'){S.vivo=vivos().filter(x=>x.id!==ui.sheet.id);ui.sheet=null;toast('Transmisión quitada.');cambiar();break}
       if(w==='del-act'){S.agenda=agenda().filter(x=>x.id!==ui.sheet.id);ui.sheet=null;toast('Actividad borrada.');cambiar();break}
       if(w==='del-mov'){S.finanzas.movs=movs().filter(x=>x.id!==ui.sheet.id);ui.sheet=null;toast('Movimiento borrado.');cambiar();break}
       if(w.startsWith('del-sp-')){const id=w.slice(7);S.sponsors=(S.sponsors||[]).filter(x=>x.id!==id);cambiar()}
