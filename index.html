@@ -810,6 +810,28 @@ i.ing{background:#2f9e5b}i.egr{background:#e0803a}
 @media (max-width:560px){.fin-bar{grid-template-columns:1fr auto}.fb-t{grid-column:1/-1;order:3}}
 .pay-all{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--soft);cursor:pointer}
 .pay-all span{display:flex;flex-direction:column}.pay-all small{font-size:12px;color:var(--muted)}
+/* ---- Movimiento al entrar a una pantalla (solo navegación, nunca en actualizaciones de fondo) ---- */
+#main.entra{animation:m-entra .32s cubic-bezier(.16,1,.3,1) both}
+@keyframes m-entra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#main .draw.traza .col,#main .draw.traza .champ{animation:m-col .42s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0)*110ms + 60ms)}
+@keyframes m-col{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+#main .draw.traza .col .mw::after{transform-origin:left;animation:m-cinta .3s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0)*110ms + 300ms)}
+#main .draw.traza .col .mw::before{transform-origin:left;animation:m-cinta .3s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0)*110ms + 40ms)}
+@keyframes m-cinta{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+#main .draw.traza .champ .box{animation:m-champ .55s cubic-bezier(.16,1,.3,1) backwards;animation-delay:calc(var(--i,0)*110ms + 160ms)}
+#main .draw.traza :is(.col,.champ,.champ .box),#main .draw.traza .col .mw::before,#main .draw.traza .col .mw::after{animation-play-state:paused}
+#main .draw.traza.ya :is(.col,.champ,.champ .box),#main .draw.traza.ya .col .mw::before,#main .draw.traza.ya .col .mw::after{animation-play-state:running}
+@keyframes m-champ{0%{opacity:0;transform:scale(.86)}60%{opacity:1;box-shadow:0 0 0 6px var(--ball)}100%{transform:none;box-shadow:0 0 0 0 transparent}}
+#main.entra .rank-tbl tbody tr,#main.entra .hcard .hrow{animation:m-fila .36s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0)*35ms + 80ms)}
+@keyframes m-fila{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#main.entra .rank-tbl tbody tr.pos1 .rk,#main.entra .rank-tbl tbody tr.pos2 .rk,#main.entra .rank-tbl tbody tr.pos3 .rk{animation:m-podio .5s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(var(--i,0)*35ms + 260ms)}
+@keyframes m-podio{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+[data-cnt]{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){
+  #main.entra{animation:m-fade .2s ease-out both}
+  #main.entra .rank-tbl tbody tr,#main.entra .hcard .hrow,#main.entra .rank-tbl tbody tr .rk{animation:none}
+}
+@keyframes m-fade{from{opacity:0}to{opacity:1}}
 .vivo-pill{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;background:#d0021b;color:#fff;font:700 11px/1 var(--f-body,inherit);letter-spacing:.08em;padding:7px 10px;cursor:pointer}
 .vdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 rgba(255,59,48,.6);animation:vpul 1.6s infinite;flex:none;margin-right:6px;vertical-align:middle}
 .vivo-pill .vdot{background:#fff;margin-right:0}
@@ -1350,7 +1372,7 @@ function ejemplo(){
 
 /* ===================== Estado de la página ===================== */
 let S=null, cargado=false, modo='cargando', puedeEditar=false, permisoPlat=true, logueado=false, assetsApi=null;
-let ui={tab:'resumen',torneo:null,cat:null,q:'',fsexo:'',fniv:'',rRama:'',rMod:'',rNiv:'',rAlc:'torneo',pf:'pendientes',rK:'',nmas:false,ft:'',sub:null,sheet:null,armado:null,modoCuadro:'ranking',msg:null};
+let ui={entra:true,tab:'resumen',torneo:null,cat:null,q:'',fsexo:'',fniv:'',rRama:'',rMod:'',rNiv:'',rAlc:'torneo',pf:'pendientes',rK:'',nmas:false,ft:'',sub:null,sheet:null,armado:null,modoCuadro:'ranking',msg:null};
 try{ui.torneo=localStorage.getItem(KEY+':torneo')}catch(e){}
 let dbRef=null,lastSaved='',saving=false,pend=false,timer=null,statusTxt='';
 
@@ -1587,9 +1609,9 @@ function resumenClub(){
   const nT=S.torneos.reduce((a,e)=>a+e.categorias.length,0);
   const pr=premiosEntregados();
   return `<section class="kpis club" aria-label="El club en números">
-    <div><b>${S.jugadores.length}</b><span>Jugadores registrados</span><em>${(()=>{const h=S.jugadores.filter(p=>p.sexo!=='F').length,m=S.jugadores.length-h;return `${h} ${h===1?'hombre':'hombres'} · ${m} ${m===1?'mujer':'mujeres'}`})()}</em></div>
-    <div><b>${nT}</b><span>Torneos creados</span><em>${(()=>{const fin=S.torneos.reduce((a,e)=>a+e.categorias.filter(c=>campeonDe(c)).length,0);const h=hoyISO();const cur=todasCats().filter(c=>estadoTorneo(c,h)==='curso').length;const res=nT-fin-cur;return `${fin} finalizado${fin===1?'':'s'} · ${cur} en curso${res?` · ${res} por comenzar`:''}`})()}</em></div>
-    <div class="gsk"><b>${fmtMon(pr.gs)}</b><span>Entregados en premios</span><em>${pr.n} torneo${pr.n===1?'':'s'} con premio pagado</em></div>
+    <div><b data-cnt="${S.jugadores.length}">${S.jugadores.length}</b><span>Jugadores registrados</span><em>${(()=>{const h=S.jugadores.filter(p=>p.sexo!=='F').length,m=S.jugadores.length-h;return `${h} ${h===1?'hombre':'hombres'} · ${m} ${m===1?'mujer':'mujeres'}`})()}</em></div>
+    <div><b data-cnt="${nT}">${nT}</b><span>Torneos creados</span><em>${(()=>{const fin=S.torneos.reduce((a,e)=>a+e.categorias.filter(c=>campeonDe(c)).length,0);const h=hoyISO();const cur=todasCats().filter(c=>estadoTorneo(c,h)==='curso').length;const res=nT-fin-cur;return `${fin} finalizado${fin===1?'':'s'} · ${cur} en curso${res?` · ${res} por comenzar`:''}`})()}</em></div>
+    <div class="gsk"><b data-cnt="${pr.gs}" data-mon="1">${fmtMon(pr.gs)}</b><span>Entregados en premios</span><em>${pr.n} torneo${pr.n===1?'':'s'} con premio pagado</em></div>
   </section>`;
 }
 function srcFoto(f){return f.a?blobUrl(f.a):(f.src||'')}
@@ -1676,10 +1698,30 @@ function render(){
   if((ui.tab==='manual'||ui.tab==='finanzas'||ui.tab==='agenda')&&!puedeEditar) ui.tab='resumen';
   const v={vivo:vistaVivo,agenda:vistaAgenda,privacidad:vistaPrivacidad,finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
   const scr=[...m.querySelectorAll('[data-scroll-key]')].map(e=>[e.dataset.scrollKey,e.scrollTop]);
+  const entra=ui.entra;ui.entra=false;m.classList.remove('entra');
   m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'')+(ui.tab!=='privacidad'?`<p class="legal"><button class="lnk2" data-act="tab" data-k="privacidad">Política de privacidad</button></p>`:'');
   scr.forEach(([k,y])=>{const e=m.querySelector(`[data-scroll-key="${k}"]`);if(e)e.scrollTop=y});
   m.querySelectorAll('[data-mixto]').forEach(e=>e.indeterminate=true);
+  if(entra){void m.offsetWidth;m.classList.add('entra');contar(m);trazarLlaves(m)}
   renderSheet();
+}
+/* La llave se dibuja ronda por ronda cuando aparece en pantalla */
+function trazarLlaves(m){
+  if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('ya');io.unobserve(e.target)}}),{threshold:.2});
+  m.querySelectorAll('.draw').forEach(d=>{d.classList.add('traza');io.observe(d)});
+  setTimeout(()=>{m.querySelectorAll('.draw.traza:not(.ya)').forEach(d=>d.classList.add('ya'))},20000);
+}
+/* Cifras que suben desde 0 al entrar a una pantalla (no en cada actualización) */
+function contar(m){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const els=[...m.querySelectorAll('[data-cnt]')].slice(0,24);if(!els.length)return;
+  const t0=performance.now(),dur=900,ease=x=>1-Math.pow(2,-10*x);
+  const paso=now=>{const k=Math.min(1,(now-t0)/dur),f=ease(k);
+    els.forEach(e=>{if(!e.isConnected)return;const n=+e.dataset.cnt;const q=e.dataset.mon&&n>=10000?1000:1;const v=k>=1?n:Math.round(n*f/q)*q;e.firstChild.nodeValue=e.dataset.mon?fmtMon(v):String(v)});
+    if(k<1&&els.some(e=>e.isConnected))requestAnimationFrame(paso)};
+  els.forEach(e=>{if(!e.firstChild||e.firstChild.nodeType!==3)e.prepend(document.createTextNode(''));e.firstChild.nodeValue=e.dataset.mon?fmtMon(0):'0'});
+  requestAnimationFrame(paso);
 }
 function renderShell(){
   const t=S?T():null;
@@ -1827,10 +1869,10 @@ function vistaRanking(){
     <div class="filters">
       <div style="min-width:170px"><select id="rNiv" aria-label="Categoría del jugador"><option value="">Todas las categorías</option>${NIVELES.map(n=>`<option ${ui.rNiv===n?'selected':''}>${n}</option>`).join('')}</select></div>
     </div>
-    ${filas.length?`<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Jugador</th><th>Pts</th><th>PJ</th><th>PG</th><th>Sets</th><th>Games</th></tr></thead><tbody>
-      ${filas.map((f,i)=>{const k=f.pts+'|'+f.s.pg;if(k!==prev){pos=i+1;prev=k}return `<tr class="${pos<=3?'pos'+pos:''}"><td><span class="rk">${pos}</span></td>
+    ${filas.length?`<div class="tbl-wrap rank-tbl"><table><thead><tr><th>#</th><th>Jugador</th><th>Pts</th><th>PJ</th><th>PG</th><th>Sets</th><th>Games</th></tr></thead><tbody>
+      ${filas.map((f,i)=>{const k=f.pts+'|'+f.s.pg;if(k!==prev){pos=i+1;prev=k}return `<tr class="${pos<=3?'pos'+pos:''}" style="--i:${Math.min(i,14)}"><td><span class="rk">${pos}</span></td>
       <td><button class="lnk2" data-act="ver-jug" data-id="${f.p.id}"><b>${esc(nombreCompleto(f.p))}</b>${bandera(f.p.pais)}</button>${f.p.categoria?` <span class="muted small">${esc(f.p.categoria)}</span>`:''}<br><span class="small muted">${esc(f.det.join(' · '))}</span></td>
-      <td class="pts">${f.pts}</td><td>${f.s.pj}</td><td>${f.s.pg}</td><td>${f.s.sg}-${f.s.sp}</td><td>${f.s.gg}-${f.s.gp}</td></tr>`}).join('')}
+      <td class="pts">${i<10?`<span data-cnt="${f.pts}">${f.pts}</span>`:f.pts}</td><td>${f.s.pj}</td><td>${f.s.pg}</td><td>${f.s.sg}-${f.s.sp}</td><td>${f.s.gg}-${f.s.gp}</td></tr>`}).join('')}
     </tbody></table></div>`:`<div class="panel muted">${cats.length?'Todavía no hay cuadros generados en '+nombreMod.toLowerCase()+'.':'No hay torneos de '+nombreMod.toLowerCase()+(acum?'.':' en este evento.')}</div>`}
     <div class="note">Puntos según la ronda alcanzada: Campeón ${PUNTOS_CAMPEON}, Finalista ${PUNTOS_RONDA[0]}, Semis ${PUNTOS_RONDA[1]}, Cuartos ${PUNTOS_RONDA[2]}, Octavos ${PUNTOS_RONDA[3]}, 16avos ${PUNTOS_RONDA[4]}. En dobles, cada integrante suma los puntos de la pareja. El ranking es global: suma todos los torneos, y los puntos de un torneo en curso son provisorios. El ranking de cada modalidad define los cabezas de serie del evento siguiente. Desempate: partidos ganados, diferencia de sets y de games.</div>`;
 }
@@ -1986,7 +2028,7 @@ function destacados(t){
     return {k,l,ps,p:ps[0],pts:top[1].pts};
   }).filter(Boolean);
   if(lideres.length) tarjetas.push(`<div class="hcard"><h3>Líderes del ranking</h3>
-    ${lideres.map(x=>`<button class="hrow" data-act="ir-ranking" data-k="${x.k}"><span><b>${x.ps.map(p=>esc(x.ps.length>1?p.apellido:nombreCompleto(p))+bandera(p.pais)).join(' / ')}</b><small>${x.l}${x.ps.length>1?' · pareja':''}</small></span><span class="v">${x.pts}<small> pts</small></span></button>`).join('')}</div>`);
+    ${lideres.map((x,i)=>`<button class="hrow" style="--i:${i}" data-act="ir-ranking" data-k="${x.k}"><span><b>${x.ps.map(p=>esc(x.ps.length>1?p.apellido:nombreCompleto(p))+bandera(p.pais)).join(' / ')}</b><small>${x.l}${x.ps.length>1?' · pareja':''}</small></span><span class="v"><span data-cnt="${x.pts}">${x.pts}</span><small> pts</small></span></button>`).join('')}</div>`);
 
   // datos de todo el club (todos los eventos)
   const st=estadisticas(S,todas);
@@ -3497,7 +3539,7 @@ function seccionCuadro(c,cb,titulo='Cuadro'){
     return `<div class="mrow ${w?'w':''}"><span class="sd">${sd||''}</span><span class="nm" title="${esc(etiqueta(S,c,e))}"><span class="nmt">${esc(etiqueta(S,c,e,true))}</span>${tagRP}${banderasEntrada(c,e)}</span>${celdas}</div>`;
   };
   const rpZ=c._z==='rp1'||c._z==='rp2';
-  const cols=cb.rondas.map((f,r)=>`<div class="col"><div class="col-h">${rpZ?(cb.R>1?'Ronda '+(r+1):'Partidos'):nombreRonda(r,cb.R)}</div><div class="col-b">
+  const cols=cb.rondas.map((f,r)=>`<div class="col" style="--i:${Math.min(r,7)}"><div class="col-h">${rpZ?(cb.R>1?'Ronda '+(r+1):'Partidos'):nombreRonda(r,cb.R)}</div><div class="col-b">
     ${f.map(x=>{const clic=puedeEditar&&x.estado!=='bye'&&(x.a||x.b)&&!esRP(x.a)&&!esRP(x.b);
       const meta=[x.res?.cancha?esc(txtCancha(x.res.cancha)):'',x.res?.hora?esc(x.res.hora):''].filter(Boolean).join(' · ');
       const extra=x.estado==='jugado'&&x.res.tipo==='ret'?'Retiro':x.estado==='jugado'&&x.res.tipo==='wo'?'W.O.':'';
@@ -3507,7 +3549,7 @@ function seccionCuadro(c,cb,titulo='Cuadro'){
   const r0=cb.rondas[0].length;
   if(cb.campeon&&!c._z) festejarUnaVez(c,cb);
   if(rpZ) return `<div class="sec"><div class="sec-hd"><h3>${titulo}</h3><span class="small muted">Los ganadores de la última columna pasan a los lugares ${c._z.toUpperCase()} del cuadro.</span></div><div class="draw-scroll"><div class="draw" style="height:${r0*(c.cuadro.N>2?88:96)+30}px">${cols}</div></div></div>`;
-  const champ=cb.campeon?`<div class="champ"><button class="box" data-act="festejar" data-n="${esc(etiqueta(S,c,cb.campeon))}" title="Festejar de nuevo"><small>${c._z?'Campeón consolación':'Campeón'}</small><b><span class="ballico"></span> ${esc(etiqueta(S,c,cb.campeon))}</b></button></div>`:`<div class="champ"><div class="box"><small>Campeón</small><b>—</b></div></div>`;
+  const champ=cb.campeon?`<div class="champ" style="--i:${Math.min(cb.R,8)}"><button class="box" data-act="festejar" data-n="${esc(etiqueta(S,c,cb.campeon))}" title="Festejar de nuevo"><small>${c._z?'Campeón consolación':'Campeón'}</small><b><span class="ballico"></span> ${esc(etiqueta(S,c,cb.campeon))}</b></button></div>`:`<div class="champ"><div class="box"><small>Campeón</small><b>—</b></div></div>`;
   return `<div class="sec"><div class="sec-hd"><h3>${titulo}</h3><span class="small muted">${puedeEditar?'Tocá un partido para cargar el resultado, la cancha y la hora.':''}</span></div>
     <div class="draw-scroll"><div class="draw" style="height:${r0*(c.cuadro.N>2?88:96)+30}px">${cols}${champ}</div></div></div>`;
 }
@@ -3831,7 +3873,7 @@ document.addEventListener('click',ev=>{
   const cat=()=>T().categorias.find(c=>c.id===ui.cat);
   switch(a){
     case 'man-ir':{const el=document.getElementById('m-'+t.dataset.k);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});break}
-    case 'tab':ui.sheet=null;ui.tab=t.dataset.k;if(ui.tab==='jugadores')ui.jug=null;if(ui.tab==='categorias')ui.cat=null;ui.armado=null;ui.msg=null;render();window.scrollTo({top:0});break;
+    case 'tab':ui.entra=ui.tab!==t.dataset.k||ui.cat||ui.jug;ui.sheet=null;ui.tab=t.dataset.k;if(ui.tab==='jugadores')ui.jug=null;if(ui.tab==='categorias')ui.cat=null;ui.armado=null;ui.msg=null;render();window.scrollTo({top:0});break;
     case 'cargar-ejemplo':{const club=S?.club,logo=S?.logo,gal=S?.galeria;S=ejemplo();S.club=club;S.logo=logo;S.galeria=gal||[];}elegirTorneo(S.torneos[0].id);ui.tab='resumen';cambiar();break;
     case 'crear-torneo':if(!S)S=nuevoEstado();abrir({t:'torneo'});break;
     case 'torneos':abrir({t:'torneos'});break;
@@ -3845,7 +3887,7 @@ document.addEventListener('click',ev=>{
     case 'pf':ui.pf=t.dataset.k;render();break;
     case 'sel-ev':elegirTorneo(t.dataset.id);ui.tab='categorias';render();window.scrollTo({top:0});break;
     case 'edit-ev':abrir({t:'torneo',id:t.dataset.id});break;
-    case 'ver-jug':ui.tab='jugadores';ui.jug=t.dataset.id;ui.sheet=null;render();window.scrollTo({top:0});break;
+    case 'ver-jug':ui.entra=true;ui.tab='jugadores';ui.jug=t.dataset.id;ui.sheet=null;render();window.scrollTo({top:0});break;
     case 'volver-jug':ui.jug=null;render();window.scrollTo({top:0});break;
     case 'ir-torneo':elegirTorneo(t.dataset.ev);ui.tab='categorias';ui.cat=t.dataset.id;ui.sub=null;render();window.scrollTo({top:0});break;
     case 'rep-llave':repLlave(t.dataset.id);break;
@@ -3870,9 +3912,9 @@ document.addEventListener('click',ev=>{
     case 'nueva-cat':abrir({t:'cat'});setTimeout(()=>{const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido()},40);break;
     case 'edit-cat':abrir({t:'cat',id:t.dataset.id});break;
     case 'volver':ui.cat=null;render();window.scrollTo({top:0});break;
-    case 'sub':ui.sub=t.dataset.k;ui.armado=null;ui.msg=null;render();break;
+    case 'sub':ui.entra=ui.sub!==t.dataset.k;ui.sub=t.dataset.k;ui.armado=null;ui.msg=null;render();break;
     case 'ver-jugados':ui.tab='partidos';ui.pf='jugados';render();window.scrollTo({top:0});break;
-    case 'ver-cat':if(t.dataset.ev&&t.dataset.ev!==T()?.id)elegirTorneo(t.dataset.ev);ui.sub=null;ui.cat=t.dataset.id;ui.tab='categorias';render();window.scrollTo({top:0});break;
+    case 'ver-cat':if(t.dataset.ev&&t.dataset.ev!==T()?.id)elegirTorneo(t.dataset.ev);ui.sub=null;ui.cat=t.dataset.id;ui.tab='categorias';ui.entra=true;render();window.scrollTo({top:0});break;
     case 'sel-cat':ui.cat=t.dataset.id;ui.armado=null;ui.msg=null;render();break;
     case 'festejar':festejo(t.dataset.n);break;
     case 'club-alta':altaClub();break;
@@ -4068,7 +4110,7 @@ document.addEventListener('click',ev=>{
     case 'nueva-noticia':abrir({t:'noticia'});break;
     case 'ir-ranking':ui.tab='ranking';ui.rK=t.dataset.k;render();window.scrollTo({top:0});break;
     case 'nmas':ui.nmas=!ui.nmas;render();break;
-    case 'rK':ui.rK=t.dataset.k;render();break;
+    case 'rK':ui.entra=ui.rK!==t.dataset.k;ui.rK=t.dataset.k;render();break;
     case 'guardar-noticia':{const ti=val('n-tit'),tx=val('n-txt');if(!ti){avisar('Escribí un título.');break}
       S.noticias=S.noticias||[];S.noticias.push({id:uid(),ev:T().id,t:Date.now(),titulo:ti,texto:tx});ui.sheet=null;ui.msg=null;cambiar();break}
     case 'guardar-torneo':{
