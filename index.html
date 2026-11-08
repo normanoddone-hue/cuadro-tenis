@@ -1943,7 +1943,7 @@ function vistaResumen(){
   const hoy=hoyISO();
   const proxT=todasCats().filter(c=>estadoTorneo(c,hoy)==='prox').sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
   const diasA=f=>Math.round((Date.parse(f)-Date.parse(hoy))/86400000);
-  return `${resumenClub()}${bannerVivo()}<div class="dash">
+  return `${resumenClub()}<div class="dash">
       <div class="dcol">
         ${seccionSiguiendo()}
         ${destacados(t)}
@@ -3284,7 +3284,7 @@ const MANUAL=[
   'Poné un celular en un trípode detrás de la cancha, en horizontal y enchufado, y empezá un directo en <b>YouTube</b> (también sirven Facebook o Twitch).',
   'Copiá el enlace del directo con el botón <b>Compartir</b>.',
   'En la app abrí <b>En vivo</b> (en el celular, desde <b>Más</b>) y tocá <b>Agregar transmisión</b>. Pegá el enlace, elegí la cancha y, si querés, un título.',
-  'Mientras haya una transmisión, todos ven un botón rojo <b>EN VIVO</b> arriba y un aviso en el Inicio. Si elegiste cancha, se muestra qué partido del torneo se juega ahí hoy.',
+  'Mientras haya una transmisión, en el celular aparece un botón rojo <b>EN VIVO</b> arriba. Si elegiste cancha, se muestra qué partido del torneo se juega ahí hoy.',
   'Cuando termine, tocá <b>Editar → Quitar transmisión</b>.'],
   tips:['En YouTube la visibilidad tiene que ser Pública o No listada; si es Privada no se ve.','Para transmitir desde el celular, YouTube puede pedir que el canal esté verificado o tenga una cantidad mínima de suscriptores. Si no te deja, usá Facebook en vivo o una app como Larix Broadcaster o Streamlabs.','Enlaces de Instagram o TikTok no se pueden ver dentro de la app: aparecen con un botón para abrirlos aparte.']},
  {id:'agenda',t:'Agenda del día',d:'Todo lo que pasa en el club en un día, para compartir por WhatsApp.',pasos:[
