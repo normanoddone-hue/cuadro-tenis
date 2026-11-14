@@ -855,6 +855,19 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .red-in .red{flex:none;width:36px;height:36px;border-radius:9px}
 .red-in .red svg{width:18px;height:18px}
 .red-in input{flex:1;min-width:0}
+.prog-vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--r-sm);background:var(--soft);text-align:center}
+.prog-vs span{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.prog-vs i{color:var(--muted)}
+.prog-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.prog-campos .field:first-child{grid-column:1/-1}
+@media (min-width:520px){.prog-campos{grid-template-columns:1.3fr 1fr 1fr}.prog-campos .field:first-child{grid-column:auto}}
+.prog-ocup{font-size:13px}
+.prog-ocup summary{cursor:pointer;font-weight:600;color:var(--muted);padding:4px 0}
+.prog-ocup ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px;max-height:180px;overflow:auto}
+.prog-ocup li{padding:6px 8px;border-radius:6px;background:var(--soft)}
+.prog-ocup li.mismo{background:#fde8e8;color:#8a1c1c}
+.prog-ocup em{font-style:normal;font-weight:700;font-size:11px;text-transform:uppercase;margin-left:4px}
+.gcard[data-act]{cursor:pointer}
 .vivo-pill{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;background:#d0021b;color:#fff;font:700 11px/1 var(--f-body,inherit);letter-spacing:.08em;padding:7px 10px;cursor:pointer}
 .vdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 rgba(255,59,48,.6);animation:vpul 1.6s infinite;flex:none;margin-right:6px;vertical-align:middle}
 .vivo-pill .vdot{background:#fff;margin-right:0}
@@ -2897,6 +2910,29 @@ function itemPartido({c,x,cb,z}){
 }
 function claveP(p){return `${p.c.id}|${p.z||''}|${p.x.key}`}
 function asignarHorario(key,dia,cancha,hora){const [cid,z,k]=key.split('|');const P=ctxPartido(cid,z,k);if(!P) return;P.res[k]={...(P.res[k]||{}),dia,cancha,hora};cambiar()}
+function hojaProg(s,cerrarBtn){
+  const [cid,z,k]=s.key.split('|');const P=ctxPartido(cid,z,k);if(!P)return '';
+  const c=P.c,x=P.x,res=P.res[k]||{};
+  const nm=e=>e?esc(etiqueta(S,c,e)):'<i>A definir</i>';
+  const dia=res.dia||ui.gdia||hoyISO();
+  const canchas=[...new Set([...(S.canchas||['1','2','3','4']),...(res.cancha?[String(res.cancha)]:[])])].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const horas=[];for(let h=7;h<=23;h++){horas.push(String(h).padStart(2,'0')+':00');horas.push(String(h).padStart(2,'0')+':30')}
+  if(res.hora&&!horas.includes(res.hora)){horas.push(res.hora);horas.sort()}
+  // qué hay ya ese día, para no pisar canchas ni jugadores
+  const ids=[...(inscripto(c,x.a)?.j||[]),...(inscripto(c,x.b)?.j||[])];
+  const otros=S.torneos.flatMap(todosLosPartidos).filter(p=>claveP(p)!==s.key&&p.x.estado!=='jugado'&&p.x.estado!=='bye'&&p.x.res?.hora&&p.x.res?.cancha&&(p.x.res.dia||'')===dia);
+  const ocup=otros.map(p=>{const pi=[...(inscripto(p.c,p.x.a)?.j||[]),...(inscripto(p.c,p.x.b)?.j||[])];return {h:p.x.res.hora,ca:String(p.x.res.cancha),mismo:ids.some(i=>pi.includes(i)),t:`${etiqueta(S,p.c,p.x.a,true)||'A definir'} vs ${etiqueta(S,p.c,p.x.b,true)||'A definir'}`}}).sort((a,b)=>a.h.localeCompare(b.h)||a.ca.localeCompare(b.ca,undefined,{numeric:true}));
+  return `<div class="sheet-hd"><div><h3>${esc(c.nombre)} · ${esc(rondaDe(x,P.cb,true)||P.titulo||'')}</h3><h2>Programar horario</h2></div>${cerrarBtn}</div>
+    <div class="prog-vs"><b>${nm(x.a)}</b><span>vs</span><b>${nm(x.b)}</b></div>
+    <div class="prog-campos"><div class="field"><label for="pg-dia">Día</label><input type="date" id="pg-dia" value="${esc(dia)}"></div>
+      <div class="field"><label for="pg-can">Cancha</label><select id="pg-can"><option value="">Elegí</option>${canchas.map(ca=>`<option value="${esc(ca)}" ${String(res.cancha)===ca?'selected':''}>Cancha ${esc(ca)}</option>`).join('')}</select></div>
+      <div class="field"><label for="pg-hora">Hora</label><select id="pg-hora"><option value="">Elegí</option>${horas.map(h=>`<option ${res.hora===h?'selected':''}>${h}</option>`).join('')}</select></div></div>
+    ${ocup.length?`<details class="prog-ocup"${ocup.some(o=>o.mismo)?' open':''}><summary>Partidos ya programados ese día (${ocup.length})</summary><ul>${ocup.map(o=>`<li class="${o.mismo?'mismo':''}"><b>${esc(o.h)} · Cancha ${esc(o.ca)}</b> ${esc(o.t)}${o.mismo?' <em>mismo jugador</em>':''}</li>`).join('')}</ul></details>`:''}
+    <div class="btns"><button class="btn pri" data-act="prog-guardar">Guardar horario</button>
+      ${puedeEditar?'<button class="btn" data-act="prog-grilla">Elegir en la grilla</button>':''}
+      ${res.hora||res.cancha?'<button class="btn" data-act="prog-quitar">Quitar horario</button>':''}
+      ${x.a&&x.b?'<button class="btn" data-act="prog-res">Cargar resultado</button>':''}</div>`;
+}
 function vistaGrilla(items){
   const prog=items.filter(p=>p.x.estado!=='bye');
   const conDia=prog.filter(p=>p.x.res?.hora&&p.x.res?.cancha);
@@ -2923,7 +2959,7 @@ function vistaGrilla(items){
       ${puedeEditar?`<label class="gotro">Canchas <input type="number" id="g-nc" min="1" max="30" value="${(S.canchas||['1','2','3','4']).length}"></label>`:''}
     </div>
     ${dobles||choque.size?`<div class="note warn">${dobles?`${dobles} cancha${dobles===1?'':'s'} con más de un partido a la misma hora. `:''}${choque.size?'Hay jugadores con dos partidos a la misma hora (marcados en rojo).':''}</div>`:''}
-    ${puedeEditar?`<div class="note small">${sel?`Moviendo <b>${esc(etiqueta(S,sel.c,sel.x.a,true))} vs ${esc(etiqueta(S,sel.c,sel.x.b,true))}</b>: tocá una celda para ubicarlo. <button class="lnk2" data-act="gquitar">Quitar horario</button> · <button class="lnk2" data-act="gsel" data-key="${esc(ui.gsel)}">Cancelar</button>`:'Arrastrá un partido a una celda, o tocalo y después tocá la celda. Se guarda el día, la cancha y la hora.'}</div>`:''}
+    ${puedeEditar?`<div class="note small">${sel?`Moviendo <b>${esc(etiqueta(S,sel.c,sel.x.a,true))} vs ${esc(etiqueta(S,sel.c,sel.x.b,true))}</b>: tocá una celda para ubicarlo. <button class="lnk2" data-act="gquitar">Quitar horario</button> · <button class="lnk2" data-act="gsel" data-key="${esc(ui.gsel)}">Cancelar</button>`:'Tocá un partido para elegir día, cancha y hora, o arrastralo a una celda de la grilla.'}</div>`:''}
     <div class="gwrap"><div class="ggrid" style="--nc:${canchas.length}">
       <div class="gh0"></div>${canchas.map(c=>`<div class="gch">Cancha ${esc(c)}</div>`).join('')}
       ${horas.map(h=>`<div class="ghr">${h}</div>${canchas.map(c=>{const xs=celda[h+'|'+c]||[];return `<div class="gcell ${xs.length>1?'conf':''} ${puedeEditar&&ui.gsel?'target':''}" ${puedeEditar?`data-act="gcell" data-h="${h}" data-ca="${esc(c)}"`:''}>${xs.map(card).join('')}</div>`}).join('')}`).join('')}
@@ -3354,6 +3390,7 @@ const MANUAL=[
   tips:['Si te equivocaste de inscriptos, podés tocar <b>Rehacer cuadro</b> mientras no haya ningún resultado.','<b>Con un solo resultado cargado, el cuadro queda fijo</b>. Si cargaste algo por error, abrí ese partido y tocá <b>Borrar resultado</b>.']},
  {id:'partidos',t:'Horarios y resultados',d:'Lo que más vas a usar durante el torneo.',pasos:[
   'Tocá cualquier partido del cuadro (o de la sección <b>Partidos</b>).',
+  'Para armar los horarios de muchos partidos: <b>Partidos → Grilla</b>. Tocá un partido de <b>Sin programar</b> y elegí día, cancha y hora; abajo te avisa si ese día ya hay algo en esa cancha o si el jugador ya juega. También podés arrastrarlo a una celda.',
   'Cargá <b>día, hora y cancha</b> y tocá <b>Guardar</b>. Ya aparece en la programación para todos.',
   'Para avisarle a los jugadores, tocá su nombre en <b>Avisar el horario por WhatsApp</b>: se abre el chat con el mensaje listo.',
   'Al terminar, cargá los games de cada set (y el tie-break si hubo). Para un W.O. o retiro, elegilo en "Resultado" y marcá el ganador.',
@@ -3738,6 +3775,7 @@ function renderSheet(){
     <div class="btns"><button class="btn pri" data-act="guardar-partido">Guardar</button>${res.g?'<button class="btn" data-act="borrar-res">Borrar resultado</button>':''}</div>`;
   }
   if(s.t==='mov'){h=hojaMov(s)}
+  if(s.t==='prog'){h=hojaProg(s,cerrarBtn)}
   if(s.t==='olvido'){h=`<div class="sheet-hd"><h2>Recuperar contraseña</h2>${cerrarBtn}</div>
     ${s.enviado?`<div class="note">Si <b>${esc(s.mail)}</b> tiene una cuenta, en unos minutos te llega un correo con un enlace para crear una contraseña nueva. Revisá también la carpeta de spam.</div><div class="btns"><button class="btn" data-act="login">Volver a ingresar</button></div>`
     :`<p class="small muted" style="margin:0">Escribí el correo con el que ingresás. Te mandamos un enlace para crear una contraseña nueva.</p>
@@ -4097,7 +4135,14 @@ document.addEventListener('click',ev=>{
       break}
     case 'pv':ui.pv=t.dataset.k;ui.gsel=null;render();break;
     case 'gdia':ui.gdia=t.dataset.k;render();break;
-    case 'gsel':{const k=t.dataset.key;const cell=t.closest('.gcell[data-act]');if(ui.gsel&&ui.gsel!==k&&cell){asignarHorario(ui.gsel,ui.gdia||'',cell.dataset.ca,cell.dataset.h);ui.gsel=null;break}ui.gsel=ui.gsel===k?null:k;render();break}
+    case 'gsel':{const k=t.dataset.key;const cell=t.closest('.gcell[data-act]');if(ui.gsel&&ui.gsel!==k&&cell){asignarHorario(ui.gsel,ui.gdia||'',cell.dataset.ca,cell.dataset.h);ui.gsel=null;break}
+      if(ui.gsel===k){ui.gsel=null;render();break}ui.gsel=null;abrir({t:'prog',key:k});break}
+    case 'prog-guardar':{const sh=ui.sheet;const dia=val('pg-dia'),cancha=val('pg-can'),hora=val('pg-hora');
+      if(!dia||!cancha||!hora){avisar('Elegí el día, la cancha y la hora.');break}
+      ui.gdia=dia;ui.sheet=null;toast('Horario guardado.');asignarHorario(sh.key,dia,cancha,hora);break}
+    case 'prog-grilla':{const k=ui.sheet.key;ui.sheet=null;ui.gsel=k;render();const g=document.querySelector('.gwrap');if(g)g.scrollIntoView({behavior:'smooth',block:'start'});break}
+    case 'prog-quitar':{const [cid,z,k]=ui.sheet.key.split('|');const P=ctxPartido(cid,z,k);if(P){P.res[k]={...(P.res[k]||{}),hora:'',cancha:'',dia:''}}ui.sheet=null;toast('Horario quitado.');cambiar();break}
+    case 'prog-res':{const [cid,z,k]=ui.sheet.key.split('|');abrir({t:'partido',c:cid,z,k});break}
     case 'gcell':{if(!ui.gsel)break;asignarHorario(ui.gsel,ui.gdia||'',t.dataset.ca,t.dataset.h);ui.gsel=null;break}
     case 'gquitar':{if(!ui.gsel)break;const [cid,z,k]=ui.gsel.split('|');const P=ctxPartido(cid,z,k);if(P){P.res[k]={...(P.res[k]||{}),hora:'',cancha:'',dia:''}}ui.gsel=null;cambiar();break}
     case 'compartir':{const c=todasCats().find(x=>x.id===t.dataset.id);if(!c)break;const o=opcionesCompartir(c);
