@@ -895,6 +895,9 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .av-grande{display:block;width:100%;max-width:560px;max-height:72vh;margin:0 auto;aspect-ratio:1;object-fit:cover;border-radius:18px;background:var(--soft);animation:av-in .28s cubic-bezier(.16,1,.3,1) both}
 @keyframes av-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.av-grande{animation:none}}
+.transf{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--surface);font-size:14px}
+.transf dt{color:var(--muted);font-weight:600}
+.transf dd{margin:0;font-weight:700;overflow-wrap:anywhere}
 .fly-prev{display:block;width:100%;max-width:420px;margin:0 auto;aspect-ratio:1080/1350;border-radius:12px;box-shadow:0 10px 30px rgba(18,35,74,.25);background:#12234a}
 .fly-cargando{display:grid;place-items:center;color:#fff;font-weight:600}
 #fly-txt{font-size:14px;line-height:1.45}
@@ -4148,6 +4151,11 @@ function renderSheet(){
       <div class="field"><label>Redes sociales del club</label><div class="redes-form">${REDES.map(([k,n,dom,svg])=>`<label class="red-in"><span class="red red-${k}" aria-hidden="true">${svg}</span><input type="text" id="l-red-${k}" value="${esc(((S.redes||{})[k])||'')}" placeholder="${n}: @usuario o enlace" aria-label="${n}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>`).join('')}</div>
         <span class="small muted">Podés poner el usuario (ej.: @clubtenis) o pegar el enlace. Las que dejes vacías no aparecen.</span></div>
       <div class="field"><label for="l-wapag">WhatsApp para comprobantes de inscripción</label><input type="text" id="l-wapag" inputmode="tel" value="${esc(S.waPagos||'')}" placeholder="Ej.: 0981 123 456"><span class="small muted">Aparece en los flyers de torneos y al anotarse online, para que los jugadores manden el comprobante de la transferencia.</span></div>
+      <div class="field"><label>Datos para transferir la inscripción <span class="muted">(opcional)</span></label>
+        <div class="grid2"><input type="text" id="l-tr-banco" value="${esc((S.transf||{}).banco||'')}" placeholder="Banco (ej.: Banco Itaú)" aria-label="Banco"><input type="text" id="l-tr-tit" value="${esc((S.transf||{}).titular||'')}" placeholder="Titular de la cuenta" aria-label="Titular">
+        <input type="text" id="l-tr-cta" value="${esc((S.transf||{}).cuenta||'')}" placeholder="N.º de cuenta" aria-label="Número de cuenta" inputmode="numeric"><input type="text" id="l-tr-doc" value="${esc((S.transf||{}).doc||'')}" placeholder="C.I. o RUC del titular" aria-label="C.I. o RUC del titular">
+        <input type="text" id="l-tr-alias" value="${esc((S.transf||{}).alias||'')}" placeholder="Alias (opcional)" aria-label="Alias"></div>
+        <span class="small muted">Se muestran en el flyer de cada torneo y al jugador cuando se anota, con un botón para copiarlos.</span></div>
       <div class="field"><label for="l-contacto">Contacto para datos personales</label><input type="text" id="l-contacto" value="${esc(S.contacto||'')}" placeholder="Ej.: secretaria@club.com.py o 0981 123 456"><span class="small muted">Aparece en la política de privacidad para que los jugadores pidan ver, corregir o borrar sus datos.</span></div>
       <div class="field"><label for="l-mon">Moneda</label><select id="l-mon">${MONEDAS.map(([k,n,sim])=>`<option value="${k}" ${mon()[0]===k?'selected':''}>${esc(n)} · ${esc(sim)}</option>`).join('')}</select>
         <span class="small muted">Se usa en inscripciones, premios, pagos y reportes. Cambiarla no convierte los montos ya cargados.</span></div>
@@ -4222,7 +4230,8 @@ function renderSheet(){
       <div class="field"><label for="s${n}-alt">Altura (cm)</label><input type="number" id="s${n}-alt" inputmode="numeric" min="100" max="230" placeholder="Ej.: 178"></div></div></div>`;
     const encontrado=(n,r)=>`<div class="prz sol-ok-p"><h3>${quien(n)}</h3><div><b>¡Hola, ${esc(r.nombre||'jugador')}!</b> Ya estás registrado en el club${r.categoria?' · '+esc(r.categoria):''}.</div></div>`;
     if(s.ok) h=`<div class="sheet-hd"><h2>¡Pedido enviado!</h2>${cerrarBtn}</div><div class="note">El club recibió ${s.nuevos?'tu registro y ':''}tu pedido para <b>${esc(c?.nombre||'')}</b>. Cuando lo confirme, vas a aparecer en la lista de inscriptos.</div>
-      ${+c?.cuota?`<div class="prz"><h3>Pagá la inscripción</h3><div>Transferí <b>${esc(fmtMon(+c.cuota))}</b> y mandá el comprobante ${S.waPagos?`por WhatsApp al <b style="white-space:nowrap">${esc(S.waPagos)}</b>`:'al administrador del club'}.</div>${S.waPagos?`<div class="btns"><button class="btn wa" data-act="sol-comprobante">${ICO_WA}Enviar comprobante</button></div>`:''}</div>`:''}
+      ${+c?.cuota?`<div class="prz"><h3>Pagá la inscripción</h3><div>Transferí <b>${esc(fmtMon(+c.cuota))}</b> y mandá el comprobante ${S.waPagos?`por WhatsApp al <b style="white-space:nowrap">${esc(S.waPagos)}</b>`:'al administrador del club'}.</div>
+      ${datosTransf().length?`<dl class="transf">${datosTransf().map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:''}${S.waPagos||datosTransf().length?`<div class="btns">${datosTransf().length?'<button class="btn" data-act="copiar-transf">Copiar datos</button>':''}${S.waPagos?`<button class="btn wa" data-act="sol-comprobante">${ICO_WA}Enviar comprobante</button>`:''}</div>`:''}</div>`:''}
       <div class="btns"><button class="btn pri" data-act="cerrar">Listo</button></div>`;
     else if(!s.paso||s.paso==='ci') h=`<div class="sheet-hd"><div><h2>Quiero anotarme</h2>${sub}</div>${cerrarBtn}</div>
       <p class="small muted" style="margin:0">Ingresá ${D?'las cédulas de los dos jugadores':'tu número de cédula'}. Si ya estás registrado en el club, enviamos el pedido; si no, te pedimos tus datos para registrarte.</p>
@@ -4488,6 +4497,7 @@ document.addEventListener('click',ev=>{
         if(pr.length){ui.msg=pr[0]+'.';renderSheet();return}
         sh.paso='datos';ui.msg=null;renderSheet()});
       break}
+    case 'copiar-transf':{const t=textoTransf();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Datos copiados.'),()=>toast(t,6000));break}
     case 'sol-comprobante':{const c=todasCats().find(x=>x.id===ui.sheet.c);if(c&&S.waPagos)abrirWA(S.waPagos,`Hola, me anoté en ${c.nombre} (${nombreApp()}). Te mando el comprobante de la transferencia de la inscripción (${fmtMon(+c.cuota||0)}).`);break}
     case 'sol-volver':ui.sheet.paso='ci';ui.msg=null;renderSheet();break;
     case 'enviar-sol':{const c=todasCats().find(x=>x.id===ui.sheet.c);if(!c)break;const D=c.modalidad==='D';const sh=ui.sheet;
@@ -4609,7 +4619,7 @@ document.addEventListener('click',ev=>{
       if(pw!==pw2){avisar('Las contraseñas no coinciden.');break}
       (async()=>{
         if(pw){const {error}=await sb.auth.updateUser({password:pw});if(error){avisar('No se pudo cambiar la contraseña: '+error.message);return}}
-        S.club=club;S.contacto=val('l-contacto');S.waPagos=val('l-wapag').trim();{const R={};REDES.forEach(([k])=>{const v=val('l-red-'+k).trim();if(v)R[k]=v});S.redes=R}const mo=val('l-mon');if(mo)S.moneda=mo;if(ui.fondoPend!==undefined)S.fondo=ui.fondoPend;if(ui.veloPend!==undefined)S.fondoVelo=ui.veloPend;ui.fondoPend=ui.veloPend=undefined;if(ui.logoPend!==undefined){S.logo=ui.logoPend||null;ui.logoPend=undefined}
+        S.club=club;S.contacto=val('l-contacto');S.waPagos=val('l-wapag').trim();{const tr={banco:val('l-tr-banco').trim(),titular:val('l-tr-tit').trim(),cuenta:val('l-tr-cta').trim(),doc:val('l-tr-doc').trim(),alias:val('l-tr-alias').trim()};S.transf=Object.values(tr).some(Boolean)?tr:null}{const R={};REDES.forEach(([k])=>{const v=val('l-red-'+k).trim();if(v)R[k]=v});S.redes=R}const mo=val('l-mon');if(mo)S.moneda=mo;if(ui.fondoPend!==undefined)S.fondo=ui.fondoPend;if(ui.veloPend!==undefined)S.fondoVelo=ui.veloPend;ui.fondoPend=ui.veloPend=undefined;if(ui.logoPend!==undefined){S.logo=ui.logoPend||null;ui.logoPend=undefined}
         ui.sheet=null;ui.msg=null;toast(pw?'Datos y contraseña actualizados.':'Datos actualizados.');cambiar();
       })();
       break}
@@ -4865,6 +4875,9 @@ function textoCompartir(){
   const [z,k]=(s.k||'').split('|');const P=ctxPartido(c.id,z,k);if(!P) return nombreApp();const g=P.x.g,o=g===P.x.a?P.x.b:P.x.a;
   return `${etiqueta(S,c,g)} le ganó a ${etiqueta(S,c,o)} ${marcadorDe(P.x)} · ${c.nombre}, ${P.titulo.toLowerCase()}. ${nombreApp()}`;
 }
+/* ---- Datos para transferir (los carga el admin en Club y cuenta; son públicos a propósito) ---- */
+function datosTransf(){const t=(S&&S.transf)||{};return [['Banco',t.banco],['Titular',t.titular],['Cuenta',t.cuenta],[/^\d{5,}-?\d$/.test(String(t.doc||'').replace(/\./g,''))&&String(t.doc).includes('-')?'RUC':'C.I.',t.doc],['Alias',t.alias]].filter(([,v])=>String(v||'').trim())}
+function textoTransf(){return datosTransf().map(([k,v])=>`${k}: ${v}`).join('\n')}
 /* ---- Flyer de un torneo, para promocionarlo ---- */
 function linkTorneo(c){const u=new URL(linkClub(CLUB));u.searchParams.set('torneo',c.id);return u.toString()}
 function textoFlyerTorneo(c){
@@ -4876,6 +4889,7 @@ function textoFlyerTorneo(c){
     +p.campeon?`🏆 Campeón ${fmtMon(p.campeon)}${+p.finalista?' · Vicecampeón '+fmtMon(p.finalista):''}`:'',
     '',est==='prox'||!c.cuadro?(c.online?'¡Anotate desde la app! Entrá al torneo y tocá "Quiero anotarme":':'Inscripciones en el club. Mirá los detalles acá:'):'Seguí el cuadro y los resultados acá:',
     linkTorneo(c),
+    !c.cuadro&&!c.grupos&&cuota&&datosTransf().length?'\n🏦 Datos para transferir:\n'+textoTransf():'',
     !c.cuadro&&!c.grupos&&cuota?(c.online?`\n📲 Después de anotarte, transferí la inscripción y mandá el comprobante ${S.waPagos?'por WhatsApp al '+S.waPagos:'al administrador del club'}.`:`\n📲 Para anotarte, transferí la inscripción y mandá el comprobante con tu nombre ${S.waPagos?'por WhatsApp al '+S.waPagos:'al administrador del club'}.`):''].filter((l,i,a)=>l!==''||a[i-1]!=='').join('\n');
 }
 async function dibujarFlyerTorneo(c){
@@ -4909,25 +4923,29 @@ async function dibujarFlyerTorneo(c){
   y+=8;x.font=body(700,21);let cx=88;[MODS[c.modalidad],RAMAS[c.rama],c.nivel?'Solo '+c.nivel:'Todas las categorías'].forEach(t=>{const tw=x.measureText(t.toUpperCase()).width+30;x.strokeStyle='rgba(255,255,255,0.5)';x.lineWidth=2;rr(cx,y,tw,42,21);x.stroke();x.fillStyle='#ffffff';x.fillText(t.toUpperCase(),cx+15,y+29);cx+=tw+10});
   y+=78;
   // datos
-  const fmt=c.formato==='rr'?'Todos contra todos':c.formato==='grupos'?'Grupos y llaves':'Llaves';
-  const datos=[['FECHAS',c.inicio?rangoFechas(c):'A confirmar'],['SEDE',c.sede||nombreApp()],['INSCRIPCIÓN',+c.cuota?fmtMon(+c.cuota):'Consultá en el club'],['FORMATO',`${fmt} · al mejor de ${c.sets}${c.superTB&&c.sets===3?' (súper TB)':''}`]];
-  datos.forEach(([k,v],i)=>{const col=i%2,fila=Math.floor(i/2);const X=88+col*460,Y=y+fila*118;
-    x.fillStyle='rgba(255,255,255,0.08)';rr(X,Y,444,102,18);x.fill();
-    x.fillStyle=ACC;x.font=body(800,16);x.fillText(k,X+22,Y+34);x.fillStyle='#ffffff';ajustar(v,s2=>body(700,s2),400,28,17);x.fillText(v,X+22,Y+76)});
-  y+=2*118+14;
-  // premios
+  const abierto=!c.cuadro&&!c.grupos&&!camp,pasos=abierto&&+c.cuota,conTr=pasos&&datosTransf().length>0;
   const p=c.premios||{};
-  if(+p.campeon){x.fillStyle=ACC;rr(88,y,904,112,22);x.fill();x.fillStyle=NAVY;x.font=body(800,18);x.fillText('PREMIOS',116,y+38);
+  const fmt=c.formato==='rr'?'Todos contra todos':c.formato==='grupos'?'Grupos y llaves':'Llaves';
+  const fmtTxt=`${fmt} · al mejor de ${c.sets}${c.superTB&&c.sets===3?' (súper TB)':''}`;
+  const cyPrev=1290-(conTr?290:232);const premEnCaja=conTr&&+p.campeon&&(y+2*118+14+112>cyPrev-14);
+  const datos=[['FECHAS',c.inicio?rangoFechas(c):'A confirmar'],['SEDE',c.sede||nombreApp()],['INSCRIPCIÓN',+c.cuota?fmtMon(+c.cuota):'Consultá en el club'],
+    premEnCaja?['PREMIOS',`Campeón ${fmtMon(+p.campeon)}`,+p.finalista?`Vice ${fmtMon(+p.finalista)}`:'']:['FORMATO',fmtTxt]];
+  const paso2=premEnCaja?110:118,alto=premEnCaja?98:102;
+  datos.forEach(([k,v],i)=>{const col=i%2,fila=Math.floor(i/2);const X=88+col*460,Y=y+fila*paso2;
+    x.fillStyle=k==='PREMIOS'?ACC:'rgba(255,255,255,0.08)';rr(X,Y,444,alto,18);x.fill();
+    x.fillStyle=k==='PREMIOS'?NAVY:ACC;x.font=body(800,16);x.fillText(k,X+22,Y+32);x.fillStyle=k==='PREMIOS'?NAVY:'#ffffff';const v2=datos[i][2];if(v2){ajustar(v,s2=>body(700,s2),400,22,16);x.fillText(v,X+22,Y+56);x.fillText(v2,X+22,Y+82)}else{ajustar(v,s2=>body(700,s2),400,28,17);x.fillText(v,X+22,Y+alto-26)}});
+  y+=2*paso2+14;
+  // premios
+  if(+p.campeon&&!premEnCaja){x.fillStyle=ACC;rr(88,y,904,112,22);x.fill();x.fillStyle=NAVY;x.font=body(800,18);x.fillText('PREMIOS',116,y+38);
     const t1=`CAMPEÓN ${fmtMon(+p.campeon)}`,t2=+p.finalista?`VICE ${fmtMon(+p.finalista)}`:'';const t=t2?t1+'  ·  '+t2:t1;ajustar(t,disp,850,50,28);x.fillText(t,116,y+90);y+=132}
   else if(c.inscriptos.length){x.fillStyle='rgba(255,255,255,0.75)';x.font=body(600,24);x.fillText(`${c.inscriptos.length} ${c.modalidad==='D'?'parejas inscriptas':'jugadores inscriptos'}`,88,y+30);y+=50}
   // tarjeta QR
-  const cy=1058,ch=232;x.save();x.shadowColor='rgba(0,0,0,0.35)';x.shadowBlur=40;x.shadowOffsetY=16;rr(64,cy,952,ch,28);x.fillStyle='#ffffff';x.fill();x.restore();
-  const q=qrcode(0,'M');q.addData(linkTorneo(c));q.make();const n=q.getModuleCount(),qs=180,cel=qs/(n+2);x.fillStyle=NAVY;
-  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect(Math.round(98+(k+1)*cel),Math.round(cy+26+(r+1)*cel),Math.ceil(cel),Math.ceil(cel));
-  const tx=312,tw=1016-34-tx;const abierto=!c.cuadro&&!c.grupos&&!camp;
+  const ch=conTr?290:232,cy=1290-ch;x.save();x.shadowColor='rgba(0,0,0,0.35)';x.shadowBlur=40;x.shadowOffsetY=16;rr(64,cy,952,ch,28);x.fillStyle='#ffffff';x.fill();x.restore();
+  const q=qrcode(0,'M');q.addData(linkTorneo(c));q.make();const n=q.getModuleCount(),qs=180,cel=qs/(n+2),qy=cy+(ch-qs)/2;x.fillStyle=NAVY;
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect(Math.round(98+(k+1)*cel),Math.round(qy+(r+1)*cel),Math.ceil(cel),Math.ceil(cel));
+  const tx=312,tw=1016-34-tx;
   const tit=abierto?(c.online||+c.cuota?'¡ANOTATE YA!':'¡NO TE LO PIERDAS!'):camp?'MIRÁ LOS RESULTADOS':empezo(c)?'SEGUILO EN VIVO':'¡NO TE LO PIERDAS!';
   x.fillStyle=NAVY;ajustar(tit,disp,tw,60,36);x.fillText(tit,tx,cy+80);
-  const pasos=abierto&&+c.cuota;
   if(pasos){
     x.font=body(500,21);let ty=cy+116;
     const linea=(num,t)=>{const ls2=envolver(t,tw-34);x.fillStyle=ACC;x.beginPath();x.arc(tx+12,ty-7,13,0,Math.PI*2);x.fill();x.fillStyle=NAVY;x.font=body(800,16);x.fillText(num,tx+7,ty-1);x.font=body(500,21);ls2.slice(0,2).forEach(l=>{x.fillText(l,tx+34,ty);ty+=27});ty+=4};
@@ -4936,7 +4954,11 @@ async function dibujarFlyerTorneo(c){
       if(wpre+wnum<=tw-34){x.fillStyle=ACC;x.beginPath();x.arc(tx+12,ty-7,13,0,Math.PI*2);x.fill();x.fillStyle=NAVY;x.font=body(800,16);x.fillText('2',tx+7,ty-1);x.font=body(500,21);x.fillText(pre,tx+34,ty);x.font=body(800,21);x.fillText('WhatsApp '+S.waPagos,tx+34+wpre,ty);ty+=31}
       else linea('2',pre+'WhatsApp '+S.waPagos+'.')}
     else linea('2',c.online?'Transferí y mandá el comprobante al administrador del club.':'Mandá el comprobante y tu nombre al administrador del club.');
-    x.font=body(600,18);x.fillStyle='#4a5878';x.fillText(`Inscripción ${fmtMon(+c.cuota)} · App de ${nombreApp()}`,tx,cy+ch-30);
+    if(conTr){const by=ty-12,bh=cy+ch-20-by;x.fillStyle='#eef1f6';rr(tx-6,by,tw+12,bh,14);x.fill();
+      x.fillStyle='#4a5878';x.font=body(800,14);x.fillText('DATOS PARA TRANSFERIR',tx+10,by+24);
+      x.fillStyle=NAVY;x.font=body(700,19);const lt=envolver(datosTransf().map(([k,v])=>(k==='Banco'?'':k+' ')+v).join(' · '),tw-20);
+      if(lt.length>2){x.font=body(700,17)}const lt2=envolver(datosTransf().map(([k,v])=>(k==='Banco'?'':k+' ')+v).join(' · '),tw-20);lt2.slice(0,3).forEach((l,i)=>x.fillText(l,tx+10,by+50+i*24))}
+    else{x.font=body(600,18);x.fillStyle='#4a5878';x.fillText(`Inscripción ${fmtMon(+c.cuota)} · App de ${nombreApp()}`,tx,cy+ch-30)}
   }else{
     x.font=body(500,23);const sub=abierto?(c.online?'Escaneá el código, entrá al torneo y tocá “Quiero anotarme”.':'Escaneá el código para ver todos los detalles del torneo.'):'Escaneá el código para ver el cuadro, los horarios y los resultados.';
     let ty=cy+124;envolver(sub,tw).slice(0,2).forEach(l=>{x.fillText(l,tx,ty);ty+=31});
