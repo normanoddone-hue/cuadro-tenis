@@ -4043,6 +4043,7 @@ function renderSheet(){
     if(!s.img&&!s.cargando&&!s.error){s.cargando=true;(ct?dibujarFlyerTorneo(ct):dibujarFlyer()).then(cv=>{s.cargando=false;s.img=cv.toDataURL('image/png');if(ui.sheet===s)renderSheet()}).catch(e=>{console.error('flyer',e);s.cargando=false;s.error=true;if(ui.sheet===s)renderSheet()})}
     h=`<div class="sheet-hd"><div><h3>${esc(ct?ct.nombre:nombreApp())}</h3><h2>${ct?'Flyer del torneo':'Flyer para difundir la app'}</h2></div>${cerrarBtn}</div>
     <p class="small muted" style="margin:0">${ct?'Se arma solo con los datos del torneo (fechas, sede, inscripción, formato y premios), el logo del club y un código QR que abre este torneo. Si cambiás algo en <b>Editar</b>, el flyer se actualiza.':'Se arma solo con el nombre y el logo del club (los de <b>Club y cuenta</b>) y un código QR que abre la app. Mandalo a los grupos de WhatsApp o subilo a las redes.'}</p>
+    ${ct&&ct.online&&+ct.cuota&&!S.waPagos?'<div class="note warn small">Para que el flyer diga a qué número mandar el comprobante de la transferencia, cargá el <b>WhatsApp para comprobantes</b> en <b>Club y cuenta</b>.</div>':''}
     ${s.img?`<img class="fly-prev" src="${s.img}" alt="Flyer de ${esc(nombreApp())}">`:s.error?'<div class="note warn">No se pudo armar el flyer. Revisá la conexión y abrilo de nuevo.</div>':'<div class="fly-prev fly-cargando">Armando el flyer…</div>'}
     <div class="btns"><button class="btn pri" data-act="fly-share" ${s.img?'':'disabled'}>${ICO_SHARE}Compartir</button><button class="btn wa" data-act="fly-wa" ${s.img?'':'disabled'}>${ICO_WA}WhatsApp</button><button class="btn" data-act="fly-bajar" ${s.img?'':'disabled'}>${ICO_PDF}Descargar imagen</button></div>
     <div class="field"><label for="fly-txt">Mensaje para acompañarlo</label><textarea id="fly-txt" rows="7" readonly>${esc(ct?textoFlyerTorneo(ct):textoFlyer())}</textarea></div>
@@ -4108,6 +4109,7 @@ function renderSheet(){
         <span class="small muted">Se ve al instante para probar; tocá Guardar para dejarlo para todos.</span></div>
       <div class="field"><label>Redes sociales del club</label><div class="redes-form">${REDES.map(([k,n,dom,svg])=>`<label class="red-in"><span class="red red-${k}" aria-hidden="true">${svg}</span><input type="text" id="l-red-${k}" value="${esc(((S.redes||{})[k])||'')}" placeholder="${n}: @usuario o enlace" aria-label="${n}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>`).join('')}</div>
         <span class="small muted">Podés poner el usuario (ej.: @clubtenis) o pegar el enlace. Las que dejes vacías no aparecen.</span></div>
+      <div class="field"><label for="l-wapag">WhatsApp para comprobantes de inscripción</label><input type="text" id="l-wapag" inputmode="tel" value="${esc(S.waPagos||'')}" placeholder="Ej.: 0981 123 456"><span class="small muted">Aparece en los flyers de torneos y al anotarse online, para que los jugadores manden el comprobante de la transferencia.</span></div>
       <div class="field"><label for="l-contacto">Contacto para datos personales</label><input type="text" id="l-contacto" value="${esc(S.contacto||'')}" placeholder="Ej.: secretaria@club.com.py o 0981 123 456"><span class="small muted">Aparece en la política de privacidad para que los jugadores pidan ver, corregir o borrar sus datos.</span></div>
       <div class="field"><label for="l-mon">Moneda</label><select id="l-mon">${MONEDAS.map(([k,n,sim])=>`<option value="${k}" ${mon()[0]===k?'selected':''}>${esc(n)} · ${esc(sim)}</option>`).join('')}</select>
         <span class="small muted">Se usa en inscripciones, premios, pagos y reportes. Cambiarla no convierte los montos ya cargados.</span></div>
@@ -4176,7 +4178,9 @@ function renderSheet(){
       <div class="field"><label for="s${n}-mano">Mano hábil</label><select id="s${n}-mano"><option value="">Sin dato</option><option value="D">Diestro</option><option value="Z">Zurdo</option></select></div>
       <div class="field"><label for="s${n}-alt">Altura (cm)</label><input type="number" id="s${n}-alt" inputmode="numeric" min="100" max="230" placeholder="Ej.: 178"></div></div></div>`;
     const encontrado=(n,r)=>`<div class="prz sol-ok-p"><h3>${quien(n)}</h3><div><b>¡Hola, ${esc(r.nombre||'jugador')}!</b> Ya estás registrado en el club${r.categoria?' · '+esc(r.categoria):''}.</div></div>`;
-    if(s.ok) h=`<div class="sheet-hd"><h2>¡Pedido enviado!</h2>${cerrarBtn}</div><div class="note">El club recibió ${s.nuevos?'tu registro y ':''}tu pedido para <b>${esc(c?.nombre||'')}</b>. Cuando lo confirme, vas a aparecer en la lista de inscriptos.</div><div class="btns"><button class="btn pri" data-act="cerrar">Listo</button></div>`;
+    if(s.ok) h=`<div class="sheet-hd"><h2>¡Pedido enviado!</h2>${cerrarBtn}</div><div class="note">El club recibió ${s.nuevos?'tu registro y ':''}tu pedido para <b>${esc(c?.nombre||'')}</b>. Cuando lo confirme, vas a aparecer en la lista de inscriptos.</div>
+      ${+c?.cuota?`<div class="prz"><h3>Pagá la inscripción</h3><div>Transferí <b>${esc(fmtMon(+c.cuota))}</b> y mandá el comprobante ${S.waPagos?`por WhatsApp al <b style="white-space:nowrap">${esc(S.waPagos)}</b>`:'al administrador del club'}.</div>${S.waPagos?`<div class="btns"><button class="btn wa" data-act="sol-comprobante">${ICO_WA}Enviar comprobante</button></div>`:''}</div>`:''}
+      <div class="btns"><button class="btn pri" data-act="cerrar">Listo</button></div>`;
     else if(!s.paso||s.paso==='ci') h=`<div class="sheet-hd"><div><h2>Quiero anotarme</h2>${sub}</div>${cerrarBtn}</div>
       <p class="small muted" style="margin:0">Ingresá ${D?'las cédulas de los dos jugadores':'tu número de cédula'}. Si ya estás registrado en el club, enviamos el pedido; si no, te pedimos tus datos para registrarte.</p>
       <div class="grid2"><div class="field"><label for="s1-ci">${D?'Cédula del jugador 1':'N.º de cédula'}</label><input type="text" id="s1-ci" inputmode="numeric" value="${esc(fmtCI(s.ci1||''))}" autocomplete="off"></div>
@@ -4439,6 +4443,7 @@ document.addEventListener('click',ev=>{
         if(pr.length){ui.msg=pr[0]+'.';renderSheet();return}
         sh.paso='datos';ui.msg=null;renderSheet()});
       break}
+    case 'sol-comprobante':{const c=todasCats().find(x=>x.id===ui.sheet.c);if(c&&S.waPagos)abrirWA(S.waPagos,`Hola, me anoté en ${c.nombre} (${nombreApp()}). Te mando el comprobante de la transferencia de la inscripción (${fmtMon(+c.cuota||0)}).`);break}
     case 'sol-volver':ui.sheet.paso='ci';ui.msg=null;renderSheet();break;
     case 'enviar-sol':{const c=todasCats().find(x=>x.id===ui.sheet.c);if(!c)break;const D=c.modalidad==='D';const sh=ui.sheet;
       const datosDe=(n,r)=>r.existe?{cedula:r.ci,nombre:r.nombre||'',registrado:true}
@@ -4558,7 +4563,7 @@ document.addEventListener('click',ev=>{
       if(pw!==pw2){avisar('Las contraseñas no coinciden.');break}
       (async()=>{
         if(pw){const {error}=await sb.auth.updateUser({password:pw});if(error){avisar('No se pudo cambiar la contraseña: '+error.message);return}}
-        S.club=club;S.contacto=val('l-contacto');{const R={};REDES.forEach(([k])=>{const v=val('l-red-'+k).trim();if(v)R[k]=v});S.redes=R}const mo=val('l-mon');if(mo)S.moneda=mo;if(ui.fondoPend!==undefined)S.fondo=ui.fondoPend;if(ui.veloPend!==undefined)S.fondoVelo=ui.veloPend;ui.fondoPend=ui.veloPend=undefined;if(ui.logoPend!==undefined){S.logo=ui.logoPend||null;ui.logoPend=undefined}
+        S.club=club;S.contacto=val('l-contacto');S.waPagos=val('l-wapag').trim();{const R={};REDES.forEach(([k])=>{const v=val('l-red-'+k).trim();if(v)R[k]=v});S.redes=R}const mo=val('l-mon');if(mo)S.moneda=mo;if(ui.fondoPend!==undefined)S.fondo=ui.fondoPend;if(ui.veloPend!==undefined)S.fondoVelo=ui.veloPend;ui.fondoPend=ui.veloPend=undefined;if(ui.logoPend!==undefined){S.logo=ui.logoPend||null;ui.logoPend=undefined}
         ui.sheet=null;ui.msg=null;toast(pw?'Datos y contraseña actualizados.':'Datos actualizados.');cambiar();
       })();
       break}
@@ -4821,7 +4826,8 @@ function textoFlyerTorneo(c){
     cuota?`💳 Inscripción: ${fmtMon(cuota)}`:'',
     +p.campeon?`🏆 Campeón ${fmtMon(p.campeon)}${+p.finalista?' · Vicecampeón '+fmtMon(p.finalista):''}`:'',
     '',est==='prox'||!c.cuadro?(c.online?'¡Anotate desde la app! Entrá al torneo y tocá "Quiero anotarme":':'Inscripciones en el club. Mirá los detalles acá:'):'Seguí el cuadro y los resultados acá:',
-    linkTorneo(c)].filter((l,i,a)=>l!==''||a[i-1]!=='').join('\n');
+    linkTorneo(c),
+    !c.cuadro&&c.online&&cuota?`\n📲 Después de anotarte, transferí la inscripción y mandá el comprobante ${S.waPagos?'por WhatsApp al '+S.waPagos:'al administrador del club'}.`:''].filter((l,i,a)=>l!==''||a[i-1]!=='').join('\n');
 }
 async function dibujarFlyerTorneo(c){
   await cargarQR();
@@ -4872,9 +4878,21 @@ async function dibujarFlyerTorneo(c){
   const tx=312,tw=1016-34-tx;const abierto=!c.cuadro&&!camp;
   const tit=abierto?(c.online?'¡ANOTATE YA!':'¡NO TE LO PIERDAS!'):camp?'MIRÁ LOS RESULTADOS':'SEGUILO EN VIVO';
   x.fillStyle=NAVY;ajustar(tit,disp,tw,60,36);x.fillText(tit,tx,cy+80);
-  x.font=body(500,23);const sub=abierto?(c.online?'Escaneá el código, entrá al torneo y tocá “Quiero anotarme”.':'Escaneá el código para ver todos los detalles del torneo.'):'Escaneá el código para ver el cuadro, los horarios y los resultados.';
-  let ty=cy+124;envolver(sub,tw).slice(0,2).forEach(l=>{x.fillText(l,tx,ty);ty+=31});
-  x.font=body(600,18);x.fillStyle='#4a5878';x.fillText(`App de ${nombreApp()} · Android y iPhone`,tx,Math.min(ty+8,cy+ch-24));
+  const pasos=abierto&&c.online&&+c.cuota;
+  if(pasos){
+    x.font=body(500,21);let ty=cy+116;
+    const linea=(num,t)=>{const ls2=envolver(t,tw-34);x.fillStyle=ACC;x.beginPath();x.arc(tx+12,ty-7,13,0,Math.PI*2);x.fill();x.fillStyle=NAVY;x.font=body(800,16);x.fillText(num,tx+7,ty-1);x.font=body(500,21);ls2.slice(0,2).forEach(l=>{x.fillText(l,tx+34,ty);ty+=27});ty+=4};
+    linea('1','Escaneá el código y tocá “Quiero anotarme”.');
+    if(S.waPagos){x.font=body(500,21);const pre='Transferí y mandá el comprobante al ';const wpre=x.measureText(pre).width;x.font=body(800,21);const wnum=x.measureText('WhatsApp '+S.waPagos).width;
+      if(wpre+wnum<=tw-34){x.fillStyle=ACC;x.beginPath();x.arc(tx+12,ty-7,13,0,Math.PI*2);x.fill();x.fillStyle=NAVY;x.font=body(800,16);x.fillText('2',tx+7,ty-1);x.font=body(500,21);x.fillText(pre,tx+34,ty);x.font=body(800,21);x.fillText('WhatsApp '+S.waPagos,tx+34+wpre,ty);ty+=31}
+      else linea('2','Transferí y mandá el comprobante al WhatsApp '+S.waPagos+'.')}
+    else linea('2','Transferí y mandá el comprobante al administrador del club.');
+    x.font=body(600,18);x.fillStyle='#4a5878';x.fillText(`Inscripción ${fmtMon(+c.cuota)} · App de ${nombreApp()}`,tx,cy+ch-30);
+  }else{
+    x.font=body(500,23);const sub=abierto?(c.online?'Escaneá el código, entrá al torneo y tocá “Quiero anotarme”.':'Escaneá el código para ver todos los detalles del torneo.'):'Escaneá el código para ver el cuadro, los horarios y los resultados.';
+    let ty=cy+124;envolver(sub,tw).slice(0,2).forEach(l=>{x.fillText(l,tx,ty);ty+=31});
+    x.font=body(600,18);x.fillStyle='#4a5878';x.fillText(`App de ${nombreApp()} · Android y iPhone`,tx,Math.min(ty+8,cy+ch-24));
+  }
   return cv;
 }
 /* ---- Flyer para difundir la app: se dibuja con el nombre, el logo y el enlace del club ---- */
