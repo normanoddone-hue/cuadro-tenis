@@ -3370,6 +3370,7 @@ const MANUAL=[
   'Instalá la app en tu celular: en Android tocá <b>Instalar app</b>; en iPhone, en Safari, <b>Compartir → Agregar a inicio</b>.'],
   tips:['En el celular, las secciones del administrador (Campeones, Finanzas, Manual y Club y cuenta) están en el botón <b>Más</b> de la barra de abajo.','Todo lo que cambiás se guarda solo. Abajo del menú ves "Guardado" cuando ya está en la nube.','Hacé de vez en cuando <b>Exportar copia</b> (en Club y cuenta) para tener un respaldo.']},
  {id:'jugadores',t:'Jugadores',d:'La base de jugadores del club. Cada torneo toma los inscriptos de acá.',pasos:[
+  'Los jugadores también se pueden <b>registrar solos</b>: en <b>Jugadores</b> tocan <b>Registrarme</b>, ponen su cédula y sus datos. Te llega un <b>Pedido de registro</b> arriba de la lista: tocá <b>Aprobar</b> y queda cargado, o <b>Rechazar</b>. Si la cédula o el nombre ya existen, te avisa para no duplicar.',
   'Andá a <b>Jugadores → Agregar jugador</b>. Cargá nombre, apellido, sexo y <b>categoría</b> (Primera a Sexta).',
   'Completá cédula, teléfono y fecha de nacimiento. <b>Estos tres datos son privados</b>: solo los ve el administrador; el público ve únicamente la edad.',
   'Agregá foto, club, país (sale la banderita), altura y mano hábil si querés que el perfil quede completo.',
@@ -3467,9 +3468,10 @@ function vistaJugadores(){
   const nEj=S.jugadores.filter(p=>p.ejemplo).length;
   return `<section class="sec">
     <div class="sec-hd"><h2>Jugadores <span class="muted num" style="font-size:18px">${S.jugadores.length}</span></h2>
-      <div class="btns"><button class="btn sm" data-act="h2h">Cara a cara</button>${puedeEditar?`<button class="btn sm" data-act="xl-abrir">Importar Excel</button><button class="btn pri" data-act="nuevo-jug">Agregar jugador</button>
+      <div class="btns"><button class="btn sm" data-act="h2h">Cara a cara</button>${!puedeEditar&&sb?'<button class="btn pri" data-act="alta-abrir">Registrarme</button>':''}${puedeEditar?`<button class="btn sm" data-act="xl-abrir">Importar Excel</button><button class="btn pri" data-act="nuevo-jug">Agregar jugador</button>
         ${nEj?`<button class="btn danger ${ui.armado==='quitar-ej'?'arm':''}" data-act="arm" data-w="quitar-ej">${ui.armado==='quitar-ej'?'Tocá de nuevo para quitarlos':'Quitar jugadores de ejemplo ('+nEj+')'}</button>`:''}`:''}</div></div>
     ${ui.msg&&!ui.sheet?`<div class="note warn">${esc(ui.msg)}</div>`:''}
+    ${puedeEditar?seccionAltas():''}
     ${seccionAscensos()}
     <div class="filters">
       <div style="flex:1;min-width:180px"><input type="search" id="q" placeholder="Buscar por nombre, cédula o club" value="${esc(ui.q)}" aria-label="Buscar jugador"></div>
@@ -3488,7 +3490,7 @@ function vistaJugadores(){
 let solCache={};
 async function cargarSolicitudes(cid){
   if(!sb||!logueado) return;solCache[cid]='cargando';
-  try{const {data,error}=await sb.from('tenis_solicitudes').select('id,data,creado').eq('torneo',cid).order('creado');
+  try{let q=sb.from('tenis_solicitudes').select('id,data,creado').eq('torneo',cid);if(cid===ALTA)q=q.eq('club',CLUB);const {data,error}=await q.order('creado');
     solCache[cid]=error?{err:error.message}:(data||[])}catch(e){solCache[cid]={err:String(e)}}
   renderFondo();
 }
@@ -3507,6 +3509,50 @@ function seccionSolicitudes(c){
       return `<div class="solrow"><div><b>${js.map(j=>esc(nomJ(j))).join(' / ')}</b>${js.some(j=>j.registrado===false&&!buscarJugador(j))?' <span class="tag on">Registro nuevo</span>':''}<div class="small muted">${esc([js.map(j=>[j.categoria,j.club].filter(Boolean).join(', ')).filter(Boolean).join(' / '),d.telefono?'Tel. '+d.telefono:'',fmtMomento(Date.parse(r.creado))].filter(Boolean).join(' · '))}</div>${d.nota?`<div class="small">${esc(d.nota)}</div>`:''}${pr.map(x=>`<div class="sol-warn">${esc(x)}</div>`).join('')}</div>
       <div class="btns"><button class="btn sm pri" data-act="sol-ok" ${pr.length?'disabled title="No se puede aprobar: revisá el aviso"':''} data-id="${r.id}" data-c="${c.id}">Aprobar</button><button class="btn sm" data-act="sol-no" data-id="${r.id}" data-c="${c.id}">Rechazar</button></div></div>`}).join('')}</div>`
       :`<div class="small muted">Todavía no llegaron pedidos. Compartí la app: en este torneo aparece el botón "Quiero anotarme".</div>`}</div>`;
+}
+/* ---- Registro de jugadores por su cuenta (pedido de alta que aprueba el admin) ---- */
+const ALTA='__alta__';
+function problemasAlta(j){
+  const out=[];const ci=String(j.cedula||'').replace(/\D/g,'');
+  const p=ci&&S.jugadores.find(x=>x.cedula===ci);
+  if(p) out.push(`La cédula ${fmtCI(ci)} ya es de ${nombreCompleto(p)}`);
+  else{const q=S.jugadores.find(x=>normTxt(x.nombre)===normTxt(j.nombre)&&normTxt(x.apellido)===normTxt(j.apellido));if(q)out.push(`Ya hay un jugador llamado ${nombreCompleto(q)}`)}
+  return out;
+}
+function seccionAltas(){
+  if(!sb||!logueado) return '';
+  const st=solCache[ALTA];
+  if(st===undefined){setTimeout(()=>cargarSolicitudes(ALTA),0);return ''}
+  if(st==='cargando'||(st&&st.err)||!st.length) return '';
+  return `<div class="panel sec altas"><div class="sec-hd"><h3>Pedidos de registro · ${st.length}</h3><button class="btn sm" data-act="sol-recargar" data-id="${ALTA}">Actualizar</button></div>
+    <div class="list">${st.map(r=>{const j=(r.data||{}).j1||{};const pr=problemasAlta(j);
+      const det=[j.sexo==='F'?'Dama':'Caballero',j.categoria||'Sin categoría',j.club,j.nacimiento?edadDe(j.nacimiento)+' años':'',j.telefono?'Tel. '+j.telefono:'','C.I. '+fmtCI(j.cedula)].filter(Boolean).join(' · ');
+      return `<div class="solrow"><div><b>${esc(`${j.apellido||''}, ${j.nombre||''}`)}</b>${bandera(j.pais)}<div class="small muted">${esc(det)}</div><div class="small muted">Enviado ${esc(fmtMomento(Date.parse(r.creado)))}</div>
+        ${pr.length?`<div class="note warn small">${esc(pr.join('. '))}. Si es la misma persona, rechazá el pedido.</div>`:''}</div>
+      <div class="btns"><button class="btn sm pri" data-act="alta-ok" data-id="${r.id}" ${pr.length?'disabled':''}>Aprobar</button><button class="btn sm" data-act="alta-no" data-id="${r.id}">Rechazar</button></div></div>`}).join('')}</div>
+    <span class="small muted">Al aprobar, el jugador queda cargado en la lista. La foto de perfil se la podés subir desde su ficha.</span></div>`;
+}
+function hojaAlta(s,cerrarBtn,err){
+  if(s.ok) return `<div class="sheet-hd"><h2>¡Registro enviado!</h2>${cerrarBtn}</div><div class="note">El club recibió tus datos. Cuando el administrador los confirme, vas a aparecer en la lista de jugadores y podrás anotarte en los torneos.</div><div class="btns"><button class="btn pri" data-act="cerrar">Listo</button></div>`;
+  if(s.ya) return `<div class="sheet-hd"><h2>Ya estás registrado</h2>${cerrarBtn}</div><div class="prz sol-ok-p"><b>¡Hola, ${esc(s.ya.nombre||'jugador')}!</b> Tu cédula ya está registrada en el club${s.ya.categoria?' · '+esc(s.ya.categoria):''}. No hace falta registrarte de nuevo: buscá tu nombre en la lista o anotate en un torneo con "Quiero anotarme".</div><div class="btns"><button class="btn pri" data-act="cerrar">Listo</button></div>`;
+  if(!s.paso) return `<div class="sheet-hd"><h2>Registrarme como jugador</h2>${cerrarBtn}</div>
+    <p class="small muted" style="margin:0">Ingresá tu número de cédula. Si ya estás en el club te avisamos; si no, te pedimos tus datos y el administrador confirma tu registro.</p>
+    <div class="field"><label for="a-ci">N.º de cédula</label><input type="text" id="a-ci" inputmode="numeric" value="${esc(fmtCI(s.ci||''))}" autocomplete="off"></div>
+    ${err}<div class="btns"><button class="btn pri" data-act="alta-buscar" data-primary ${s.buscando?'disabled':''}>${s.buscando?'Buscando…':'Continuar'}</button></div>`;
+  return `<div class="sheet-hd"><div><h2>Registrarme como jugador</h2><div class="sub small muted">C.I. ${esc(fmtCI(s.ci))}</div></div>${cerrarBtn}</div>
+    <div class="grid2">
+      <div class="field"><label for="a-nom">Nombre</label><input type="text" id="a-nom" autocomplete="given-name"></div>
+      <div class="field"><label for="a-ape">Apellido</label><input type="text" id="a-ape" autocomplete="family-name"></div>
+      <div class="field"><label for="a-nac">Fecha de nacimiento</label><input type="date" id="a-nac" max="${hoyISO()}"></div>
+      <div class="field"><label for="a-sexo">Rama</label><select id="a-sexo"><option value="M">Caballero</option><option value="F">Dama</option></select></div>
+      <div class="field"><label for="a-cat">Categoría</label><select id="a-cat"><option value="">No sé / sin categoría</option>${NIVELES.map(v=>`<option>${v}</option>`).join('')}</select></div>
+      <div class="field"><label for="a-club">Club</label><input type="text" id="a-club" placeholder="Ej.: ${esc(nombreApp())}"></div>
+      <div class="field"><label for="a-tel">Teléfono</label><input type="text" id="a-tel" inputmode="tel" autocomplete="tel" placeholder="Ej.: 0981 123 456"></div>
+      <div class="field"><label for="a-pais">Nacionalidad</label><select id="a-pais">${PAISES.map(([k,v])=>`<option value="${k}" ${k==='py'?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="field"><label for="a-mano">Mano hábil</label><select id="a-mano"><option value="">Sin dato</option><option value="D">Diestro</option><option value="Z">Zurdo</option></select></div>
+      <div class="field"><label for="a-alt">Altura (cm)</label><input type="number" id="a-alt" inputmode="numeric" min="100" max="230" placeholder="Ej.: 178"></div></div>
+    <label class="check priv-ok"><input type="checkbox" id="a-priv"> <span>Acepto la <a href="${esc(linkPrivacidad())}" target="_blank" rel="noopener">política de privacidad</a>. La cédula, el teléfono y la fecha de nacimiento solo los ve el administrador del club.</span></label>
+    ${err}<div class="btns"><button class="btn pri" data-act="alta-enviar" data-primary>Enviar registro</button><button class="btn" data-act="alta-volver">Cambiar cédula</button></div>`;
 }
 async function buscarCedula(ci,torneo){
   if(logueado&&S){const p=S.jugadores.find(x=>x.cedula===ci);if(!p) return {existe:false};
@@ -3791,6 +3837,7 @@ function renderSheet(){
   }
   if(s.t==='mov'){h=hojaMov(s)}
   if(s.t==='prog'){h=hojaProg(s,cerrarBtn)}
+  if(s.t==='alta'){h=hojaAlta(s,cerrarBtn,err)}
   if(s.t==='olvido'){h=`<div class="sheet-hd"><h2>Recuperar contraseña</h2>${cerrarBtn}</div>
     ${s.enviado?`<div class="note">Si <b>${esc(s.mail)}</b> tiene una cuenta, en unos minutos te llega un correo con un enlace para crear una contraseña nueva. Revisá también la carpeta de spam.</div><div class="btns"><button class="btn" data-act="login">Volver a ingresar</button></div>`
     :`<p class="small muted" style="margin:0">Escribí el correo con el que ingresás. Te mandamos un enlace para crear una contraseña nueva.</p>
@@ -4142,6 +4189,34 @@ document.addEventListener('click',ev=>{
         try{localStorage.setItem(kLoc,'1')}catch(e){}sh.ok=true;sh.nuevos=nuevos.length>0;ui.msg=null;renderSheet()});
       break}
     case 'sol-recargar':cargarSolicitudes(t.dataset.id);break;
+    case 'alta-abrir':abrir({t:'alta'});break;
+    case 'alta-volver':ui.sheet={t:'alta',ci:ui.sheet.ci};ui.msg=null;renderSheet();break;
+    case 'alta-buscar':{const sh=ui.sheet;const ci=val('a-ci').replace(/\D/g,'');
+      if(ci.length<5){avisar('Escribí tu número de cédula (solo números).');break}
+      sh.ci=ci;sh.buscando=true;ui.msg=null;renderSheet();
+      buscarCedula(ci,'').then(r=>{sh.buscando=false;if(ui.sheet!==sh)return;if(r&&r.existe)sh.ya=r;else sh.paso='datos';renderSheet()});break}
+    case 'alta-enviar':{const sh=ui.sheet;
+      const j={cedula:sh.ci,nombre:val('a-nom').trim(),apellido:val('a-ape').trim(),nacimiento:val('a-nac'),sexo:val('a-sexo'),categoria:val('a-cat'),club:val('a-club').trim(),telefono:val('a-tel').trim(),pais:val('a-pais'),mano:val('a-mano'),altura:val('a-alt')?+val('a-alt'):'',registrado:false};
+      if(!j.nombre||!j.apellido){avisar('Completá tu nombre y apellido.');break}
+      if(!j.nacimiento){avisar('Completá tu fecha de nacimiento.');break}
+      if(j.nacimiento>hoyISO()||edadDe(j.nacimiento)>100||edadDe(j.nacimiento)<4){avisar('Revisá la fecha de nacimiento.');break}
+      if(!j.telefono){avisar('Dejá un teléfono para que el club pueda confirmar tu registro.');break}
+      if(j.altura!==''&&(j.altura<100||j.altura>230)){avisar('La altura va en centímetros, por ejemplo 178.');break}
+      if(!document.getElementById('a-priv')?.checked){avisar('Para registrarte, aceptá la política de privacidad.');break}
+      const kLoc='cdt-alta-'+CLUB+'-'+sh.ci;let ya=false;try{ya=!!localStorage.getItem(kLoc)}catch(e){}
+      if(ya){avisar('Ya enviaste tu registro. El club lo tiene que confirmar.');break}
+      if(!sb){avisar('El registro necesita conexión con el servidor del club.');break}
+      t.disabled=true;
+      sb.from('tenis_solicitudes').insert(CLUB==='principal'?{torneo:ALTA,data:{j1:j,alta:true,telefono:j.telefono}}:{torneo:ALTA,data:{j1:j,alta:true,telefono:j.telefono},club:CLUB}).then(({error})=>{
+        if(error){t.disabled=false;console.error('alta',error);avisar('No se pudo enviar el registro. Revisá la conexión y probá de nuevo.');return}
+        try{localStorage.setItem(kLoc,'1')}catch(e){}sh.ok=true;ui.msg=null;renderSheet()});
+      break}
+    case 'alta-ok':case 'alta-no':{const id=t.dataset.id;const lista=Array.isArray(solCache[ALTA])?solCache[ALTA]:[];const r=lista.find(x=>x.id===id);if(!r||!sb)break;
+      if(a==='alta-ok'){const j=(r.data||{}).j1||{};const pr=problemasAlta(j);if(pr.length){toast('No se puede aprobar: '+pr[0]+'.',5000);break}
+        const p=jugadorDeSolicitud(j,j.sexo||'M');toast(`${nombreCompleto(p)} quedó registrado.`);cambiar()}
+      t.disabled=true;
+      sb.from('tenis_solicitudes').delete().eq('id',id).then(({error})=>{if(error){t.disabled=false;toast('No se pudo quitar el pedido de la lista.');return}solCache[ALTA]=lista.filter(x=>x.id!==id);renderFondo()});
+      break}
     case 'sol-no':case 'sol-ok':{const cid=t.dataset.c,id=t.dataset.id;const lista=Array.isArray(solCache[cid])?solCache[cid]:[];const r=lista.find(x=>x.id===id);if(!r||!sb)break;
       if(a==='sol-ok'){const c=todasCats().find(x=>x.id===cid);const d=r.data||{};const pr=problemasSolicitud(c,d);if(pr.length){toast('No se puede aprobar: '+pr[0]+'.',5000);break}
         const p1=jugadorDeSolicitud(d.j1,d.j1.sexo||c.rama);const p2=d.j2?jugadorDeSolicitud(d.j2,d.j2.sexo||c.rama):null;
