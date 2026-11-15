@@ -274,3 +274,32 @@ create policy "tienda admin borra" on public.tenis_tienda_pedidos
   for delete to authenticated using (public.tenis_admin_de(club));
 grant insert on public.tenis_tienda_pedidos to anon, authenticated;
 grant select, delete on public.tenis_tienda_pedidos to authenticated;
+
+-- 10) ESTADÍSTICAS PARA AUSPICIANTES: conteos diarios anónimos (sin datos personales).
+create table if not exists public.tenis_stats (
+  club   text not null,
+  dia    date not null,
+  clave  text not null check (clave ~ '^(visita|logos|inicio|pdf|tv|clic:[a-z0-9]{1,16})$'),
+  n      integer not null default 0,
+  primary key (club, dia, clave)
+);
+alter table public.tenis_stats enable row level security;
+drop policy if exists "stats admin lee" on public.tenis_stats;
+create policy "stats admin lee" on public.tenis_stats for select to authenticated using (public.tenis_admin_de(club));
+grant select on public.tenis_stats to authenticated;
+
+create or replace function public.tenis_contar(p_club text, p_claves text[])
+returns void language plpgsql security definer set search_path = public as $$
+declare k text; d date := (now() at time zone 'America/Asuncion')::date;
+begin
+  if p_club is null or not exists (select 1 from tenis_clubes where slug = p_club) then return; end if;
+  if p_claves is null or array_length(p_claves,1) is null or array_length(p_claves,1) > 8 then return; end if;
+  foreach k in array p_claves loop
+    if k ~ '^(visita|logos|inicio|pdf|tv|clic:[a-z0-9]{1,16})$' then
+      insert into tenis_stats(club,dia,clave,n) values (p_club,d,k,1)
+      on conflict (club,dia,clave) do update set n = tenis_stats.n + 1;
+    end if;
+  end loop;
+end $$;
+revoke all on function public.tenis_contar(text,text[]) from public;
+grant execute on function public.tenis_contar(text,text[]) to anon, authenticated;

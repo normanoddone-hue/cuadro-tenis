@@ -898,6 +898,11 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .transf{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:10px 0;padding:10px 12px;border-radius:10px;background:var(--surface);font-size:14px}
 .transf dt{color:var(--muted);font-weight:600}
 .transf dd{margin:0;font-weight:700;overflow-wrap:anywhere}
+.st-bars{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3px;align-items:end;height:150px;padding:6px 0 18px}
+.st-b{position:relative;height:100%;display:flex;align-items:flex-end}
+.st-b i{display:block;width:100%;height:var(--h);min-height:2px;border-radius:3px 3px 0 0;background:var(--court)}
+.st-b em{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-style:normal;font-size:10px;color:var(--muted)}
+.kpis.kt>div>small{display:block;font-size:11px;margin-top:2px;line-height:1.3}
 .fly-prev{display:block;width:100%;max-width:420px;margin:0 auto;aspect-ratio:1080/1350;border-radius:12px;box-shadow:0 10px 30px rgba(18,35,74,.25);background:#12234a}
 .fly-cargando{display:grid;place-items:center;color:#fff;font-weight:600}
 #fly-txt{font-size:14px;line-height:1.45}
@@ -1586,6 +1591,7 @@ async function init(){
   if(sesionSupa){await verificarAdmin();actualizarPermisos();if(esAdmin)await cargarPriv();renderFondo()}
   if(RECUPERANDO&&sesionSupa){ui.sheet={t:'nueva-pass'};ui.msg=null;renderSheet()}
   abrirDesdeEnlace();
+  medir('visita',true);
   sb.channel('estado').on('postgres_changes',{event:'*',schema:'public',table:'tenis_estado',filter:'id=eq.'+ID_PUB},p=>{if(p.new&&p.new.data)aplicarRemoto(p.new.data)}).subscribe();
 }
 async function cargarRemoto(){
@@ -1829,6 +1835,7 @@ async function subirFotos(files){
 const ICO_FLYER='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="2.5" width="15" height="19" rx="2"/><path d="M4.5 13.5l4-4 3.5 3.5 2-2 5.5 5.5"/><circle cx="15" cy="7" r="1.6"/><path d="M8 18h8"/></svg>';
 const ICO_CAM='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 const ICONOS={
+  auspicios:'<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>',
   tienda:'<path d="M4 9h16l-1.2 10.2a1.5 1.5 0 0 1-1.5 1.3H6.7a1.5 1.5 0 0 1-1.5-1.3z"/><path d="M8.5 9V7a3.5 3.5 0 0 1 7 0v2"/>',
   vivo:'<rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/><circle cx="7" cy="12" r="1.5"/>',
   resumen:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -1883,15 +1890,16 @@ function render(){
   if(!cargado){m.innerHTML='<div class="sk" style="height:96px" aria-label="Cargando"></div><div class="sk" style="height:220px"></div><div class="sk" style="height:160px"></div>';return}
   if(!clubInfo.existe&&cargado&&sb){m.innerHTML=`<div class="panel empty"><h2>Club no encontrado</h2><p class="muted">No hay ningún club con el código "${esc(CLUB)}". Revisá la dirección que te pasaron.</p></div>`;renderSheet();return}
   if(!S){m.innerHTML=vistaVacia();renderSheet();return}
-  if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='manual'&&ui.tab!=='finanzas'&&ui.tab!=='privacidad'&&ui.tab!=='agenda'&&ui.tab!=='vivo'&&ui.tab!=='tienda'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
+  if(!T()&&ui.tab!=='jugadores'&&ui.tab!=='manual'&&ui.tab!=='finanzas'&&ui.tab!=='privacidad'&&ui.tab!=='agenda'&&ui.tab!=='vivo'&&ui.tab!=='tienda'&&ui.tab!=='auspicios'&&ui.tab!=='eventos'&&ui.tab!=='reportes'){m.innerHTML=sinTorneos();renderSheet();return}
   if((ui.tab==='manual'||ui.tab==='finanzas'||ui.tab==='agenda')&&!puedeEditar) ui.tab='resumen';
-  const v={tienda:vistaTienda,vivo:vistaVivo,agenda:vistaAgenda,privacidad:vistaPrivacidad,finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
+  const v={auspicios:vistaAuspicios,tienda:vistaTienda,vivo:vistaVivo,agenda:vistaAgenda,privacidad:vistaPrivacidad,finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
   const scr=[...m.querySelectorAll('[data-scroll-key]')].map(e=>[e.dataset.scrollKey,e.scrollTop]);
   const entra=ui.entra;ui.entra=false;m.classList.remove('entra');
   m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'')+(redesClub().length?`<div class="pie-redes"><span>Seguí al club</span>${iconosRedes()}</div>`:'')+(ui.tab!=='privacidad'?`<p class="legal"><button class="lnk2" data-act="tab" data-k="privacidad">Política de privacidad</button></p>`:'');
   scr.forEach(([k,y])=>{const e=m.querySelector(`[data-scroll-key="${k}"]`);if(e)e.scrollTop=y});
   m.querySelectorAll('[data-mixto]').forEach(e=>e.indeterminate=true);
   if(entra){void m.offsetWidth;m.classList.add('entra');contar(m);trazarLlaves(m)}
+  if(entra&&ui.tab==='resumen'&&(S.sponsors||[]).length){medir('logos',true);medir('inicio')}
   renderSheet();
 }
 /* La llave se dibuja ronda por ronda cuando aparece en pantalla */
@@ -1917,7 +1925,7 @@ function renderShell(){
   const brand=`<div class="brand"><img class="logo" src="${esc((S&&S.logo)||LOGO)}" alt=""><span>${esc(nombreApp())}</span></div>`;
   const fechas=t?[t.sede,rangoFechas(t)].filter(Boolean).join(' · '):'';
   document.getElementById('side').innerHTML=`${S?brand.replace(/<\/div>$/,iconosRedes('en-side')+'</div>'):brand}
-    ${S?`<nav class="snav" aria-label="Secciones">${[...SECCIONES,...(puedeEditar?[['agenda','Agenda'],['finanzas','Finanzas'],['manual','Manual']]:[])].map(([k,l])=>`<button data-act="tab" data-k="${k}" ${ui.tab===k?'aria-current="page"':''}>${ico(k)}${l}</button>`).join('')}</nav>`:''}
+    ${S?`<nav class="snav" aria-label="Secciones">${[...SECCIONES,...(puedeEditar?[['agenda','Agenda'],['finanzas','Finanzas'],['auspicios','Auspiciantes'],['manual','Manual']]:[])].map(([k,l])=>`<button data-act="tab" data-k="${k}" ${ui.tab===k?'aria-current="page"':''}>${ico(k)}${l}</button>`).join('')}</nav>`:''}
     <div class="sfoot">${installBtn()}${logueado?`<div class="adm-card"><div class="adm-who"><span class="adm-av" aria-hidden="true">${esc((adminEmail()[0]||'A').toUpperCase())}</span><span class="adm-tx"><b>Administrador</b><small title="${esc(adminEmail())}">${esc(adminEmail())}</small></span></div>
       <div class="adm-acc"><button class="sbtn" data-act="login">${ICO_GEAR}Club y cuenta</button><button class="sbtn ico-only" data-act="logout" aria-label="Cerrar sesión" title="Cerrar sesión">${ICO_SALIR}</button></div>
       <span class="adm-st"><i class="dot ${/Guardado/.test(statusTxt)?'ok':statusTxt?'wait':''}"></i><span class="stx">${esc(statusTxt||'Sin cambios')}</span></span></div>`
@@ -1925,7 +1933,7 @@ function renderShell(){
   document.getElementById('topbar').innerHTML=`<div class="tb-l">${navPila.length?'<button class="tbtn tb-atras" data-act="atras" aria-label="Atrás" title="Atrás"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>':''}${brand}</div>${S?`<div class="tb-r">${vivos().length&&ui.tab!=='vivo'?`<button class="vivo-pill" data-act="tab" data-k="vivo"><i class="vdot"></i>EN VIVO</button>`:''}${!enApp()?'<button class="tbtn" data-act="instalar" aria-label="Descargar la app" title="Descargar la app">'+ICO_PDF+'</button>':''}${permisoPlat||logueado?`<button class="tbtn ${logueado?'on':''}" data-act="login" aria-label="${logueado?'Cuenta de administrador':'Ingresar como administrador'}">${ICO_LOCK}</button>`:''}</div>`:''}`;
   const bn=document.getElementById('bnav');
   bn.hidden=!S;
-  const MAS=['campeones','vivo','tienda','agenda','finanzas','manual'];
+  const MAS=['campeones','vivo','tienda','agenda','finanzas','auspicios','manual'];
   const base=SECCIONES.filter(([k])=>k!=='eventos'&&k!=='reportes'&&k!=='vivo'&&k!=='tienda'&&k!=='campeones');
   bn.innerHTML=S?base.map(([k,l])=>`<button data-act="tab" data-k="${k}" ${ui.tab===k?'aria-current="page"':''}><span class="ico">${ico(k)}</span>${l}</button>`).join('')
     +`<button data-act="mas" ${MAS.includes(ui.tab)?'aria-current="page"':''}><span class="ico">${ICO_MAS}</span>Más</button>`:'';
@@ -2506,7 +2514,7 @@ function subtitulo(doc,txt,y){
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...C_VERDE);doc.text(pt(txt),36,y);return y+8;
 }
 async function guardarPDF(doc,nombre){
-  piePDF(doc);
+  piePDF(doc);if((S&&S.sponsors||[]).length)medir('pdf');
   const blob=doc.output('blob');
   let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){}
   if(dl){
@@ -3161,6 +3169,7 @@ function vistaPrivacidad(){
     ${sec('2. Qué datos se guardan',`<ul>
       <li><b>Datos del jugador:</b> nombre, apellido, sexo, categoría, club, país, foto, altura y mano hábil.</li>
       <li><b>Datos de contacto e identificación:</b> número de cédula, teléfono y fecha de nacimiento.</li>
+      <li><b>Estadísticas de uso:</b> la app cuenta de forma anónima cuántas veces se abre por día, cuántas veces se ve el Inicio y cuántos toques reciben los logos de los auspiciantes. Son solo cantidades: no se guarda quién entró ni ningún dato personal.</li>
       <li><b>Tienda:</b> si publicás un artículo en venta, tu nombre y tu WhatsApp se muestran en el aviso, porque así lo aceptás al publicarlo. Podés pedir al club que lo quite en cualquier momento.</li>
       <li><b>Datos deportivos:</b> torneos en los que participa, resultados, horarios, estadísticas y ranking.</li>
       <li><b>Datos administrativos:</b> pagos de inscripción (si pagó o no y la fecha).</li>
@@ -3661,6 +3670,11 @@ const MANUAL=[
   'Los interesados tocan el artículo y <b>Consultar por WhatsApp</b>: se abre el chat con el vendedor y el mensaje listo.',
   'Cuando se venda, abrí el artículo y tocá <b>Marcar como vendido</b> (deja de verse para el público), o <b>Quitar publicación</b> para borrarlo.'],
   tips:['Como administrador podés publicar directamente con <b>Publicar artículo</b>, sin pasar por la aprobación.','La venta se arregla entre comprador y vendedor; el club solo publica el aviso.']},
+ {id:'auspicios',t:'Estadísticas para auspiciantes',d:'Mostrale a cada auspiciante cuánta gente ve su logo.',pasos:[
+  'Entrá a <b>Auspiciantes</b> en la barra lateral (en el celular, <b>Más → Estadísticas para auspiciantes</b>).',
+  'Elegí el mes: ves las visitas a la app, cuántas personas vieron los logos en el Inicio, los reportes PDF descargados, las veces que se encendió la Pantalla TV y un gráfico de visitas por día.',
+  'En <b>Por auspiciante</b> ves los clics en cada logo (si le cargaste un enlace) y tocás <b>Informe</b> para bajar un PDF con su logo y sus números, listo para mandarle.'],
+  tips:['Los números son anónimos: no se guarda quién entró. Tus propias visitas como administrador no se cuentan.','Cargale a cada auspiciante el enlace a su página o Instagram en <b>Club y cuenta → Auspiciantes</b> para medir los clics.']},
  {id:'agenda',t:'Agenda del día',d:'Todo lo que pasa en el club en un día, para compartir por WhatsApp.',pasos:[
   'Abrí <b>Agenda</b> (en el celular, desde <b>Más</b>) y elegí el día.',
   'Tocá <b>Nueva actividad</b>: reserva de cancha, clase, partido amistoso, evento o mantenimiento, con cancha y horario. Las clases fijas se pueden repetir cada semana.',
@@ -4126,6 +4140,7 @@ function renderSheet(){
       ${it('tienda','Tienda',puedeEditar?'Artículos usados y pedidos de publicación':'Artículos usados en venta de los jugadores')}
       ${puedeEditar?`${it('agenda','Agenda del día','Reservas, clases y partidos para compartir')}
       ${it('finanzas','Finanzas','Ingresos, gastos y rentabilidad')}
+      ${it('auspicios','Estadísticas para auspiciantes','Cuánta gente ve sus logos, con informe')}
       ${it('manual','Manual del usuario','Cómo usar la app paso a paso')}
       <button class="rowbtn mas-it" data-act="flyer"><span class="mas-ico">${ICO_FLYER}</span><span class="n">Flyer de la app</span><span class="d">Imagen con QR para difundir en grupos y redes</span></button>
       <button class="rowbtn mas-it" data-act="login"><span class="mas-ico">${ICO_GEAR}</span><span class="n">Club y cuenta</span><span class="d">Logo, moneda, contraseña, auspiciantes y clubes</span></button>`:''}</div>`}
@@ -4205,6 +4220,7 @@ function renderSheet(){
   if(s.t==='sponsors'){const sp=S.sponsors||[];
     h=`<div class="sheet-hd"><h2>Auspiciantes</h2>${cerrarBtn}</div>
     ${sp.length?`<div class="list sp-list" tabindex="0" aria-label="Auspiciantes cargados">${sp.map(x=>`<div class="solrow"><div class="sp-row"><img src="${esc(x.logo)}" alt=""><div class="sp-tx"><b>${esc(x.nombre)}</b>${x.url?`<div class="small muted sp-url" title="${esc(x.url)}">${esc(x.url)}</div>`:''}</div></div><button class="btn sm danger ${ui.armado==='del-sp-'+x.id?'arm':''}" data-act="arm" data-w="del-sp-${x.id}">${ui.armado==='del-sp-'+x.id?'Tocá de nuevo':'Quitar'}</button></div>`).join('')}</div>${sp.length>4?`<div class="sp-pie">${sp.length} auspiciantes · deslizá para ver todos</div>`:''}`:'<div class="note">Todavía no cargaste auspiciantes.</div>'}
+    ${sp.length?'<div class="btns"><button class="btn sm" data-act="tab" data-k="auspicios">Ver estadísticas para auspiciantes</button></div>':''}
     <div class="prz"><h3>Agregar</h3>
       <div class="logoed"><img id="sp-prev" src="${esc(ui.spLogo||'')}" alt="" ${ui.spLogo?'':'hidden'}><button class="btn sm" data-act="sp-elegir">${ui.spLogo?'Cambiar logo':'Elegir logo'}</button><input type="file" id="sp-logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></div>
       <div class="grid2"><div class="field"><label for="sp-nom">Nombre</label><input type="text" id="sp-nom" placeholder="Ej.: Ferretería Central"></div>
@@ -4478,6 +4494,7 @@ document.addEventListener('click',ev=>{
     case 'tv-salir':cerrarTV();break;
     case 'tl':ui.tl=t.dataset.k;render();break;
     case 'sponsors':ui.spLogo=null;abrir({t:'sponsors'});break;
+    case 'st-pdf':informeAuspPDF(t.dataset.id||'');break;
     case 'sp-elegir':document.getElementById('sp-logo')?.click();break;
     case 'sp-add':{const nombre=val('sp-nom');let url=val('sp-url');if(!nombre){avisar('Escribí el nombre del auspiciante.');break}if(!ui.spLogo){avisar('Elegí el logo.');break}
       if(url&&!/^https?:\/\//i.test(url))url='https://'+url;S.sponsors=S.sponsors||[];S.sponsors.push({id:uid(),nombre,url,logo:ui.spLogo});ui.spLogo=null;ui.msg=null;cambiar();break}
@@ -5033,7 +5050,7 @@ async function compartirImagen(modo){
 
 /* ===================== Pantalla TV ===================== */
 const tv={on:false,tick:0,i:0,timer:null};
-function abrirTV(){tv.on=true;tv.tick=0;tv.i=0;document.body.classList.add('tv-on');try{document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}
+function abrirTV(){medir('tv');tv.on=true;tv.tick=0;tv.i=0;document.body.classList.add('tv-on');try{document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}
   pintarTV();clearInterval(tv.timer);tv.timer=setInterval(()=>{tv.tick++;if(tv.tick%12===0){tv.i++;pintarTV()}else{const r=document.getElementById('tv-reloj');if(r)r.textContent=relojTV()}},1000)}
 function cerrarTV(){tv.on=false;clearInterval(tv.timer);document.getElementById('tv')?.remove();document.body.classList.remove('tv-on');try{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}}
 function relojTV(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
@@ -5060,12 +5077,86 @@ function pintarTV(){
     <footer class="tv-ft"><div class="tv-dots">${sl.map((_,i)=>`<i class="${i===k?'on':''}"></i>`).join('')}</div>${sp.length?`<div class="tv-sp"><span>Auspician</span>${sp.map(x=>`<img src="${esc(x.logo)}" alt="${esc(x.nombre)}">`).join('')}</div>`:''}</footer>`;
 }
 
+/* ---- Estadísticas para auspiciantes: conteos diarios anónimos (sin datos personales) ---- */
+let colaStats=[],tStats=null;
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[data-sp]');if(a)medir('clic:'+String(a.dataset.sp).toLowerCase())},true);
+function hoyLocal(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function medir(clave,unaVezPorDia){
+  if(!sb||puedeEditar||!S)return;
+  if(!/^(visita|logos|inicio|pdf|tv|clic:[a-z0-9]{1,16})$/.test(clave))return;
+  const k='cdt-st-'+CLUB+'-'+hoyLocal()+'-'+clave;
+  try{const n=+(localStorage.getItem(k)||0);if(unaVezPorDia&&n)return;if(n>=30)return;localStorage.setItem(k,n+1)}catch(e){if(unaVezPorDia)return}
+  colaStats.push(clave);clearTimeout(tStats);tStats=setTimeout(enviarStats,1500);
+}
+function enviarStats(){if(!colaStats.length||!sb)return;const ks=colaStats.splice(0,8);sb.rpc('tenis_contar',{p_club:CLUB,p_claves:ks}).then(()=>{},()=>{});if(colaStats.length)tStats=setTimeout(enviarStats,800)}
+let statsCache={};
+async function cargarStats(mes){
+  if(!sb||!logueado)return;statsCache[mes]='cargando';
+  const [a,m]=mes.split('-').map(Number);const fin=new Date(a,m,0).getDate();
+  try{const {data,error}=await sb.from('tenis_stats').select('dia,clave,n').eq('club',CLUB).gte('dia',mes+'-01').lte('dia',mes+'-'+String(fin).padStart(2,'0'));
+    statsCache[mes]=error?{err:error.message}:(data||[])}catch(e){statsCache[mes]={err:String(e)}}
+  renderFondo();
+}
+function resumenStats(rows,mes){
+  const [a,m]=mes.split('-').map(Number);const dias=new Date(a,m,0).getDate();
+  const tot={visita:0,logos:0,inicio:0,pdf:0,tv:0},porDia=Array(dias).fill(0),clics={};
+  rows.forEach(r=>{if(r.clave.startsWith('clic:'))clics[r.clave.slice(5)]=(clics[r.clave.slice(5)]||0)+r.n;else tot[r.clave]=(tot[r.clave]||0)+r.n;if(r.clave==='visita')porDia[+r.dia.slice(8)-1]+=r.n});
+  return {tot,porDia,clics,dias};
+}
+function nombreMes(mes){const [a,m]=mes.split('-').map(Number);return ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][m-1]+' '+a}
+function vistaAuspicios(){
+  const hoy=hoyLocal().slice(0,7);ui.stMes=ui.stMes||hoy;const mes=ui.stMes;
+  const meses=[];{let [a,m]=hoy.split('-').map(Number);for(let i=0;i<12;i++){meses.push(a+'-'+String(m).padStart(2,'0'));m--;if(!m){m=12;a--}}}
+  const st=statsCache[mes];if(st===undefined)setTimeout(()=>cargarStats(mes),0);
+  const sp=S.sponsors||[];
+  const head=encabezado('Estadísticas para auspiciantes',{sb:'Cuánta gente ve los logos de tus auspiciantes',acc:`<label class="tf-f" style="min-width:170px"><span>Mes</span><select id="st-mes">${meses.map(x=>`<option value="${x}" ${x===mes?'selected':''}>${nombreMes(x)}</option>`).join('')}</select></label>`});
+  if(!st||st==='cargando')return head+'<div class="panel muted">Cargando…</div>';
+  if(st.err)return head+'<div class="note warn">No se pudieron leer las estadísticas. Si es la primera vez, puede que falte activarlas en el servidor del club.</div>';
+  const R=resumenStats(st,mes),T=R.tot;const max=Math.max(1,...R.porDia);
+  const k=(v,l,d)=>`<div><b>${fmtNum(v)}</b><span>${l}</span>${d?`<small class="muted">${d}</small>`:''}</div>`;
+  return `${head}
+    <section class="kpis kt" aria-label="Resumen del mes">${k(T.visita,'Visitas a la app','Personas distintas por día')}${k(T.logos,'Vieron los logos','En el Inicio, una vez por día')}${k(T.inicio,'Vistas del Inicio','Donde están los logos')}${k(T.pdf,'Reportes PDF','Descargados, con los logos al pie')}${k(T.tv,'Pantalla TV','Veces que se encendió')}</section>
+    <div class="panel sec"><div class="sec-hd"><h3>Visitas por día · ${esc(nombreMes(mes))}</h3></div>
+      <div class="st-bars" role="img" aria-label="Visitas por día del mes">${R.porDia.map((v,i)=>`<span class="st-b" style="--h:${Math.round(v/max*100)}%" title="${i+1}: ${v} visita${v===1?'':'s'}"><i></i><em>${(i+1)%5===0||i===0?i+1:''}</em></span>`).join('')}</div></div>
+    <div class="panel sec"><div class="sec-hd"><h3>Por auspiciante</h3></div>
+      ${sp.length?`<div class="list">${sp.map(z=>`<div class="solrow"><div class="sp-row"><img src="${esc(z.logo)}" alt=""><div class="sp-tx"><b>${esc(z.nombre)}</b><div class="small muted">${z.url?`${fmtNum(R.clics[z.id]||0)} clic${(R.clics[z.id]||0)===1?'':'s'} en su logo`:'Sin enlace: cargale una página o Instagram para contar los clics'}</div></div></div>
+        <button class="btn sm" data-act="st-pdf" data-id="${z.id}">${ICO_PDF}Informe</button></div>`).join('')}</div>`:'<div class="muted small">Todavía no cargaste auspiciantes. <button class="lnk2" data-act="sponsors">Agregar auspiciante</button></div>'}
+    </div>
+    <div class="btns"><button class="btn pri" data-act="st-pdf">${ICO_PDF}Descargar informe del mes</button></div>
+    <p class="small muted">Se cuenta desde que se activó esta función. No se guarda ningún dato personal: solo cantidades por día. Las visitas del administrador no se cuentan.</p>`;
+}
+function informeAuspPDF(id){
+  const mes=ui.stMes;const st=statsCache[mes];if(!Array.isArray(st))return;
+  const R=resumenStats(st,mes),T=R.tot;const z=id?(S.sponsors||[]).find(x=>x.id===id):null;
+  conPDF(async doc=>{
+    let y=encabezadoPDF(doc,z?'Informe para '+z.nombre:'Informe de visibilidad de auspiciantes','Mes de '+nombreMes(mes));
+    if(z){try{doc.addImage(z.logo,/^data:image\/jpe?g/.test(z.logo)?'JPEG':'PNG',doc.internal.pageSize.getWidth()-150,92,110,48,undefined,'FAST')}catch(e){}}
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(20,32,28);
+    doc.text(pt(`Durante ${nombreMes(mes)}, la app de ${nombreApp()} mostró ${z?'tu logo':'los logos de los auspiciantes'} en el Inicio, en la pantalla TV del club y al pie de cada reporte PDF.`),36,y+12,{maxWidth:z?400:520});
+    y+=46;
+    tabla(doc,{startY:y,head:[['Indicador','Cantidad','Qué mide']],body:[
+      ['Visitas a la app',fmtNum(T.visita),'Personas distintas que abrieron la app cada día'],
+      ['Vieron los logos',fmtNum(T.logos),'Personas que vieron el Inicio con los logos, una vez por día'],
+      ['Vistas del Inicio',fmtNum(T.inicio),'Veces que se mostró el Inicio con los logos'],
+      ['Reportes PDF',fmtNum(T.pdf),'Reportes descargados con los logos al pie'],
+      ['Pantalla TV',fmtNum(T.tv),'Veces que se encendió la pantalla TV del club'],
+      ...(z?[['Clics en tu logo',z.url?fmtNum(R.clics[z.id]||0):'-',z.url?'Personas que tocaron tu logo y fueron a tu página':'Sin enlace cargado']]:(S.sponsors||[]).filter(x=>x.url).map(x=>['Clics: '+pt(x.nombre),fmtNum(R.clics[x.id]||0),'Toques en el logo que llevaron a su página']))].map(r=>r.map(pt)),
+      columnStyles:{1:{halign:'right',fontStyle:'bold'}}});
+    let y2=doc.lastAutoTable.finalY+26;
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...C_VERDE);doc.text('Visitas por día',36,y2);y2+=10;
+    const W=doc.internal.pageSize.getWidth()-72,bw=W/R.dias,mx=Math.max(1,...R.porDia),hh=110;
+    R.porDia.forEach((v,i)=>{const h=v/mx*hh;doc.setFillColor(18,35,74);if(h>0)doc.rect(36+i*bw+1,y2+hh-h,bw-2,h,'F');if((i+1)%5===0||i===0){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C_GRIS);doc.text(String(i+1),36+i*bw+bw/2,y2+hh+10,{align:'center'})}});
+    doc.setDrawColor(...C_LINEA);doc.line(36,y2+hh,36+W,y2+hh);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C_GRIS);doc.text(pt('Conteos anónimos: la app no guarda datos personales de quienes la usan.'),36,y2+hh+28);
+    await guardarPDF(doc,`informe-auspiciantes-${slug(z?z.nombre:nombreApp())}-${mes}.pdf`);
+  });
+}
 /* ===================== Auspiciantes ===================== */
 function seccionSponsors(){
   const sp=S.sponsors||[];
   if(!sp.length) return puedeEditar?`<section class="sec"><div class="sec-hd"><h2>Auspiciantes</h2><button class="btn sm" data-act="sponsors">Agregar auspiciante</button></div><div class="panel muted small">Sumá los logos de las empresas que apoyan al club: aparecen acá, en la pantalla TV y al pie de los reportes PDF.</div></section>`:'';
   return `<section class="sec"><div class="sec-hd"><h2>Auspician</h2>${puedeEditar?'<button class="btn sm" data-act="sponsors">Administrar</button>':''}</div>
-    <div class="sp-strip">${sp.map(x=>{const im=`<img src="${esc(x.logo)}" alt="${esc(x.nombre)}" loading="lazy"><span>${esc(x.nombre)}</span>`;return x.url?`<a class="sp-it" href="${esc(x.url)}" target="_blank" rel="noopener">${im}</a>`:`<div class="sp-it">${im}</div>`}).join('')}</div></section>`;
+    <div class="sp-strip">${sp.map(x=>{const im=`<img src="${esc(x.logo)}" alt="${esc(x.nombre)}" loading="lazy"><span>${esc(x.nombre)}</span>`;return x.url?`<a class="sp-it" href="${esc(x.url)}" target="_blank" rel="noopener" data-sp="${esc(x.id)}">${im}</a>`:`<div class="sp-it">${im}</div>`}).join('')}</div></section>`;
 }
 
 /* ===================== Historial de campeones ===================== */
@@ -5160,6 +5251,7 @@ document.addEventListener('change',ev=>{
   if(t.id==='f-import'&&t.files[0]){const f=t.files[0];t.value='';f.text().then(txt=>{let j=JSON.parse(txt);if(j&&j.datos)j=j.datos;
     if(!j||!Array.isArray(j.jugadores)||!Array.isArray(j.torneos))throw new Error('formato');ui.importPend=j;ui.armado='importar';renderSheet()}).catch(()=>avisar('Ese archivo no es una copia de datos de Cuadro de Tenis.'))}
   if(t.id==='f-xl'&&t.files[0]){const f=t.files[0];t.value='';leerExcel(f)}
+  if(t.id==='st-mes'){ui.stMes=t.value;render();return}
   {const m={'tf-cat':'cat','tf-est':'est','tf-ord':'ord'}[t.id];if(m){ui.tf=ui.tf||{};ui.tf[m]=t.value;render();return}}
   if(t.id==='ta-file'&&t.files.length){const fs=[...t.files];t.value='';ui.sheet.d=datosArtForm();
     (async()=>{ui.artFotos=ui.artFotos||[];for(const f of fs){if(ui.artFotos.length>=4)break;if(!/^image\//.test(f.type))continue;try{const cv=await reducir(f,1000);ui.artFotos.push(cv.toDataURL('image/jpeg',.72))}catch(e){}}renderSheet()})();return}
