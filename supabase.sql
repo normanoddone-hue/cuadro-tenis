@@ -246,8 +246,31 @@ begin
   if not exists(select 1 from tenis_clubes where slug = p_slug) then raise exception 'No existe ese club'; end if;
   delete from tenis_estado where id in (p_slug, p_slug || ':privado');
   delete from tenis_solicitudes where club = p_slug;
+  delete from tenis_tienda_pedidos where club = p_slug;
   delete from tenis_clubes where slug = p_slug;   -- borra también sus administradores
   return jsonb_build_object('ok', true);
 end $$;
 revoke all on function public.tenis_baja_club(text) from public, anon;
 grant execute on function public.tenis_baja_club(text) to authenticated;
+
+-- 9) TIENDA DE USADOS: pedidos de publicación que manda el público (con fotos) y aprueba el admin.
+create table if not exists public.tenis_tienda_pedidos (
+  id      uuid primary key default gen_random_uuid(),
+  club    text not null default 'principal' check (char_length(club) between 1 and 40),
+  data    jsonb not null check (pg_column_size(data) < 900000),
+  creado  timestamptz not null default now()
+);
+create index if not exists tenis_tienda_pedidos_club on public.tenis_tienda_pedidos(club, creado);
+alter table public.tenis_tienda_pedidos enable row level security;
+drop policy if exists "tienda publico pide" on public.tenis_tienda_pedidos;
+drop policy if exists "tienda admin lee"    on public.tenis_tienda_pedidos;
+drop policy if exists "tienda admin borra"  on public.tenis_tienda_pedidos;
+create policy "tienda publico pide" on public.tenis_tienda_pedidos
+  for insert to anon, authenticated
+  with check (exists (select 1 from public.tenis_clubes c where c.slug = tenis_tienda_pedidos.club));
+create policy "tienda admin lee" on public.tenis_tienda_pedidos
+  for select to authenticated using (public.tenis_admin_de(club));
+create policy "tienda admin borra" on public.tenis_tienda_pedidos
+  for delete to authenticated using (public.tenis_admin_de(club));
+grant insert on public.tenis_tienda_pedidos to anon, authenticated;
+grant select, delete on public.tenis_tienda_pedidos to authenticated;
