@@ -1042,6 +1042,10 @@ if(location.hash==='#privacidad'){try{setTimeout(()=>{ui.tab='privacidad';render
 if(location.hash==='#vivo'){try{setTimeout(()=>{ui.tab='vivo';render()},0)}catch(e){}}
 /* Enlace directo a un artículo de la tienda: ...?club=x#art-ID */
 function abrirDesdeEnlace(){
+  const tid=new URLSearchParams(location.search).get('torneo');
+  if(tid&&S){const ev=S.torneos.find(e=>e.categorias.some(c=>c.id===tid));
+    if(ev){elegirTorneo(ev.id);ui.cat=tid;ui.tab='categorias';ui.sub=null;ui.sheet=null}else toast('Ese torneo ya no está disponible.',4000);
+    try{history.replaceState(null,'',linkClub(CLUB))}catch(e){}render();return}
   const h=location.hash.match(/^#art-([\w-]+)$/);const id=new URLSearchParams(location.search).get('art')||(h&&h[1]);if(!id||!S)return;
   const a=(S.tienda||[]).find(x=>x.id===id);ui.tab='tienda';ui.jug=null;ui.cat=null;
   if(a&&(!a.vendido||puedeEditar)){ui.sheet={t:'art',id:a.id};ui.msg=null}else toast('Ese artículo ya no está a la venta.',4000);
@@ -1810,6 +1814,7 @@ async function subirFotos(files){
 }
 
 /* ===================== Render ===================== */
+const ICO_MEGA='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4a1 1 0 0 0 1 1h3l6 4V5L7 9H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
 const ICO_CAM='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 const ICONOS={
   tienda:'<path d="M4 9h16l-1.2 10.2a1.5 1.5 0 0 1-1.5 1.3H6.7a1.5 1.5 0 0 1-1.5-1.3z"/><path d="M8.5 9V7a3.5 3.5 0 0 1 7 0v2"/>',
@@ -2964,7 +2969,7 @@ function detalleTorneo(t,c){
   const tags=`<span class="tags"><span class="tag g">${MODS[c.modalidad]}</span><span class="tag">${RAMAS[c.rama]}</span><span class="tag">${c.nivel?'Solo '+esc(c.nivel):'Todas las categorías'}</span><span class="tag">Al mejor de ${c.sets}${c.superTB&&c.sets===3?' · súper tie-break':''}</span>${c.inicio?`<span class="tag">${esc(rangoFechas(c))}</span>`:''}${c.sede?`<span class="tag">${esc(c.sede)}</span>`:''}${premioTag(c)}</span>`;
   const n=c.inscriptos.length;
   return `<button class="back" data-act="volver">‹ Torneos</button>
-    ${encabezado(esc(c.nombre),{sb:tags,acc:`<button class="btn sm" data-act="compartir" data-id="${c.id}">${ICO_SHARE}Compartir</button>`+(cb?`<button class="btn sm pdf" data-act="rep-llave" data-id="${c.id}">${ICO_PDF}Descargar llave (PDF)</button>`:'')+(puedeEditar?`<button class="btn sm" data-act="edit-cat" data-id="${c.id}">Editar</button>`:'')})}
+    ${encabezado(esc(c.nombre),{sb:tags,acc:`<button class="btn sm" data-act="flyer" data-c="${c.id}">${ICO_MEGA}Flyer</button><button class="btn sm" data-act="compartir" data-id="${c.id}">${ICO_SHARE}Compartir</button>`+(cb?`<button class="btn sm pdf" data-act="rep-llave" data-id="${c.id}">${ICO_PDF}Descargar llave (PDF)</button>`:'')+(puedeEditar?`<button class="btn sm" data-act="edit-cat" data-id="${c.id}">Editar</button>`:'')})}
     ${c.online&&!cb&&!c.grupos?`<div class="panel insc-on"><div><b>Inscripción abierta</b><div class="small muted">Pedí tu lugar desde acá. El club confirma la inscripción y te aparece en la lista.</div></div><button class="btn pri" data-act="solicitar" data-id="${c.id}">Quiero anotarme</button></div>`:''}
     ${kpisTorneo(c)}
     <div class="seg" role="group" aria-label="Sección del torneo">
@@ -3598,6 +3603,7 @@ const MANUAL=[
   'Elegí <b>Enviar por WhatsApp</b>, <b>Compartir…</b> o <b>Descargar</b>.',
   'Desde Ranking y desde cada jugador podés descargar su PDF.',
   'Con <b>Pantalla TV</b> (en Inicio) la app pasa sola resultados, próximos partidos y auspiciantes: ideal para un televisor en el club.',
+  'Para promocionar un torneo: abrilo y tocá <b>Flyer</b> (arriba, al lado de Compartir). Sale con fechas, sede, inscripción, formato, premios y un QR que abre ese torneo; si tiene inscripción online, invita a tocar <b>Quiero anotarme</b>.',
   'Para invitar a los socios: <b>Club y cuenta → Flyer de la app</b> (en el celular, <b>Más → Flyer de la app</b>). Se arma solo con el nombre y el logo del club y un QR que abre la app; tocá <b>Compartir</b> o <b>WhatsApp</b> y usá el mensaje listo.',
   'Cargá las <b>redes sociales del club</b> (Instagram, TikTok, Facebook y YouTube) en <b>Club y cuenta</b>: los íconos aparecen debajo del logo en la computadora y en el Inicio del celular. Podés poner el usuario (@club) o pegar el enlace.'],
   tips:['Para la comisión directiva: en <b>Torneos → Resumen de temporada</b> descargás el informe del año en PDF o Excel, con recaudación, participación y jugadores más activos.','Publicá <b>Noticias</b> y subí fotos a la <b>Galería</b> desde el Inicio.','Los jugadores pueden tocar <b>Seguir</b> en un perfil y activar los avisos para enterarse de sus partidos.']},
@@ -4033,12 +4039,13 @@ function renderSheet(){
   if(s.t==='prog'){h=hojaProg(s,cerrarBtn)}
   if(s.t==='alta'){h=hojaAlta(s,cerrarBtn,err)}
   if(s.t==='flyer'){
-    if(!s.img&&!s.cargando&&!s.error){s.cargando=true;dibujarFlyer().then(cv=>{s.cargando=false;s.img=cv.toDataURL('image/png');if(ui.sheet===s)renderSheet()}).catch(e=>{console.error('flyer',e);s.cargando=false;s.error=true;if(ui.sheet===s)renderSheet()})}
-    h=`<div class="sheet-hd"><div><h3>${esc(nombreApp())}</h3><h2>Flyer para difundir la app</h2></div>${cerrarBtn}</div>
-    <p class="small muted" style="margin:0">Se arma solo con el nombre y el logo del club (los de <b>Club y cuenta</b>) y un código QR que abre la app. Mandalo a los grupos de WhatsApp o subilo a las redes.</p>
+    const ct=s.c?todasCats().find(z=>z.id===s.c):null;
+    if(!s.img&&!s.cargando&&!s.error){s.cargando=true;(ct?dibujarFlyerTorneo(ct):dibujarFlyer()).then(cv=>{s.cargando=false;s.img=cv.toDataURL('image/png');if(ui.sheet===s)renderSheet()}).catch(e=>{console.error('flyer',e);s.cargando=false;s.error=true;if(ui.sheet===s)renderSheet()})}
+    h=`<div class="sheet-hd"><div><h3>${esc(ct?ct.nombre:nombreApp())}</h3><h2>${ct?'Flyer del torneo':'Flyer para difundir la app'}</h2></div>${cerrarBtn}</div>
+    <p class="small muted" style="margin:0">${ct?'Se arma solo con los datos del torneo (fechas, sede, inscripción, formato y premios), el logo del club y un código QR que abre este torneo. Si cambiás algo en <b>Editar</b>, el flyer se actualiza.':'Se arma solo con el nombre y el logo del club (los de <b>Club y cuenta</b>) y un código QR que abre la app. Mandalo a los grupos de WhatsApp o subilo a las redes.'}</p>
     ${s.img?`<img class="fly-prev" src="${s.img}" alt="Flyer de ${esc(nombreApp())}">`:s.error?'<div class="note warn">No se pudo armar el flyer. Revisá la conexión y abrilo de nuevo.</div>':'<div class="fly-prev fly-cargando">Armando el flyer…</div>'}
     <div class="btns"><button class="btn pri" data-act="fly-share" ${s.img?'':'disabled'}>${ICO_SHARE}Compartir</button><button class="btn wa" data-act="fly-wa" ${s.img?'':'disabled'}>${ICO_WA}WhatsApp</button><button class="btn" data-act="fly-bajar" ${s.img?'':'disabled'}>${ICO_PDF}Descargar imagen</button></div>
-    <div class="field"><label for="fly-txt">Mensaje para acompañarlo</label><textarea id="fly-txt" rows="7" readonly>${esc(textoFlyer())}</textarea></div>
+    <div class="field"><label for="fly-txt">Mensaje para acompañarlo</label><textarea id="fly-txt" rows="7" readonly>${esc(ct?textoFlyerTorneo(ct):textoFlyer())}</textarea></div>
     <div class="btns"><button class="btn sm" data-act="fly-copiar">Copiar mensaje</button></div>`}
   if(s.t==='instalar'){const ua=navigator.userAgent;const ios=/iphone|ipad|ipod/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);const and=/android/i.test(ua);
     const paso=(n,t)=>`<li><span class="ins-n">${n}</span><span>${t}</span></li>`;
@@ -4526,11 +4533,11 @@ document.addEventListener('click',ev=>{
       if(sb)sb.auth.signOut({scope:'local'}).catch(()=>{});
       if(S){const {pub}=separar(S);S=migrar(pub)}
       toast('Sesión cerrada.');render();break}
-    case 'flyer':abrir({t:'flyer'});break;
+    case 'flyer':abrir(t.dataset.c?{t:'flyer',c:t.dataset.c}:{t:'flyer'});break;
     case 'fly-share':compartirFlyer('share');break;
     case 'fly-wa':compartirFlyer('wa');break;
     case 'fly-bajar':compartirFlyer('bajar');break;
-    case 'fly-copiar':{const t=textoFlyer();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Mensaje copiado.'),()=>{const e=document.getElementById('fly-txt');if(e){e.select();try{document.execCommand('copy');toast('Mensaje copiado.')}catch(x){}}});break}
+    case 'fly-copiar':{const ct=ui.sheet.c?todasCats().find(z=>z.id===ui.sheet.c):null;const t=ct?textoFlyerTorneo(ct):textoFlyer();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Mensaje copiado.'),()=>{const e=document.getElementById('fly-txt');if(e){e.select();try{document.execCommand('copy');toast('Mensaje copiado.')}catch(x){}}});break}
     case 'compartir-app':{const url=linkClub(CLUB),txt=`Descargá la app de ${nombreApp()}: torneos, resultados, ranking y más. Abrí el enlace y tocá "Descargar la app".`;
       (async()=>{if(navigator.share){try{await navigator.share({title:nombreApp(),text:txt,url});return}catch(e){if(e&&e.name==='AbortError')return}}
         window.open('https://wa.me/?text='+encodeURIComponent(txt+'\n'+url),'_blank','noopener')})();break}
@@ -4804,6 +4811,72 @@ function textoCompartir(){
   const [z,k]=(s.k||'').split('|');const P=ctxPartido(c.id,z,k);if(!P) return nombreApp();const g=P.x.g,o=g===P.x.a?P.x.b:P.x.a;
   return `${etiqueta(S,c,g)} le ganó a ${etiqueta(S,c,o)} ${marcadorDe(P.x)} · ${c.nombre}, ${P.titulo.toLowerCase()}. ${nombreApp()}`;
 }
+/* ---- Flyer de un torneo, para promocionarlo ---- */
+function linkTorneo(c){const u=new URL(linkClub(CLUB));u.searchParams.set('torneo',c.id);return u.toString()}
+function textoFlyerTorneo(c){
+  const p=c.premios||{};const cuota=+c.cuota||0;const est=estadoTorneo(c,hoyISO());
+  return [`🎾 ${c.nombre} · ${nombreApp()}`,
+    `${MODS[c.modalidad]} ${RAMAS[c.rama].toLowerCase()}${c.nivel?' · solo '+c.nivel:''}`,
+    c.inicio?`📅 ${rangoFechas(c)}`:'',c.sede?`📍 ${c.sede}`:'',
+    cuota?`💳 Inscripción: ${fmtMon(cuota)}`:'',
+    +p.campeon?`🏆 Campeón ${fmtMon(p.campeon)}${+p.finalista?' · Vicecampeón '+fmtMon(p.finalista):''}`:'',
+    '',est==='prox'||!c.cuadro?(c.online?'¡Anotate desde la app! Entrá al torneo y tocá "Quiero anotarme":':'Inscripciones en el club. Mirá los detalles acá:'):'Seguí el cuadro y los resultados acá:',
+    linkTorneo(c)].filter((l,i,a)=>l!==''||a[i-1]!=='').join('\n');
+}
+async function dibujarFlyerTorneo(c){
+  await cargarQR();
+  try{await Promise.all(['italic 800 120px "Barlow Condensed"','600 20px "Archivo"','700 28px "Archivo"','800 20px "Archivo"'].map(f=>document.fonts.load(f)))}catch(e){}
+  const W=1080,H=1350,NAVY='#12234a',ACC='#dcef3c';
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  const disp=px=>`italic 800 ${px}px "Barlow Condensed", "Arial Narrow", sans-serif`,body=(w,px)=>`${w} ${px}px "Archivo", system-ui, sans-serif`;
+  const rr=(X,Y,w,h,r)=>{x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath()};
+  const ajustar=(t,font,max,px,min)=>{while(px>min){x.font=font(px);if(x.measureText(t).width<=max)break;px-=2}x.font=font(px);return px};
+  const envolver=(t,max)=>{const ps=String(t).split(' ');const ls=[];let l='';ps.forEach(p=>{const n=l?l+' '+p:p;if(x.measureText(n).width>max&&l){ls.push(l);l=p}else l=n});if(l)ls.push(l);return ls};
+  x.fillStyle=NAVY;x.fillRect(0,0,W,H);
+  x.strokeStyle='rgba(255,255,255,0.09)';x.lineWidth=3;x.strokeRect(64,60,952,1230);
+  x.strokeStyle='rgba(255,255,255,0.06)';[[180,60,180,1290],[900,60,900,1290],[180,330,900,330],[540,330,540,930],[180,930,900,930]].forEach(([a,b,c2,d])=>{x.beginPath();x.moveTo(a,b);x.lineTo(c2,d);x.stroke()});
+  // pelota, arriba a la derecha
+  const bx=1000,by=150,br=190;x.save();x.fillStyle=ACC;x.globalAlpha=0.95;x.beginPath();x.arc(bx,by,br,0,Math.PI*2);x.fill();x.beginPath();x.arc(bx,by,br,0,Math.PI*2);x.clip();
+  x.strokeStyle='rgba(255,255,255,0.9)';x.lineWidth=13;x.beginPath();x.arc(bx-br*1.25,by,br*0.95,-0.9,0.9);x.stroke();x.beginPath();x.arc(bx+br*1.25,by,br*0.95,Math.PI-0.9,Math.PI+0.9);x.stroke();x.restore();
+  // club
+  const logo=await new Promise(ok=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>ok(im);im.onerror=()=>ok(null);im.src=(S&&S.logo)||LOGO});
+  x.save();rr(88,84,84,84,20);x.fillStyle='#ffffff';x.fill();x.clip();if(logo){const k=Math.max(84/logo.width,84/logo.height);x.drawImage(logo,88+(84-logo.width*k)/2,84+(84-logo.height*k)/2,logo.width*k,logo.height*k)}x.restore();
+  x.fillStyle='#ffffff';x.textBaseline='alphabetic';ajustar(nombreApp().toUpperCase(),disp,580,40,24);x.fillText(nombreApp().toUpperCase(),192,126);
+  x.font=body(600,18);x.fillStyle='rgba(255,255,255,0.72)';x.fillText('PRESENTA',194,158);
+  // estado
+  const est=estadoTorneo(c,hoyISO());const camp=campeonDe(c);
+  const pill=camp?'TORNEO FINALIZADO':c.cuadro||est==='curso'?'EN JUEGO · SEGUILO EN LA APP':c.online?'INSCRIPCIONES ABIERTAS':'PRÓXIMO TORNEO';
+  x.font=body(800,20);const pw=x.measureText(pill).width+36;x.fillStyle=ACC;rr(88,236,pw,46,23);x.fill();x.fillStyle=NAVY;x.fillText(pill,106,267);
+  // nombre del torneo (hasta 2 líneas)
+  let tp=130;let ls;while(tp>64){x.font=disp(tp);ls=envolver(c.nombre.toUpperCase(),900);if(ls.length<=2&&ls.every(l=>x.measureText(l).width<=900))break;tp-=4}
+  x.font=disp(tp);x.fillStyle='#ffffff';let y=310+tp*0.82;ls.slice(0,2).forEach(l=>{x.fillText(l,88,y);y+=tp*0.9});
+  // chips
+  y+=8;x.font=body(700,21);let cx=88;[MODS[c.modalidad],RAMAS[c.rama],c.nivel?'Solo '+c.nivel:'Todas las categorías'].forEach(t=>{const tw=x.measureText(t.toUpperCase()).width+30;x.strokeStyle='rgba(255,255,255,0.5)';x.lineWidth=2;rr(cx,y,tw,42,21);x.stroke();x.fillStyle='#ffffff';x.fillText(t.toUpperCase(),cx+15,y+29);cx+=tw+10});
+  y+=78;
+  // datos
+  const fmt=c.formato==='rr'?'Todos contra todos':c.formato==='grupos'?'Grupos y llaves':'Llaves';
+  const datos=[['FECHAS',c.inicio?rangoFechas(c):'A confirmar'],['SEDE',c.sede||nombreApp()],['INSCRIPCIÓN',+c.cuota?fmtMon(+c.cuota):'Consultá en el club'],['FORMATO',`${fmt} · al mejor de ${c.sets}${c.superTB&&c.sets===3?' (súper TB)':''}`]];
+  datos.forEach(([k,v],i)=>{const col=i%2,fila=Math.floor(i/2);const X=88+col*460,Y=y+fila*118;
+    x.fillStyle='rgba(255,255,255,0.08)';rr(X,Y,444,102,18);x.fill();
+    x.fillStyle=ACC;x.font=body(800,16);x.fillText(k,X+22,Y+34);x.fillStyle='#ffffff';ajustar(v,s2=>body(700,s2),400,28,17);x.fillText(v,X+22,Y+76)});
+  y+=2*118+14;
+  // premios
+  const p=c.premios||{};
+  if(+p.campeon){x.fillStyle=ACC;rr(88,y,904,112,22);x.fill();x.fillStyle=NAVY;x.font=body(800,18);x.fillText('PREMIOS',116,y+38);
+    const t1=`CAMPEÓN ${fmtMon(+p.campeon)}`,t2=+p.finalista?`VICE ${fmtMon(+p.finalista)}`:'';const t=t2?t1+'  ·  '+t2:t1;ajustar(t,disp,850,50,28);x.fillText(t,116,y+90);y+=132}
+  else if(c.inscriptos.length){x.fillStyle='rgba(255,255,255,0.75)';x.font=body(600,24);x.fillText(`${c.inscriptos.length} ${c.modalidad==='D'?'parejas inscriptas':'jugadores inscriptos'}`,88,y+30);y+=50}
+  // tarjeta QR
+  const cy=1058,ch=232;x.save();x.shadowColor='rgba(0,0,0,0.35)';x.shadowBlur=40;x.shadowOffsetY=16;rr(64,cy,952,ch,28);x.fillStyle='#ffffff';x.fill();x.restore();
+  const q=qrcode(0,'M');q.addData(linkTorneo(c));q.make();const n=q.getModuleCount(),qs=180,cel=qs/(n+2);x.fillStyle=NAVY;
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect(Math.round(98+(k+1)*cel),Math.round(cy+26+(r+1)*cel),Math.ceil(cel),Math.ceil(cel));
+  const tx=312,tw=1016-34-tx;const abierto=!c.cuadro&&!camp;
+  const tit=abierto?(c.online?'¡ANOTATE YA!':'¡NO TE LO PIERDAS!'):camp?'MIRÁ LOS RESULTADOS':'SEGUILO EN VIVO';
+  x.fillStyle=NAVY;ajustar(tit,disp,tw,60,36);x.fillText(tit,tx,cy+80);
+  x.font=body(500,23);const sub=abierto?(c.online?'Escaneá el código, entrá al torneo y tocá “Quiero anotarme”.':'Escaneá el código para ver todos los detalles del torneo.'):'Escaneá el código para ver el cuadro, los horarios y los resultados.';
+  let ty=cy+124;envolver(sub,tw).slice(0,2).forEach(l=>{x.fillText(l,tx,ty);ty+=31});
+  x.font=body(600,18);x.fillStyle='#4a5878';x.fillText(`App de ${nombreApp()} · Android y iPhone`,tx,Math.min(ty+8,cy+ch-24));
+  return cv;
+}
 /* ---- Flyer para difundir la app: se dibuja con el nombre, el logo y el enlace del club ---- */
 const QR_SRC='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';let qrListo;
 function cargarQR(){if(window.qrcode)return Promise.resolve();return qrListo=qrListo||new Promise((ok,mal)=>{const sc=document.createElement('script');sc.src=QR_SRC;sc.onload=ok;sc.onerror=()=>{qrListo=null;mal(new Error('qr'))};document.head.appendChild(sc)})}
@@ -4853,8 +4926,8 @@ async function dibujarFlyer(){
   return cv;
 }
 async function compartirFlyer(modo){
-  const s=ui.sheet;if(!s||!s.img)return;const blob=await (await fetch(s.img)).blob();const nombre=`flyer-${slug(nombreApp())}.png`;
-  const file=new File([blob],nombre,{type:'image/png'});const txt=textoFlyer();
+  const s=ui.sheet;if(!s||!s.img)return;const ct=s.c?todasCats().find(z=>z.id===s.c):null;const blob=await (await fetch(s.img)).blob();const nombre=`flyer-${slug(ct?ct.nombre:nombreApp())}.png`;
+  const file=new File([blob],nombre,{type:'image/png'});const txt=ct?textoFlyerTorneo(ct):textoFlyer();
   if(modo==='share'&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],text:txt});return}catch(e){if(e&&e.name==='AbortError')return}}
   const a=document.createElement('a');a.href=s.img;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
   if(modo==='wa'){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank','noopener');toast('Se descargó el flyer: adjuntalo en WhatsApp.',5000)}
