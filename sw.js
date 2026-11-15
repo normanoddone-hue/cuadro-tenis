@@ -1,5 +1,5 @@
 // Service worker: guarda la app para que abra rápido y funcione sin conexión (solo lectura).
-const VERSION = 'cdt-v99';
+const VERSION = 'cdt-v100';
 const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
