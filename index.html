@@ -869,6 +869,12 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .prog-ocup li.mismo{background:#fde8e8;color:#8a1c1c}
 .prog-ocup em{font-style:normal;font-weight:700;font-size:11px;text-transform:uppercase;margin-left:4px}
 .gcard[data-act]{cursor:pointer}
+.jfoto{display:flex;align-items:center;gap:14px;padding:12px;border-radius:var(--r-sm);background:var(--soft)}
+.jfoto .jf-prev{flex:none;cursor:pointer;border:2px dashed var(--line);background:var(--surface);color:var(--muted);padding:0}
+.jfoto .jf-prev:has(img){border-style:solid}
+.jfoto .jf-prev .ic{width:26px;height:26px}
+.jf-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.jf-tx .btns{margin-top:6px}
 .vivo-pill{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;background:#d0021b;color:#fff;font:700 11px/1 var(--f-body,inherit);letter-spacing:.08em;padding:7px 10px;cursor:pointer}
 .vdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff3b30;box-shadow:0 0 0 0 rgba(255,59,48,.6);animation:vpul 1.6s infinite;flex:none;margin-right:6px;vertical-align:middle}
 .vivo-pill .vdot{background:#fff;margin-right:0}
@@ -1725,6 +1731,7 @@ async function subirFotos(files){
 }
 
 /* ===================== Render ===================== */
+const ICO_CAM='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 const ICONOS={
   vivo:'<rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/><circle cx="7" cy="12" r="1.5"/>',
   resumen:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -3672,7 +3679,12 @@ function renderSheet(){
   let h='';const err=ui.msg?`<div class="note err">${esc(ui.msg)}</div>`:'';
   const cerrarBtn='<button class="x" data-act="cerrar" aria-label="Cerrar">×</button>';
   if(s.t==='jug'){const p=s.id?jug(S,s.id):{nombre:'',apellido:'',sexo:'M',categoria:'',cedula:'',club:'',telefono:''};
+    const fj=fotoJug(p);
     h=`<div class="sheet-hd"><h2>${s.id?'Editar jugador':'Nuevo jugador'}</h2>${cerrarBtn}</div>
+    <div class="jfoto"><button type="button" class="av jf-prev" style="--s:72px" data-act="jf-elegir" aria-label="Elegir foto de perfil">${fj?`<img src="${esc(fj)}" alt="">`:ICO_CAM}</button>
+      <div class="jf-tx"><b>Foto de perfil</b><span class="small muted">Opcional. JPG o PNG; se recorta cuadrada.</span>
+        <div class="btns"><button type="button" class="btn sm" data-act="jf-elegir" id="jf-btn">${fj?'Cambiar foto':'Subir foto'}</button><button type="button" class="btn sm" data-act="jf-quitar" id="jf-q" ${fj?'':'hidden'}>Quitar</button></div></div>
+      <input type="file" id="f-jfoto" accept="image/jpeg,image/png,image/webp" hidden></div>
     <div class="grid2"><div class="field"><label for="f-nom">Nombre</label><input type="text" id="f-nom" value="${esc(p.nombre)}" autocomplete="off"></div>
     <div class="field"><label for="f-ape">Apellido</label><input type="text" id="f-ape" value="${esc(p.apellido)}" autocomplete="off"></div>
     <div class="field"><label for="f-ci">N.º de cédula</label><input type="text" id="f-ci" inputmode="numeric" placeholder="Ej.: 3.456.789" value="${esc(fmtCI(p.cedula))}" autocomplete="off"></div>
@@ -3944,7 +3956,7 @@ function renderSheet(){
 /* ===================== Acciones ===================== */
 function radioVal(n){return document.querySelector(`input[name="${n}"]:checked`)?.value||''}
 function val(id){const e=document.getElementById(id);return e?e.value.trim():''}
-function abrir(sheet){ui.logoPend=undefined;ui.fondoPend=ui.veloPend=undefined;ui.sheet=sheet;ui.msg=null;ui.armado=null;render();setTimeout(()=>{const f=document.querySelector('.sheet input:not([disabled]),.sheet select');if(f&&window.innerWidth>640)f.focus()},30)}
+function abrir(sheet){ui.jfoto=null;ui.jfotoQuitar=false;ui.logoPend=undefined;ui.fondoPend=ui.veloPend=undefined;ui.sheet=sheet;ui.msg=null;ui.armado=null;render();setTimeout(()=>{const f=document.querySelector('.sheet input:not([disabled]),.sheet select');if(f&&window.innerWidth>640)f.focus()},30)}
 function cerrar(){if(ui.fondoPend!==undefined||ui.veloPend!==undefined){ui.fondoPend=ui.veloPend=undefined;if(S)aplicarFondo(S.fondo,S.fondoVelo)}ui.sheet=null;ui.msg=null;ui.armado=null;render()}
 function cargarJugadoresEjemplo(){
   const {hom,muj}=jugadoresEjemplo(generador(Date.now()%2147483646+1));
@@ -3987,6 +3999,8 @@ document.addEventListener('click',ev=>{
     case 'rep-jug-sel':{const id=val('r-jug');if(ui.sheet){ui.sheet=null;render()}repJugador(id);break}
     case 'rep-jug-elegir':abrir({t:'repjug'});break;
     case 'foto-jug':document.getElementById('f-avatar')?.click();break;
+    case 'jf-elegir':document.getElementById('f-jfoto')?.click();break;
+    case 'jf-quitar':{ui.jfoto=null;ui.jfotoQuitar=true;const pv=document.querySelector('.jf-prev');if(pv)pv.innerHTML=ICO_CAM;document.getElementById('jf-q').hidden=true;document.getElementById('jf-btn').textContent='Subir foto';break}
     case 'quitar-foto-jug':{const p=jug(S,ui.jug);if(p&&p.foto){if(p.foto.a&&assetsApi)assetsApi.delete(p.foto.a).catch(()=>{});delete p.foto;cambiar()}break}
     case 'xl-abrir':ui.xl=null;abrir({t:'excel'});break;
     case 'xl-elegir':document.getElementById('f-xl')?.click();break;
@@ -4229,8 +4243,10 @@ document.addEventListener('click',ev=>{
         if(p.sexo!==d.sexo&&insc.some(c=>c.rama!=='X')){avisar('No se puede cambiar la rama: el jugador está inscripto en un torneo de su rama actual.');break}
         if(p.categoria!==d.categoria&&insc.some(c=>c.nivel&&!c.cuadro)){avisar('Está inscripto en un torneo solo para '+p.categoria+'. Quitalo de esa inscripción antes de cambiarle la categoría.');break}
         Object.assign(p,d);delete p.ejemplo}
-      else S.jugadores.push({id:uid(),...d});
-      ui.sheet=null;ui.msg=null;cambiar();break}
+      let pid=ui.sheet.id;if(!pid){pid=uid();S.jugadores.push({id:pid,...d})}
+      const nuevaFoto=ui.jfoto,quitar=ui.jfotoQuitar;ui.jfoto=null;ui.jfotoQuitar=false;
+      if(quitar&&!nuevaFoto){const q=jug(S,pid);if(q&&q.foto){if(q.foto.a&&assetsApi)assetsApi.delete(q.foto.a).catch(()=>{});delete q.foto}}
+      ui.sheet=null;ui.msg=null;cambiar();if(nuevaFoto)subirAvatar(nuevaFoto,pid);break}
     case 'guardar-cat':{
       const d={nombre:val('c-nom'),inicio:val('c-ini'),fin:val('c-fin'),sede:val('c-sede'),sets:+val('c-sets'),superTB:document.getElementById('c-tb').checked,formato:radioVal('c-fmt')||'elim',gtam:+val('c-gtam')||4,gpasan:+val('c-gpas')||2,online:!!document.getElementById('c-online')?.checked,cuota:parseMonto(val('c-cuota')),conRP:!!document.getElementById('c-rp')?.checked&&(radioVal('c-fmt')||'elim')==='elim',cuotaRP:parseMonto(val('c-cuotarp')),premios:{campeon:parseMonto(val('c-pc')),finalista:parseMonto(val('c-pf'))}};
       const bloq=!!document.querySelector('input[name=c-mod]:disabled');const mod={value:radioVal('c-mod')||'S',disabled:bloq},ram={value:radioVal('c-rama')||'M'},niv=document.getElementById('c-niv');
@@ -4572,6 +4588,9 @@ document.addEventListener('change',ev=>{
   if(t.id==='f-import'&&t.files[0]){const f=t.files[0];t.value='';f.text().then(txt=>{let j=JSON.parse(txt);if(j&&j.datos)j=j.datos;
     if(!j||!Array.isArray(j.jugadores)||!Array.isArray(j.torneos))throw new Error('formato');ui.importPend=j;ui.armado='importar';renderSheet()}).catch(()=>avisar('Ese archivo no es una copia de datos de Cuadro de Tenis.'))}
   if(t.id==='f-xl'&&t.files[0]){const f=t.files[0];t.value='';leerExcel(f)}
+  if(t.id==='f-jfoto'&&t.files[0]){const f=t.files[0];t.value='';if(!/^image\//.test(f.type)){avisar('Elegí una imagen JPG o PNG.');return}
+    ui.jfoto=f;ui.jfotoQuitar=false;const pv=document.querySelector('.jf-prev');if(pv){if(ui.jfotoUrl)URL.revokeObjectURL(ui.jfotoUrl);ui.jfotoUrl=URL.createObjectURL(f);pv.innerHTML=`<img src="${ui.jfotoUrl}" alt="">`}
+    document.getElementById('jf-q').hidden=false;document.getElementById('jf-btn').textContent='Cambiar foto';return}
   if(t.id==='f-avatar'&&t.files[0]){const f=t.files[0];t.value='';subirAvatar(f,ui.jug)}
   if(t.id==='f-fotos'){subirFotos(t.files);t.value=''}
   if(t.id==='p-tipo'){const w=document.getElementById('ganwrap');if(w)w.style.opacity=t.value==='normal'?'.55':'1'}
