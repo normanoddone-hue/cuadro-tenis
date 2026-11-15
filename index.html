@@ -2236,7 +2236,7 @@ function datosPerfil(pid){
     if(cb&&maxR>=0){const f=cb.R-1-maxR;const camp=cb.campeon===ent.id;
       const elim=cb.rondas.some(fl=>fl.some(x=>x.estado==='jugado'&&(x.a===ent.id||x.b===ent.id)&&x.g!==ent.id));
       pts=camp?PUNTOS_CAMPEON:(PUNTOS_RONDA[f]??1);
-      etiq=camp?'Campeón':!elim&&!cb.campeon?'En carrera · '+nombreRonda(maxR,cb.R,true):f===0?'Finalista':nombreRonda(maxR,cb.R,true);}
+      etiq=camp?(jug(S,pid)?.sexo==='F'?'Campeona':'Campeón'):!elim&&!cb.campeon?'En carrera · '+nombreRonda(maxR,cb.R,true):f===0?'Finalista':(jug(S,pid)?.sexo==='F'?'Eliminada en ':'Eliminado en ')+(r=>r.charAt(0).toLowerCase()+r.slice(1))(nombreRonda(maxR,cb.R,true));}
     parts.push({e,c,etiq,pts,camp:cb?.campeon===ent.id,final:cb&&maxR===cb.R-1});
   }));
   ms.sort((a,b)=>a.t-b.t);
