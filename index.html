@@ -1026,6 +1026,15 @@ const RECUPERANDO=/type=recovery/.test(location.hash);
 let clubInfo={nombre:'',existe:CLUB==='principal'};
 if(location.hash==='#privacidad'){try{setTimeout(()=>{ui.tab='privacidad';render()},0)}catch(e){}}
 if(location.hash==='#vivo'){try{setTimeout(()=>{ui.tab='vivo';render()},0)}catch(e){}}
+/* Enlace directo a un artículo de la tienda: ...?club=x#art-ID */
+function abrirDesdeEnlace(){
+  const h=location.hash.match(/^#art-([\w-]+)$/);const id=new URLSearchParams(location.search).get('art')||(h&&h[1]);if(!id||!S)return;
+  const a=(S.tienda||[]).find(x=>x.id===id);ui.tab='tienda';ui.jug=null;ui.cat=null;
+  if(a&&(!a.vendido||puedeEditar)){ui.sheet={t:'art',id:a.id};ui.msg=null}else toast('Ese artículo ya no está a la venta.',4000);
+  try{history.replaceState(null,'',linkClub(CLUB))}catch(e){}
+  render();
+}
+function linkArt(a){const u=new URL(linkClub(CLUB));u.searchParams.set('art',a.id);return u.toString()}
 function linkClub(slug){const u=new URL(location.origin+location.pathname);u.searchParams.set('club',slug||'principal');return u.toString()}
 const PUNTOS_CAMPEON=100;
 const PUNTOS_RONDA=[70,45,25,15,8,4,2]; // perdedor según rondas desde el final
@@ -1546,6 +1555,7 @@ async function init(){
   await cargarRemoto();
   if(sesionSupa){await verificarAdmin();actualizarPermisos();if(esAdmin)await cargarPriv();renderFondo()}
   if(RECUPERANDO&&sesionSupa){ui.sheet={t:'nueva-pass'};ui.msg=null;renderSheet()}
+  abrirDesdeEnlace();
   sb.channel('estado').on('postgres_changes',{event:'*',schema:'public',table:'tenis_estado',filter:'id=eq.'+ID_PUB},p=>{if(p.new&&p.new.data)aplicarRemoto(p.new.data)}).subscribe();
 }
 async function cargarRemoto(){
@@ -3192,7 +3202,7 @@ function hojaArt(s,cerrarBtn){
     <div class="art-prbig">${esc(fmtMon(a.precio||0))}${a.vendido?' <span class="tag">Vendido</span>':''}</div>
     ${a.desc?`<p class="art-desc">${esc(a.desc)}</p>`:''}
     <div class="small muted">Vende: <b>${esc(a.vendedor||'')}</b> · Publicado ${esc(fmtMomento(a.t))}</div>
-    <div class="btns">${!a.vendido&&a.tel?`<button class="btn pri wa" data-act="art-wa">${ICO_WA}Consultar por WhatsApp</button>`:''}
+    <div class="btns">${!a.vendido&&a.tel?`<button class="btn pri wa" data-act="art-wa">${ICO_WA}Consultar por WhatsApp</button>`:''}${!a.vendido?`<button class="btn" data-act="art-share">${ICO_SHARE}Compartir</button>`:''}
       ${puedeEditar?`<button class="btn" data-act="art-vendido">${a.vendido?'Volver a publicar':'Marcar como vendido'}</button><button class="btn danger ${ui.armado==='del-art'?'arm':''}" data-act="arm" data-w="del-art">${ui.armado==='del-art'?'Tocá de nuevo para quitarlo':'Quitar publicación'}</button>`:''}</div>
     ${puedeEditar&&a.tel?`<span class="small muted">Teléfono del vendedor: ${esc(a.tel)}</span>`:''}`;
 }
@@ -3991,6 +4001,11 @@ function renderSheet(){
   if(s.t==='prog'){h=hojaProg(s,cerrarBtn)}
   if(s.t==='alta'){h=hojaAlta(s,cerrarBtn,err)}
   if(s.t==='art'){h=hojaArt(s,cerrarBtn)}
+  if(s.t==='art-share'){const a=(S.tienda||[]).find(x=>x.id===s.id);if(a)h=`<div class="sheet-hd"><div><h3>Compartir artículo</h3><h2>${esc(a.titulo)}</h2></div>${cerrarBtn}</div>
+    <div class="btns"><button class="btn wa" data-act="share-wa">${ICO_WA}WhatsApp</button><button class="btn" data-act="share-fb">Facebook</button><button class="btn" data-act="share-copy">Copiar enlace</button></div>
+    <div class="field"><label for="sh-url">Enlace del artículo</label><input type="text" id="sh-url" readonly value="${esc(linkArt(a))}"></div>
+    <span class="small muted">Quien abra el enlace va directo a este artículo en la tienda.</span>
+    <div class="btns"><button class="btn" data-act="share-volver">‹ Volver al artículo</button></div>`}
   if(s.t==='pub-art'){h=hojaPubArt(s,cerrarBtn,err)}
   if(s.t==='ped-art'){h=hojaPedArt(s,cerrarBtn,err)}
   if(s.t==='olvido'){h=`<div class="sheet-hd"><h2>Recuperar contraseña</h2>${cerrarBtn}</div>
@@ -4241,6 +4256,20 @@ document.addEventListener('click',ev=>{
     case 'tf-limpiar':ui.tf={q:'',cat:'',est:'',min:'',max:'',ord:(ui.tf||{}).ord||'nuevo'};render();break;
     case 'art-ver':abrir({t:'art',id:t.dataset.id});break;
     case 'art-wa':{const a=(S.tienda||[]).find(x=>x.id===ui.sheet.id);if(a)abrirWA(a.tel,`Hola ${a.vendedor||''}, vi tu publicación "${a.titulo}" (${fmtMon(a.precio||0)}) en la tienda de ${nombreApp()}. ¿Sigue disponible?`);break}
+    case 'art-share':{const a=(S.tienda||[]).find(x=>x.id===ui.sheet.id);if(!a)break;
+      const url=linkArt(a),txt=`${a.titulo} · ${fmtMon(a.precio||0)} (${a.estado||'Usado'}) en la tienda de ${nombreApp()}`;
+      (async()=>{
+        if(navigator.share){
+          let files;try{const f=(a.fotos||[])[0];if(f){const b=await (await fetch(srcArt(f))).blob();const fl=new File([b],'articulo.jpg',{type:b.type||'image/jpeg'});if(navigator.canShare&&navigator.canShare({files:[fl]}))files=[fl]}}catch(e){}
+          try{await navigator.share(files?{title:a.titulo,text:txt+'\n'+url,files}:{title:a.titulo,text:txt,url});return}catch(e){if(e&&e.name==='AbortError')return}
+        }
+        ui.sheet={t:'art-share',id:a.id};renderSheet();
+      })();break}
+    case 'share-wa':{const a=(S.tienda||[]).find(x=>x.id===ui.sheet.id);if(a)window.open('https://wa.me/?text='+encodeURIComponent(`${a.titulo} · ${fmtMon(a.precio||0)} en la tienda de ${nombreApp()}\n${linkArt(a)}`),'_blank','noopener');break}
+    case 'share-fb':{const a=(S.tienda||[]).find(x=>x.id===ui.sheet.id);if(a)window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(linkArt(a)),'_blank','noopener');break}
+    case 'share-copy':{const a=(S.tienda||[]).find(x=>x.id===ui.sheet.id);if(!a)break;const u=linkArt(a);
+      (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast('Enlace copiado.'),()=>{const i=document.getElementById('sh-url');if(i){i.select();try{document.execCommand('copy');toast('Enlace copiado.')}catch(e){}}});break}
+    case 'share-volver':ui.sheet={t:'art',id:ui.sheet.id};renderSheet();break;
     case 'art-vendido':{const a=(S.tienda||[]).find(x=>x.id===ui.sheet.id);if(!a)break;a.vendido=!a.vendido;toast(a.vendido?'Marcado como vendido.':'Publicado de nuevo.');cambiar();break}
     case 'pub-art':ui.artFotos=[];abrir({t:'pub-art'});break;
     case 'ta-fotos':document.getElementById('ta-file')?.click();break;
