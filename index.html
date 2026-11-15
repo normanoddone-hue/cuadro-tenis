@@ -12,6 +12,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Cuadro de Tenis</title>
+<meta name="apple-mobile-web-app-title" content="Cuadro de Tenis">
+<meta name="application-name" content="Cuadro de Tenis">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700;1,800&display=swap">
@@ -1651,6 +1653,21 @@ function installBtn(){
   if(enApp()) return '<button class="sbtn wide inst" data-act="compartir-app">'+ICO_SHARE+'Compartir la app</button>';
   return '<button class="sbtn wide inst" data-act="instalar">'+ICO_PDF+'Descargar la app</button>';
 }
+/* El nombre de la app instalada (y de la pestaña) es el del club registrado */
+let identidadHecha='';
+function actualizarIdentidad(){
+  const n=nombreApp();const clave=n+'|'+CLUB;if(identidadHecha===clave)return;identidadHecha=clave;
+  try{
+    document.title=n;
+    document.querySelectorAll('meta[name="apple-mobile-web-app-title"],meta[name="application-name"]').forEach(m=>m.setAttribute('content',n));
+    const base=new URL('./',location.href).href,abs=x=>new URL(x,base).href;
+    const man={name:n,short_name:n.length>14?n.replace(/^club( de tenis)?\s+/i,'').slice(0,14).trim()||n.slice(0,14):n,
+      description:`Torneos de ${n}: cuadros, partidos, ranking y estadísticas.`,lang:'es',id:'./?club='+(CLUB||'principal'),
+      start_url:linkClub(CLUB),scope:base,display:'standalone',orientation:'portrait',background_color:'#eef1f6',theme_color:'#12234a',
+      icons:[{src:abs('icons/icon-192.png'),sizes:'192x192',type:'image/png',purpose:'any'},{src:abs('icons/icon-512.png'),sizes:'512x512',type:'image/png',purpose:'any'},{src:abs('icons/icon-maskable-512.png'),sizes:'512x512',type:'image/png',purpose:'maskable'}]};
+    const l=document.querySelector('link[rel="manifest"]');if(l)l.href='data:application/manifest+json;charset=utf-8,'+encodeURIComponent(JSON.stringify(man));
+  }catch(e){}
+}
 function nombreApp(){return (S&&S.club)||clubInfo.nombre||'Cuadro de Tenis'}
 let esAdmin=false,esSuper=false;
 function sesionValida(){return !!sesionSupa&&esAdmin}
@@ -1807,6 +1824,7 @@ const ico=k=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[k]
 function render(){
   actualizarPermisos();
   if(S&&!(ui.sheet&&ui.sheet.t==='login'))aplicarFondo(S.fondo,S.fondoVelo);
+  if(S||clubInfo.nombre)actualizarIdentidad();
   if(!S&&cargado&&logueado&&clubInfo.existe){S=nuevoEstado();if(clubInfo.nombre)S.club=clubInfo.nombre}
   renderShell();
   const m=document.getElementById('main');
