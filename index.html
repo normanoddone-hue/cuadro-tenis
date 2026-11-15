@@ -875,6 +875,10 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .jfoto .jf-prev .ic{width:26px;height:26px}
 .jf-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
 .jf-tx .btns{margin-top:6px}
+.ins-pasos{list-style:none;margin:4px 0;padding:0;display:grid;gap:10px}
+.ins-pasos li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;line-height:1.45}
+.ins-n{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ball);color:#12234a;font-weight:800}
+.app-m{border-color:color-mix(in srgb,var(--ball) 70%,var(--line))}
 .tfil{display:grid;grid-template-columns:1.7fr 1fr 1fr .9fr .9fr 1.2fr;gap:10px;align-items:end;margin:8px 0 6px;padding:12px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line)}
 .tf-f{display:flex;flex-direction:column;gap:4px;min-width:0}
 .tf-f>span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -1641,10 +1645,11 @@ let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;try{render()}catch(x){}});
 window.addEventListener('appinstalled',()=>{deferredPrompt=null;toast('App instalada.');try{render()}catch(x){}});
 function esIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.navigator.standalone}
+function enApp(){try{return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: window-controls-overlay)').matches||!!navigator.standalone}catch(e){return false}}
+function navInterno(){return /FBAN|FBAV|Instagram|Line\/|TikTok|musical_ly|; wv\)/i.test(navigator.userAgent)}
 function installBtn(){
-  if(deferredPrompt) return '<button class="sbtn wide inst" data-act="instalar">'+ICO_PDF+'Instalar app</button>';
-  if(esIOS()) return '<span class="inst-ios">Para instalar en iPhone: tocá Compartir y luego “Agregar a inicio”.</span>';
-  return '';
+  if(enApp()) return '';
+  return '<button class="sbtn wide inst" data-act="instalar">'+ICO_PDF+'Descargar la app</button>';
 }
 function nombreApp(){return (S&&S.club)||clubInfo.nombre||'Cuadro de Tenis'}
 let esAdmin=false,esSuper=false;
@@ -1847,7 +1852,7 @@ function renderShell(){
       <div class="adm-acc"><button class="sbtn" data-act="login">${ICO_GEAR}Club y cuenta</button><button class="sbtn ico-only" data-act="logout" aria-label="Cerrar sesión" title="Cerrar sesión">${ICO_SALIR}</button></div>
       <span class="adm-st"><i class="dot ${/Guardado/.test(statusTxt)?'ok':statusTxt?'wait':''}"></i><span class="stx">${esc(statusTxt||'Sin cambios')}</span></span></div>`
       :`<button class="sbtn wide" data-act="login">${ICO_LOCK}Ingresar como administrador</button>`}</div>`;
-  document.getElementById('topbar').innerHTML=`${brand}${S?`<div class="tb-r">${vivos().length&&ui.tab!=='vivo'?`<button class="vivo-pill" data-act="tab" data-k="vivo"><i class="vdot"></i>EN VIVO</button>`:''}${deferredPrompt?'<button class="tbtn" data-act="instalar" aria-label="Instalar app">'+ICO_PDF+'</button>':''}${permisoPlat||logueado?`<button class="tbtn ${logueado?'on':''}" data-act="login" aria-label="${logueado?'Cuenta de administrador':'Ingresar como administrador'}">${ICO_LOCK}</button>`:''}</div>`:''}`;
+  document.getElementById('topbar').innerHTML=`${brand}${S?`<div class="tb-r">${vivos().length&&ui.tab!=='vivo'?`<button class="vivo-pill" data-act="tab" data-k="vivo"><i class="vdot"></i>EN VIVO</button>`:''}${!enApp()?'<button class="tbtn" data-act="instalar" aria-label="Descargar la app" title="Descargar la app">'+ICO_PDF+'</button>':''}${permisoPlat||logueado?`<button class="tbtn ${logueado?'on':''}" data-act="login" aria-label="${logueado?'Cuenta de administrador':'Ingresar como administrador'}">${ICO_LOCK}</button>`:''}</div>`:''}`;
   const bn=document.getElementById('bnav');
   bn.hidden=!S;
   const MAS=['campeones','vivo','tienda','agenda','finanzas','manual'];
@@ -2100,8 +2105,9 @@ function vistaResumen(){
   const proxT=todasCats().filter(c=>estadoTorneo(c,hoy)==='prox').sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
   const diasA=f=>Math.round((Date.parse(f)-Date.parse(hoy))/86400000);
   const nTi=artsVenta().length;const tiendaM=nTi?`<button class="tienda-m" data-act="tab" data-k="tienda">${ico('tienda')}<span><b>Tienda del club</b><small>${nTi} artículo${nTi===1?'':'s'} usado${nTi===1?'':'s'} en venta</small></span><span class="vivo-go">Ver ›</span></button>`:'';
+  const appM=!enApp()?`<button class="tienda-m app-m" data-act="instalar">${ICO_PDF}<span><b>Descargá la app</b><small>Tené el club en tu pantalla de inicio</small></span><span class="vivo-go">Instalar ›</span></button>`:'';
   const segui=redesClub().length?`<section class="segui" aria-label="Redes del club"><span>Seguí al club</span>${iconosRedes()}</section>`:'';
-  return `${resumenClub()}${segui}${tiendaM}<div class="dash">
+  return `${resumenClub()}${appM}${segui}${tiendaM}<div class="dash">
       <div class="dcol">
         ${seccionSiguiendo()}
         ${destacados(t)}
@@ -4000,6 +4006,16 @@ function renderSheet(){
   if(s.t==='mov'){h=hojaMov(s)}
   if(s.t==='prog'){h=hojaProg(s,cerrarBtn)}
   if(s.t==='alta'){h=hojaAlta(s,cerrarBtn,err)}
+  if(s.t==='instalar'){const ua=navigator.userAgent;const ios=/iphone|ipad|ipod/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);const and=/android/i.test(ua);
+    const paso=(n,t)=>`<li><span class="ins-n">${n}</span><span>${t}</span></li>`;
+    h=`<div class="sheet-hd"><div><h3>${esc(nombreApp())}</h3><h2>Descargar la app</h2></div>${cerrarBtn}</div>
+    <p class="small muted" style="margin:0">Se instala en un momento, ocupa muy poco y queda con su ícono en la pantalla de inicio, como cualquier app. No hace falta ir a la tienda de aplicaciones.</p>
+    ${navInterno()?`<div class="note warn">Estás dentro de Instagram, Facebook u otra app. Primero tocá los tres puntitos (⋯) y elegí <b>Abrir en el navegador</b> (${ios?'Safari':'Chrome'}); después seguí estos pasos.</div>`:''}
+    ${ios?`<ol class="ins-pasos">${paso(1,'Abrí esta página en <b>Safari</b>.')}${paso(2,'Tocá el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba).')}${paso(3,'Elegí <b>Agregar a inicio</b> y tocá <b>Agregar</b>.')}</ol>`
+      :and?`<ol class="ins-pasos">${paso(1,'Abrí esta página en <b>Chrome</b>.')}${paso(2,'Tocá el menú <b>⋮</b> (arriba a la derecha).')}${paso(3,'Elegí <b>Instalar app</b> o <b>Agregar a la pantalla principal</b> y confirmá.')}</ol>`
+      :`<ol class="ins-pasos">${paso(1,'Usá <b>Chrome</b> o <b>Edge</b>.')}${paso(2,'Tocá el ícono de instalar al final de la barra de direcciones (una pantallita con una flecha), o el menú <b>⋮</b> → <b>Transmitir, guardar y compartir</b> → <b>Instalar página como app</b>.')}${paso(3,'Confirmá con <b>Instalar</b>: se abre en su propia ventana.')}</ol>
+        <span class="small muted">En el celular es todavía más fácil: abrí la app desde el teléfono y tocá este mismo botón.</span>`}
+    <div class="btns"><button class="btn pri" data-act="cerrar">Entendido</button></div>`}
   if(s.t==='art'){h=hojaArt(s,cerrarBtn)}
   if(s.t==='art-share'){const a=(S.tienda||[]).find(x=>x.id===s.id);if(a)h=`<div class="sheet-hd"><div><h3>Compartir artículo</h3><h2>${esc(a.titulo)}</h2></div>${cerrarBtn}</div>
     <div class="btns"><button class="btn wa" data-act="share-wa">${ICO_WA}WhatsApp</button><button class="btn" data-act="share-fb">Facebook</button><button class="btn" data-act="share-copy">Copiar enlace</button></div>
@@ -4475,7 +4491,7 @@ document.addEventListener('click',ev=>{
       if(sb)sb.auth.signOut({scope:'local'}).catch(()=>{});
       if(S){const {pub}=separar(S);S=migrar(pub)}
       toast('Sesión cerrada.');render();break}
-    case 'instalar':if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.finally(()=>{deferredPrompt=null;render()})}break;
+    case 'instalar':if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(r=>{if(r&&r.outcome==='accepted')toast('Instalando la app…')}).finally(()=>{deferredPrompt=null;render()})}else abrir({t:'instalar'});break;
     case 'do-login':{
       const u=val('l-u'),pw=document.getElementById('l-p')?.value||'';
       if(!u||!pw){avisar('Completá correo y contraseña.');break}
