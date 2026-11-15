@@ -849,6 +849,12 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .side .brand .red{width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.1);color:#fff}
 .side .brand .red svg{width:18px;height:18px}
 .side .brand a.red:hover{background:rgba(255,255,255,.2)}
+.pie-redes{display:flex;flex-direction:column;align-items:center;gap:10px;margin:28px 0 4px;padding:18px 14px;border-radius:var(--r-sm);background:var(--court);color:#fff}
+.pie-redes>span{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.pie-redes .redes{justify-content:center;gap:12px}
+.pie-redes .red{width:44px;height:44px;border-radius:11px;background:rgba(255,255,255,.12);color:#fff}
+.pie-redes a.red:hover{background:rgba(255,255,255,.22)}
+@media (min-width:900px){.pie-redes{display:none}}
 .segui{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 14px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line)}
 .segui>span{font-weight:700;font-size:14px}
 @media (min-width:900px){.segui{display:none}}
@@ -1836,7 +1842,7 @@ function render(){
   const v={tienda:vistaTienda,vivo:vistaVivo,agenda:vistaAgenda,privacidad:vistaPrivacidad,finanzas:vistaFinanzas,manual:vistaManual,campeones:()=>`${encabezado('Campeones',{sb:'Historial del club, año por año'})}${vistaCampeones()}`,resumen:vistaResumen,reportes:vistaReportes,eventos:vistaEventos,jugadores:vistaJugadores,categorias:vistaCategorias,partidos:vistaPartidos,ranking:vistaRanking}[ui.tab];
   const scr=[...m.querySelectorAll('[data-scroll-key]')].map(e=>[e.dataset.scrollKey,e.scrollTop]);
   const entra=ui.entra;ui.entra=false;m.classList.remove('entra');
-  m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'')+(ui.tab!=='privacidad'?`<p class="legal"><button class="lnk2" data-act="tab" data-k="privacidad">Política de privacidad</button></p>`:'');
+  m.innerHTML=v()+(logueado?`<p class="mfoot stx">${esc(statusTxt)}</p>`:'')+(redesClub().length?`<div class="pie-redes"><span>Seguí al club</span>${iconosRedes()}</div>`:'')+(ui.tab!=='privacidad'?`<p class="legal"><button class="lnk2" data-act="tab" data-k="privacidad">Política de privacidad</button></p>`:'');
   scr.forEach(([k,y])=>{const e=m.querySelector(`[data-scroll-key="${k}"]`);if(e)e.scrollTop=y});
   m.querySelectorAll('[data-mixto]').forEach(e=>e.indeterminate=true);
   if(entra){void m.offsetWidth;m.classList.add('entra');contar(m);trazarLlaves(m)}
@@ -2125,8 +2131,7 @@ function vistaResumen(){
   const nTi=artsVenta().length;const tiendaM=nTi?`<button class="tienda-m" data-act="tab" data-k="tienda">${ico('tienda')}<span><b>Tienda del club</b><small>${nTi} artículo${nTi===1?'':'s'} usado${nTi===1?'':'s'} en venta</small></span><span class="vivo-go">Ver ›</span></button>`:'';
   const appM=!enApp()?`<button class="tienda-m app-m" data-act="instalar">${ICO_PDF}<span><b>Descargá la app</b><small>Tené el club en tu pantalla de inicio</small></span><span class="vivo-go">Instalar ›</span></button>`
     :`<button class="tienda-m app-m" data-act="compartir-app">${ICO_SHARE}<span><b>Compartí la app</b><small>Mandá el enlace para que otros la descarguen</small></span><span class="vivo-go">Compartir ›</span></button>`;
-  const segui=redesClub().length?`<section class="segui" aria-label="Redes del club"><span>Seguí al club</span>${iconosRedes()}</section>`:'';
-  return `${resumenClub()}${appM}${segui}${tiendaM}<div class="dash">
+  return `${resumenClub()}${appM}${tiendaM}<div class="dash">
       <div class="dcol">
         ${seccionSiguiendo()}
         ${destacados(t)}
