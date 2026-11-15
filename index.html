@@ -886,6 +886,7 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .ins-pasos li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;line-height:1.45}
 .ins-n{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ball);color:#12234a;font-weight:800}
 .app-m{border-color:color-mix(in srgb,var(--ball) 70%,var(--line))}
+.aviso-qr{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 4px;font-weight:600}
 .fly-prev{display:block;width:100%;max-width:420px;margin:0 auto;aspect-ratio:1080/1350;border-radius:12px;box-shadow:0 10px 30px rgba(18,35,74,.25);background:#12234a}
 .fly-cargando{display:grid;place-items:center;color:#fff;font-weight:600}
 #fly-txt{font-size:14px;line-height:1.45}
@@ -1044,7 +1045,7 @@ if(location.hash==='#vivo'){try{setTimeout(()=>{ui.tab='vivo';render()},0)}catch
 function abrirDesdeEnlace(){
   const tid=new URLSearchParams(location.search).get('torneo');
   if(tid&&S){const ev=S.torneos.find(e=>e.categorias.some(c=>c.id===tid));
-    if(ev){elegirTorneo(ev.id);ui.cat=tid;ui.tab='categorias';ui.sub=null;ui.sheet=null}else toast('Ese torneo ya no está disponible.',4000);
+    if(ev){elegirTorneo(ev.id);ui.cat=tid;ui.tab='categorias';ui.sub=null;ui.sheet=null;const c=ev.categorias.find(x=>x.id===tid);ui.avisoQR=c&&(c.cuadro||c.grupos)?tid:null}else toast('Ese torneo ya no está disponible.',4000);
     try{history.replaceState(null,'',linkClub(CLUB))}catch(e){}render();return}
   const h=location.hash.match(/^#art-([\w-]+)$/);const id=new URLSearchParams(location.search).get('art')||(h&&h[1]);if(!id||!S)return;
   const a=(S.tienda||[]).find(x=>x.id===id);ui.tab='tienda';ui.jug=null;ui.cat=null;
@@ -2968,7 +2969,8 @@ function detalleTorneo(t,c){
   if(ui.sub==='cuadro'&&esRR(c)) ui.sub='grupos';
   const tags=`<span class="tags"><span class="tag g">${MODS[c.modalidad]}</span><span class="tag">${RAMAS[c.rama]}</span><span class="tag">${c.nivel?'Solo '+esc(c.nivel):'Todas las categorías'}</span><span class="tag">Al mejor de ${c.sets}${c.superTB&&c.sets===3?' · súper tie-break':''}</span>${c.inicio?`<span class="tag">${esc(rangoFechas(c))}</span>`:''}${c.sede?`<span class="tag">${esc(c.sede)}</span>`:''}${premioTag(c)}</span>`;
   const n=c.inscriptos.length;
-  return `<button class="back" data-act="volver">‹ Torneos</button>
+  const avisoQR=ui.avisoQR===c.id?`<div class="note aviso-qr"><span>${campeonDe(c)?'Este torneo ya terminó. ¡Mirá el campeón y todos los resultados acá!':'Las inscripciones de este torneo ya cerraron. ¡Seguí el cuadro, los horarios y los resultados acá!'}</span><button class="lnk2" data-act="aviso-qr-ok">Entendido</button></div>`:'';
+  return `<button class="back" data-act="volver">‹ Torneos</button>${avisoQR}
     ${encabezado(esc(c.nombre),{sb:tags,acc:`<button class="btn sm" data-act="flyer" data-c="${c.id}">${ICO_MEGA}Flyer</button><button class="btn sm" data-act="compartir" data-id="${c.id}">${ICO_SHARE}Compartir</button>`+(cb?`<button class="btn sm pdf" data-act="rep-llave" data-id="${c.id}">${ICO_PDF}Descargar llave (PDF)</button>`:'')+(puedeEditar?`<button class="btn sm" data-act="edit-cat" data-id="${c.id}">Editar</button>`:'')})}
     ${c.online&&!cb&&!c.grupos?`<div class="panel insc-on"><div><b>Inscripción abierta</b><div class="small muted">Pedí tu lugar desde acá. El club confirma la inscripción y te aparece en la lista.</div></div><button class="btn pri" data-act="solicitar" data-id="${c.id}">Quiero anotarme</button></div>`:''}
     ${kpisTorneo(c)}
@@ -4538,6 +4540,7 @@ document.addEventListener('click',ev=>{
       if(sb)sb.auth.signOut({scope:'local'}).catch(()=>{});
       if(S){const {pub}=separar(S);S=migrar(pub)}
       toast('Sesión cerrada.');render();break}
+    case 'aviso-qr-ok':ui.avisoQR=null;render();break;
     case 'flyer':abrir(t.dataset.c?{t:'flyer',c:t.dataset.c}:{t:'flyer'});break;
     case 'fly-share':compartirFlyer('share');break;
     case 'fly-wa':compartirFlyer('wa');break;
