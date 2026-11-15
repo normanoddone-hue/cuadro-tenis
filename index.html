@@ -1648,7 +1648,7 @@ function esIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.n
 function enApp(){try{return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: window-controls-overlay)').matches||!!navigator.standalone}catch(e){return false}}
 function navInterno(){return /FBAN|FBAV|Instagram|Line\/|TikTok|musical_ly|; wv\)/i.test(navigator.userAgent)}
 function installBtn(){
-  if(enApp()) return '';
+  if(enApp()) return '<button class="sbtn wide inst" data-act="compartir-app">'+ICO_SHARE+'Compartir la app</button>';
   return '<button class="sbtn wide inst" data-act="instalar">'+ICO_PDF+'Descargar la app</button>';
 }
 function nombreApp(){return (S&&S.club)||clubInfo.nombre||'Cuadro de Tenis'}
@@ -2105,7 +2105,8 @@ function vistaResumen(){
   const proxT=todasCats().filter(c=>estadoTorneo(c,hoy)==='prox').sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
   const diasA=f=>Math.round((Date.parse(f)-Date.parse(hoy))/86400000);
   const nTi=artsVenta().length;const tiendaM=nTi?`<button class="tienda-m" data-act="tab" data-k="tienda">${ico('tienda')}<span><b>Tienda del club</b><small>${nTi} artículo${nTi===1?'':'s'} usado${nTi===1?'':'s'} en venta</small></span><span class="vivo-go">Ver ›</span></button>`:'';
-  const appM=!enApp()?`<button class="tienda-m app-m" data-act="instalar">${ICO_PDF}<span><b>Descargá la app</b><small>Tené el club en tu pantalla de inicio</small></span><span class="vivo-go">Instalar ›</span></button>`:'';
+  const appM=!enApp()?`<button class="tienda-m app-m" data-act="instalar">${ICO_PDF}<span><b>Descargá la app</b><small>Tené el club en tu pantalla de inicio</small></span><span class="vivo-go">Instalar ›</span></button>`
+    :`<button class="tienda-m app-m" data-act="compartir-app">${ICO_SHARE}<span><b>Compartí la app</b><small>Mandá el enlace para que otros la descarguen</small></span><span class="vivo-go">Compartir ›</span></button>`;
   const segui=redesClub().length?`<section class="segui" aria-label="Redes del club"><span>Seguí al club</span>${iconosRedes()}</section>`:'';
   return `${resumenClub()}${appM}${segui}${tiendaM}<div class="dash">
       <div class="dcol">
@@ -4491,6 +4492,9 @@ document.addEventListener('click',ev=>{
       if(sb)sb.auth.signOut({scope:'local'}).catch(()=>{});
       if(S){const {pub}=separar(S);S=migrar(pub)}
       toast('Sesión cerrada.');render();break}
+    case 'compartir-app':{const url=linkClub(CLUB),txt=`Descargá la app de ${nombreApp()}: torneos, resultados, ranking y más. Abrí el enlace y tocá "Descargar la app".`;
+      (async()=>{if(navigator.share){try{await navigator.share({title:nombreApp(),text:txt,url});return}catch(e){if(e&&e.name==='AbortError')return}}
+        window.open('https://wa.me/?text='+encodeURIComponent(txt+'\n'+url),'_blank','noopener')})();break}
     case 'instalar':if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(r=>{if(r&&r.outcome==='accepted')toast('Instalando la app…')}).finally(()=>{deferredPrompt=null;render()})}else abrir({t:'instalar'});break;
     case 'do-login':{
       const u=val('l-u'),pw=document.getElementById('l-p')?.value||'';
