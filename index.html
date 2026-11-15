@@ -372,6 +372,7 @@ h3,.hcard h3{font-family:var(--f-body);font-size:12px;font-weight:700;letter-spa
 /* indicadores: etiqueta arriba, número abajo */
 .kpis>div{padding:16px 18px;gap:6px}
 .kpis>div>span:not(.prog){order:-1;letter-spacing:.06em}
+.kpis.kt>div>span:not(.prog){min-height:2.6em;line-height:1.3}
 .kpis b{font-size:32px}
 /* botones y campos */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 16px;border-radius:var(--r-sm);font-size:14px;box-shadow:var(--shadow)}
@@ -2122,12 +2123,12 @@ function destacados(t){
 function kpisTorneo(c){
   const s=statsTorneo(c);if(!s.cb&&!c.grupos) return '';
   const pct=s.tot?Math.round(s.jg/s.tot*100):0;
-  return `<section class="kpis" aria-label="Estadísticas del torneo">
+  return `<section class="kpis kt" aria-label="Estadísticas del torneo">
     <div><b>${s.jg}<small> / ${s.tot}</small></b><span>Partidos jugados</span><span class="prog"><i style="width:${pct}%"></i></span></div>
-    <div><b>${s.vivos}</b><span>En carrera</span></div>
-    <div><b>${s.sets}</b><span>Sets</span></div>
-    <div><b>${s.games}</b><span>Games</span></div>
-    <div><b>${s.tb}</b><span>Tie-breaks</span></div>
+    <div><b>${s.vivos}</b><span>${c.modalidad==='D'?(s.vivos===1?'Pareja':'Parejas'):(s.vivos===1?'Jugador':'Jugadores')} en carrera</span></div>
+    <div><b>${s.sets}</b><span>Sets jugados</span></div>
+    <div><b>${s.games}</b><span>Games jugados</span></div>
+    <div><b>${s.tb}</b><span>Tie-breaks jugados</span></div>
     <div><b>${s.wo}</b><span>W.O. y retiros</span></div></section>`;
 }
 
