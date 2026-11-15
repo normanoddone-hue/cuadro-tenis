@@ -886,6 +886,9 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .ins-pasos li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;line-height:1.45}
 .ins-n{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--ball);color:#12234a;font-weight:800}
 .app-m{border-color:color-mix(in srgb,var(--ball) 70%,var(--line))}
+.fly-prev{display:block;width:100%;max-width:420px;margin:0 auto;aspect-ratio:1080/1350;border-radius:12px;box-shadow:0 10px 30px rgba(18,35,74,.25);background:#12234a}
+.fly-cargando{display:grid;place-items:center;color:#fff;font-weight:600}
+#fly-txt{font-size:14px;line-height:1.45}
 .tfil{display:grid;grid-template-columns:1.7fr 1fr 1fr .9fr .9fr 1.2fr;gap:10px;align-items:end;margin:8px 0 6px;padding:12px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line)}
 .tf-f{display:flex;flex-direction:column;gap:4px;min-width:0}
 .tf-f>span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -3595,6 +3598,7 @@ const MANUAL=[
   'Elegí <b>Enviar por WhatsApp</b>, <b>Compartir…</b> o <b>Descargar</b>.',
   'Desde Ranking y desde cada jugador podés descargar su PDF.',
   'Con <b>Pantalla TV</b> (en Inicio) la app pasa sola resultados, próximos partidos y auspiciantes: ideal para un televisor en el club.',
+  'Para invitar a los socios: <b>Club y cuenta → Flyer de la app</b> (en el celular, <b>Más → Flyer de la app</b>). Se arma solo con el nombre y el logo del club y un QR que abre la app; tocá <b>Compartir</b> o <b>WhatsApp</b> y usá el mensaje listo.',
   'Cargá las <b>redes sociales del club</b> (Instagram, TikTok, Facebook y YouTube) en <b>Club y cuenta</b>: los íconos aparecen debajo del logo en la computadora y en el Inicio del celular. Podés poner el usuario (@club) o pegar el enlace.'],
   tips:['Para la comisión directiva: en <b>Torneos → Resumen de temporada</b> descargás el informe del año en PDF o Excel, con recaudación, participación y jugadores más activos.','Publicá <b>Noticias</b> y subí fotos a la <b>Galería</b> desde el Inicio.','Los jugadores pueden tocar <b>Seguir</b> en un perfil y activar los avisos para enterarse de sus partidos.']},
  {id:'vivo',t:'Partidos en vivo',d:'Transmitir partidos y que los jugadores los vean dentro de la app.',pasos:[
@@ -4028,6 +4032,14 @@ function renderSheet(){
   if(s.t==='mov'){h=hojaMov(s)}
   if(s.t==='prog'){h=hojaProg(s,cerrarBtn)}
   if(s.t==='alta'){h=hojaAlta(s,cerrarBtn,err)}
+  if(s.t==='flyer'){
+    if(!s.img&&!s.cargando&&!s.error){s.cargando=true;dibujarFlyer().then(cv=>{s.cargando=false;s.img=cv.toDataURL('image/png');if(ui.sheet===s)renderSheet()}).catch(e=>{console.error('flyer',e);s.cargando=false;s.error=true;if(ui.sheet===s)renderSheet()})}
+    h=`<div class="sheet-hd"><div><h3>${esc(nombreApp())}</h3><h2>Flyer para difundir la app</h2></div>${cerrarBtn}</div>
+    <p class="small muted" style="margin:0">Se arma solo con el nombre y el logo del club (los de <b>Club y cuenta</b>) y un código QR que abre la app. Mandalo a los grupos de WhatsApp o subilo a las redes.</p>
+    ${s.img?`<img class="fly-prev" src="${s.img}" alt="Flyer de ${esc(nombreApp())}">`:s.error?'<div class="note warn">No se pudo armar el flyer. Revisá la conexión y abrilo de nuevo.</div>':'<div class="fly-prev fly-cargando">Armando el flyer…</div>'}
+    <div class="btns"><button class="btn pri" data-act="fly-share" ${s.img?'':'disabled'}>${ICO_SHARE}Compartir</button><button class="btn wa" data-act="fly-wa" ${s.img?'':'disabled'}>${ICO_WA}WhatsApp</button><button class="btn" data-act="fly-bajar" ${s.img?'':'disabled'}>${ICO_PDF}Descargar imagen</button></div>
+    <div class="field"><label for="fly-txt">Mensaje para acompañarlo</label><textarea id="fly-txt" rows="7" readonly>${esc(textoFlyer())}</textarea></div>
+    <div class="btns"><button class="btn sm" data-act="fly-copiar">Copiar mensaje</button></div>`}
   if(s.t==='instalar'){const ua=navigator.userAgent;const ios=/iphone|ipad|ipod/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);const and=/android/i.test(ua);
     const paso=(n,t)=>`<li><span class="ins-n">${n}</span><span>${t}</span></li>`;
     h=`<div class="sheet-hd"><div><h3>${esc(nombreApp())}</h3><h2>Descargar la app</h2></div>${cerrarBtn}</div>
@@ -4066,6 +4078,7 @@ function renderSheet(){
       ${puedeEditar?`${it('agenda','Agenda del día','Reservas, clases y partidos para compartir')}
       ${it('finanzas','Finanzas','Ingresos, gastos y rentabilidad')}
       ${it('manual','Manual del usuario','Cómo usar la app paso a paso')}
+      <button class="rowbtn mas-it" data-act="flyer"><span class="mas-ico">${ICO_SHARE}</span><span class="n">Flyer de la app</span><span class="d">Imagen con QR para difundir en grupos y redes</span></button>
       <button class="rowbtn mas-it" data-act="login"><span class="mas-ico">${ICO_GEAR}</span><span class="n">Club y cuenta</span><span class="d">Logo, moneda, contraseña, auspiciantes y clubes</span></button>`:''}</div>`}
   if(s.t==='temporada'){const an=aniosTemporada();if(s.anio===undefined)s.anio=an[0]||'';const d=datosTemporada(s.anio);
     h=`<div class="sheet-hd"><div><h2>Resumen de temporada</h2><div class="sub small muted">Para la comisión directiva</div></div>${cerrarBtn}</div>
@@ -4081,7 +4094,7 @@ function renderSheet(){
         <div class="btns"><button class="btn sm" data-act="cambiar-logo">Cambiar logo</button><button class="btn sm" data-act="logo-original">Usar logo original</button></div>
         <input type="file" id="l-logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></div>
       <span class="small muted">El logo y el nombre se ven en el menú, en la barra del celular y en los reportes.</span>
-      <div class="btns"><button class="btn man-btn" data-act="tab" data-k="finanzas">${ico('finanzas')}Finanzas</button><button class="btn man-btn" data-act="tab" data-k="manual">${ico('manual')}Manual del usuario</button></div>
+      <div class="btns"><button class="btn man-btn" data-act="tab" data-k="finanzas">${ico('finanzas')}Finanzas</button><button class="btn man-btn" data-act="tab" data-k="manual">${ico('manual')}Manual del usuario</button><button class="btn man-btn" data-act="flyer">${ICO_SHARE}Flyer de la app</button></div>
       <div class="field"><label for="l-club">Nombre del club</label><input type="text" id="l-club" value="${esc(S.club||'')}" placeholder="Ej.: Club de Tenis Asunción"></div>
       <div class="field"><label>Fondo de la app</label><div class="fondos">${FONDOS.map(([k,n,id])=>`<button class="fondo-op" data-act="fondo" data-k="${k}" aria-pressed="${(ui.fondoPend??S.fondo??'cancha')===k}">${id?`<img src="${urlFondo(id,320)}" alt="" loading="lazy">`:'<span class="fo-c"></span>'}${esc(n)}</button>`).join('')}</div>
         ${(ui.fondoPend??S.fondo??'cancha')!=='cancha'?`<label for="l-velo" class="small muted">Velo sobre la foto (más a la derecha, más clarito)</label><input type="range" id="l-velo" min="0.3" max="0.9" step="0.05" value="${ui.veloPend??S.fondoVelo??0.6}">`:''}
@@ -4513,6 +4526,11 @@ document.addEventListener('click',ev=>{
       if(sb)sb.auth.signOut({scope:'local'}).catch(()=>{});
       if(S){const {pub}=separar(S);S=migrar(pub)}
       toast('Sesión cerrada.');render();break}
+    case 'flyer':abrir({t:'flyer'});break;
+    case 'fly-share':compartirFlyer('share');break;
+    case 'fly-wa':compartirFlyer('wa');break;
+    case 'fly-bajar':compartirFlyer('bajar');break;
+    case 'fly-copiar':{const t=textoFlyer();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Mensaje copiado.'),()=>{const e=document.getElementById('fly-txt');if(e){e.select();try{document.execCommand('copy');toast('Mensaje copiado.')}catch(x){}}});break}
     case 'compartir-app':{const url=linkClub(CLUB),txt=`Descargá la app de ${nombreApp()}: torneos, resultados, ranking y más. Abrí el enlace y tocá "Descargar la app".`;
       (async()=>{if(navigator.share){try{await navigator.share({title:nombreApp(),text:txt,url});return}catch(e){if(e&&e.name==='AbortError')return}}
         window.open('https://wa.me/?text='+encodeURIComponent(txt+'\n'+url),'_blank','noopener')})();break}
@@ -4785,6 +4803,62 @@ function textoCompartir(){
   if(s.tipo==='cuadro') return `Cuadro de ${c.nombre} · ${nombreApp()}`;
   const [z,k]=(s.k||'').split('|');const P=ctxPartido(c.id,z,k);if(!P) return nombreApp();const g=P.x.g,o=g===P.x.a?P.x.b:P.x.a;
   return `${etiqueta(S,c,g)} le ganó a ${etiqueta(S,c,o)} ${marcadorDe(P.x)} · ${c.nombre}, ${P.titulo.toLowerCase()}. ${nombreApp()}`;
+}
+/* ---- Flyer para difundir la app: se dibuja con el nombre, el logo y el enlace del club ---- */
+const QR_SRC='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';let qrListo;
+function cargarQR(){if(window.qrcode)return Promise.resolve();return qrListo=qrListo||new Promise((ok,mal)=>{const sc=document.createElement('script');sc.src=QR_SRC;sc.onload=ok;sc.onerror=()=>{qrListo=null;mal(new Error('qr'))};document.head.appendChild(sc)})}
+function textoFlyer(){return `🎾 ¡${nombreApp()} ya tiene su app!\nCuadros y resultados al instante, horarios de tus partidos, ranking, inscripción online a torneos, partidos en vivo y tienda de usados.\n\nEntrá acá y tocá "Descargar la app":\n${linkClub(CLUB)}\n\nSi todavía no estás registrado, entrá a Jugadores → Registrarme.`}
+async function dibujarFlyer(){
+  await cargarQR();
+  try{await Promise.all(['italic 800 120px "Barlow Condensed"','600 20px "Archivo"','700 28px "Archivo"','500 22px "Archivo"'].map(f=>document.fonts.load(f)))}catch(e){}
+  const W=1080,H=1350,NAVY='#12234a',ACC='#dcef3c';
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  const disp=(px)=>`italic 800 ${px}px "Barlow Condensed", "Arial Narrow", sans-serif`,body=(w,px)=>`${w} ${px}px "Archivo", system-ui, sans-serif`;
+  const rr=(X,Y,w,h,r)=>{x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath()};
+  const ajustar=(t,font,max,px,min)=>{while(px>min){x.font=font(px);if(x.measureText(t).width<=max)break;px-=2}x.font=font(px);return px};
+  const envolver=(t,max)=>{const ps=t.split(' ');const ls=[];let l='';ps.forEach(p=>{const n=l?l+' '+p:p;if(x.measureText(n).width>max&&l){ls.push(l);l=p}else l=n});if(l)ls.push(l);return ls};
+  // fondo y líneas de cancha
+  x.fillStyle=NAVY;x.fillRect(0,0,W,H);
+  x.strokeStyle='rgba(255,255,255,0.09)';x.lineWidth=3;x.strokeRect(64,60,952,1230);
+  x.strokeStyle='rgba(255,255,255,0.06)';[[180,60,180,1290],[900,60,900,1290],[180,330,900,330],[540,330,540,930],[180,930,900,930]].forEach(([a,b,c,d])=>{x.beginPath();x.moveTo(a,b);x.lineTo(c,d);x.stroke()});
+  // pelota grande, a la derecha
+  const bx=930,by=760,br=250;x.save();x.globalAlpha=0.95;x.fillStyle=ACC;x.beginPath();x.arc(bx,by,br,0,Math.PI*2);x.fill();
+  x.beginPath();x.arc(bx,by,br,0,Math.PI*2);x.clip();x.strokeStyle='rgba(255,255,255,0.9)';x.lineWidth=16;
+  x.beginPath();x.arc(bx-br*1.25,by,br*0.95,-0.9,0.9);x.stroke();x.beginPath();x.arc(bx+br*1.25,by,br*0.95,Math.PI-0.9,Math.PI+0.9);x.stroke();x.restore();
+  // logo y nombre
+  const logo=await new Promise(ok=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>ok(im);im.onerror=()=>ok(null);im.src=(S&&S.logo)||LOGO});
+  x.save();rr(88,84,96,96,22);x.fillStyle='#ffffff';x.fill();x.clip();if(logo){const k=Math.max(96/logo.width,96/logo.height);x.drawImage(logo,88+(96-logo.width*k)/2,84+(96-logo.height*k)/2,logo.width*k,logo.height*k)}x.restore();
+  x.fillStyle='#ffffff';x.textBaseline='alphabetic';const nm=nombreApp().toUpperCase();ajustar(nm,disp,800,46,26);x.fillText(nm,208,132);
+  x.font=body(600,19);x.fillStyle='rgba(255,255,255,0.72)';x.fillText('NUEVA APP DEL CLUB'.split('').join(String.fromCharCode(8202)),210,166);
+  // título
+  const lineas=[['TODO EL TENIS','#ffffff'],['DEL CLUB EN TU','#ffffff'],['CELULAR',ACC]];let tp=118;lineas.forEach(([t])=>{tp=Math.min(tp,ajustar(t,disp,900,118,70))});
+  x.font=disp(tp);let y=230+tp*0.85;lineas.forEach(([t,c])=>{x.fillStyle=c;x.fillText(t,88,y);y+=tp*0.9});
+  // ventajas
+  const items=[['Cuadros y resultados al instante','Seguí cada torneo partido a partido'],['Horarios de tus partidos','Día, hora y cancha, sin preguntar'],['Ranking y tu ficha de jugador','Tus estadísticas y el cara a cara'],['Inscribite online','A los torneos, con tu cédula'],['Partidos en vivo y tienda','Transmisiones y artículos usados']];
+  y=Math.max(y+10,610);const paso=Math.min(86,(1040-y)/items.length);
+  items.forEach(([t,d])=>{x.fillStyle=ACC;x.beginPath();x.arc(105,y-9,17,0,Math.PI*2);x.fill();
+    x.strokeStyle=NAVY;x.lineWidth=4;x.lineCap='round';x.lineJoin='round';x.beginPath();x.moveTo(97,y-9);x.lineTo(103,y-3);x.lineTo(114,y-16);x.stroke();
+    x.fillStyle='#ffffff';ajustar(t,s=>body(700,s),560,28,20);x.fillText(t,138,y);x.font=body(400,21);x.fillStyle='rgba(255,255,255,0.74)';x.fillText(d,138,y+30);y+=paso});
+  // tarjeta con QR
+  const cy=1058,ch=232;x.save();x.shadowColor='rgba(0,0,0,0.35)';x.shadowBlur=40;x.shadowOffsetY=16;rr(64,cy,952,ch,28);x.fillStyle='#ffffff';x.fill();x.restore();
+  const q=qrcode(0,'M');q.addData(linkClub(CLUB));q.make();const n=q.getModuleCount(),qs=180,cel=qs/(n+2);x.fillStyle=NAVY;
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))x.fillRect(Math.round(98+(c+1)*cel),Math.round(cy+26+(r+1)*cel),Math.ceil(cel),Math.ceil(cel));
+  const tx=312,tw=1016-34-tx;x.fillStyle=NAVY;const dp=ajustar('DESCARGALA GRATIS',disp,tw,60,40);x.fillText('DESCARGALA GRATIS',tx,cy+78);
+  x.font=body(800,17);const pill='ANDROID Y IPHONE',pw=x.measureText(pill).width+28;let pxp=tx+x.measureText('').width;x.font=disp(dp);const tw1=x.measureText('DESCARGALA GRATIS').width;
+  let pX=tx+tw1+16,pY=cy+44;if(pX+pw>1016-34){pX=tx;pY=cy+92}
+  x.fillStyle=ACC;rr(pX,pY,pw,34,17);x.fill();x.fillStyle=NAVY;x.font=body(800,17);x.fillText(pill,pX+14,pY+23);
+  x.font=body(500,23);const ls=envolver('Escaneá el código o tocá el enlace del mensaje, y después el botón “Descargar la app”.',tw);let ty=pY>cy+60?cy+152:cy+118;
+  ls.slice(0,2).forEach(l=>{x.fillStyle=NAVY;x.fillText(l,tx,ty);ty+=31});
+  x.font=body(600,18);x.fillStyle='#4a5878';x.fillText('Sin tienda de aplicaciones · Ocupa muy poco espacio',tx,Math.min(ty+8,cy+ch-24));
+  return cv;
+}
+async function compartirFlyer(modo){
+  const s=ui.sheet;if(!s||!s.img)return;const blob=await (await fetch(s.img)).blob();const nombre=`flyer-${slug(nombreApp())}.png`;
+  const file=new File([blob],nombre,{type:'image/png'});const txt=textoFlyer();
+  if(modo==='share'&&navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],text:txt});return}catch(e){if(e&&e.name==='AbortError')return}}
+  const a=document.createElement('a');a.href=s.img;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
+  if(modo==='wa'){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank','noopener');toast('Se descargó el flyer: adjuntalo en WhatsApp.',5000)}
+  else toast('Flyer descargado.');
 }
 async function compartirImagen(modo){
   const s=ui.sheet;if(!s||!s.img) return;const blob=await (await fetch(s.img)).blob();const nombre=`${slug(nombreApp())}-${s.tipo}.png`;
