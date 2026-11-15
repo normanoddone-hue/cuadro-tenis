@@ -875,6 +875,13 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .jfoto .jf-prev .ic{width:26px;height:26px}
 .jf-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
 .jf-tx .btns{margin-top:6px}
+.tfil{display:grid;grid-template-columns:1.7fr 1fr 1fr .9fr .9fr 1.2fr;gap:10px;align-items:end;margin:8px 0 6px;padding:12px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line)}
+.tf-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.tf-f>span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tf-f input,.tf-f select{width:100%;min-width:0}
+@media (max-width:1100px){.tfil{grid-template-columns:repeat(3,minmax(0,1fr))}.tf-q{grid-column:1/-1}}
+@media (max-width:560px){.tfil{grid-template-columns:1fr 1fr}.tf-q,.tfil>.tf-f:last-child{grid-column:1/-1}}
+.tf-res{margin:0 2px 4px}
 .art-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:14px;margin:12px 0}
 @media (max-width:520px){.art-grid{grid-template-columns:1fr 1fr;gap:10px}}
 .art{display:flex;flex-direction:column;text-align:left;padding:0;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);overflow:hidden;cursor:pointer;transition:transform .16s cubic-bezier(.16,1,.3,1),box-shadow .16s}
@@ -3139,9 +3146,22 @@ async function cargarPedTienda(){
 function vistaTienda(){
   const todos=(S.tienda||[]).slice().sort((a,b)=>(a.vendido-b.vendido)||(b.t-a.t));
   const vis=puedeEditar?todos:todos.filter(a=>!a.vendido);
-  const cats=[...new Set(vis.map(a=>a.cat))];
-  if(ui.tcat&&!cats.includes(ui.tcat))ui.tcat='';
-  const lista=vis.filter(a=>!ui.tcat||a.cat===ui.tcat);
+  const F=ui.tf=ui.tf||{q:'',cat:'',est:'',min:'',max:'',ord:'nuevo'};
+  const qn=normTxt(F.q),mn=parseMonto(F.min),mx=parseMonto(F.max);
+  const lista=vis.filter(a=>(!qn||normTxt([a.titulo,a.desc,a.vendedor,a.cat].join(' ')).includes(qn))&&(!F.cat||a.cat===F.cat)&&(!F.est||a.estado===F.est)&&(!mn||(a.precio||0)>=mn)&&(!mx||(a.precio||0)<=mx));
+  if(F.ord==='menor')lista.sort((a,b)=>(a.vendido-b.vendido)||(a.precio||0)-(b.precio||0));
+  else if(F.ord==='mayor')lista.sort((a,b)=>(a.vendido-b.vendido)||(b.precio||0)-(a.precio||0));
+  const activos=!!(F.q||F.cat||F.est||F.min||F.max);
+  const sel=(id,lab,val,opts)=>`<label class="tf-f"><span>${lab}</span><select id="${id}">${opts.map(([v,t])=>`<option value="${esc(v)}" ${val===v?'selected':''}>${esc(t)}</option>`).join('')}</select></label>`;
+  const filtros=vis.length?`<div class="tfil" role="search">
+      <label class="tf-f tf-q"><span>Buscar</span><input type="search" id="tf-q" value="${esc(F.q)}" placeholder="Ej.: Wilson, zapatillas, bolso…" autocomplete="off"></label>
+      ${sel('tf-cat','Artículo',F.cat,[['','Todos'],...CATS_TIENDA.map(c=>[c,c])])}
+      ${sel('tf-est','Estado',F.est,[['','Todos'],...ESTADOS_ART.map(c=>[c,c])])}
+      <label class="tf-f tf-pr"><span>Precio desde</span><input type="text" id="tf-min" inputmode="numeric" value="${esc(F.min)}" placeholder="${esc(simMon())} 0"></label>
+      <label class="tf-f tf-pr"><span>Hasta</span><input type="text" id="tf-max" inputmode="numeric" value="${esc(F.max)}" placeholder="Sin límite"></label>
+      ${sel('tf-ord','Ordenar',F.ord,[['nuevo','Más nuevos'],['menor','Menor precio'],['mayor','Mayor precio']])}
+    </div>
+    <div class="tf-res small muted">${lista.length} de ${vis.length} artículo${vis.length===1?'':'s'}${activos?' · <button class="lnk2" data-act="tf-limpiar">Limpiar filtros</button>':''}</div>`:'';
   let peds='';
   if(puedeEditar&&sb){if(pedTienda===undefined)setTimeout(cargarPedTienda,0);
     const L=Array.isArray(pedTienda)?pedTienda:[];
@@ -3156,8 +3176,8 @@ function vistaTienda(){
       <span class="art-tx"><b class="art-pr">${esc(fmtMon(a.precio||0))}</b><span class="art-ti">${esc(a.titulo)}</span><small>${esc([a.estado,a.vendedor].filter(Boolean).join(' · '))}</small></span></button>`};
   return `${encabezado('Tienda',{sb:'Artículos usados de los jugadores del club',acc:`<button class="btn pri" data-act="pub-art">${puedeEditar?'Publicar artículo':'Vender un artículo'}</button>`})}
     ${peds}
-    ${cats.length>1?`<div class="chips" role="group" aria-label="Categoría"><button class="chip" aria-pressed="${!ui.tcat}" data-act="tcat" data-k="">Todo</button>${cats.map(c=>`<button class="chip" aria-pressed="${ui.tcat===c}" data-act="tcat" data-k="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:''}
-    ${lista.length?`<div class="art-grid">${lista.map(card).join('')}</div>`
+    ${filtros}
+    ${lista.length?`<div class="art-grid">${lista.map(card).join('')}</div>`:vis.length?`<div class="panel empty"><h2>Ningún artículo coincide</h2><p class="muted">Probá con otro precio o estado, o <button class="lnk2" data-act="tf-limpiar">limpiá los filtros</button>.</p></div>`
       :`<div class="panel empty"><h2>Todavía no hay artículos</h2><p class="muted">¿Tenés una raqueta, zapatillas o bolso que ya no usás? Tocá <b>${puedeEditar?'Publicar artículo':'Vender un artículo'}</b>, cargá fotos y precio${puedeEditar?'':', y el club lo publica'}.</p></div>`}
     <p class="small muted">La venta se arregla directamente entre comprador y vendedor por WhatsApp. El club solo publica el aviso.</p>`;
 }
@@ -4218,7 +4238,7 @@ document.addEventListener('click',ev=>{
     case 'ver-pass':{const i=t.parentElement.querySelector('input');if(!i)break;const ver=i.type==='password';i.type=ver?'text':'password';t.setAttribute('aria-pressed',String(ver));t.setAttribute('aria-label',ver?'Ocultar contraseña':'Mostrar contraseña');t.innerHTML=ver?ICO_OJO_NO:ICO_OJO;i.focus();break}
     case 'ag-dia':ui.agDia=t.dataset.k;render();break;
     case 'ag-modo':ui.agModo=t.dataset.k;render();break;
-    case 'tcat':ui.tcat=t.dataset.k;render();break;
+    case 'tf-limpiar':ui.tf={q:'',cat:'',est:'',min:'',max:'',ord:(ui.tf||{}).ord||'nuevo'};render();break;
     case 'art-ver':abrir({t:'art',id:t.dataset.id});break;
     case 'art-wa':{const a=(S.tienda||[]).find(x=>x.id===ui.sheet.id);if(a)abrirWA(a.tel,`Hola ${a.vendedor||''}, vi tu publicación "${a.titulo}" (${fmtMon(a.precio||0)}) en la tienda de ${nombreApp()}. ¿Sigue disponible?`);break}
     case 'art-vendido':{const a=(S.tienda||[]).find(x=>x.id===ui.sheet.id);if(!a)break;a.vendido=!a.vendido;toast(a.vendido?'Marcado como vendido.':'Publicado de nuevo.');cambiar();break}
@@ -4834,6 +4854,7 @@ document.addEventListener('change',ev=>{
   if(t.id==='f-import'&&t.files[0]){const f=t.files[0];t.value='';f.text().then(txt=>{let j=JSON.parse(txt);if(j&&j.datos)j=j.datos;
     if(!j||!Array.isArray(j.jugadores)||!Array.isArray(j.torneos))throw new Error('formato');ui.importPend=j;ui.armado='importar';renderSheet()}).catch(()=>avisar('Ese archivo no es una copia de datos de Cuadro de Tenis.'))}
   if(t.id==='f-xl'&&t.files[0]){const f=t.files[0];t.value='';leerExcel(f)}
+  {const m={'tf-cat':'cat','tf-est':'est','tf-ord':'ord'}[t.id];if(m){ui.tf=ui.tf||{};ui.tf[m]=t.value;render();return}}
   if(t.id==='ta-file'&&t.files.length){const fs=[...t.files];t.value='';ui.sheet.d=datosArtForm();
     (async()=>{ui.artFotos=ui.artFotos||[];for(const f of fs){if(ui.artFotos.length>=4)break;if(!/^image\//.test(f.type))continue;try{const cv=await reducir(f,1000);ui.artFotos.push(cv.toDataURL('image/jpeg',.72))}catch(e){}}renderSheet()})();return}
   if(t.id==='f-jfoto'&&t.files[0]){const f=t.files[0];t.value='';if(!/^image\//.test(f.type)){avisar('Elegí una imagen JPG o PNG.');return}
@@ -4860,6 +4881,7 @@ document.addEventListener('input',ev=>{
   if(/^s-[01]-\d$/.test(ev.target.id||''))syncTB();
   if((ev.target.id==='c-pc'||ev.target.id==='c-pf'||ev.target.id==='c-cuota')&&mon()[3]===0){const el=ev.target,fin=el.value.length-el.selectionStart;el.value=fmtCI(el.value);const pos=Math.max(0,el.value.length-fin);try{el.setSelectionRange(pos,pos)}catch(e){}}
   if(ev.target.id==='f-nac'){const e=edadDe(ev.target.value),el=document.getElementById('f-edad');if(el)el.textContent=e!=null?'Edad: '+e+' años':'La edad se calcula sola'}
+  {const m={'tf-q':'q','tf-min':'min','tf-max':'max'}[ev.target.id];if(m){ui.tf=ui.tf||{};ui.tf[m]=ev.target.value;const id=ev.target.id,pos=ev.target.selectionStart;render();const e=document.getElementById(id);if(e){e.focus();try{e.setSelectionRange(pos,pos)}catch(x){}}return}}
   if(ev.target.id==='q'){ui.q=ev.target.value;const pos=ev.target.selectionStart;render();const q=document.getElementById('q');if(q){q.focus();try{q.setSelectionRange(pos,pos)}catch(e){}}}
 });
 document.addEventListener('dragstart',ev=>{const c=ev.target.closest&&ev.target.closest('.gcard[data-key]');if(!c)return;ev.dataTransfer.setData('text/plain',c.dataset.key);ev.dataTransfer.effectAllowed='move';c.classList.add('drag')});
