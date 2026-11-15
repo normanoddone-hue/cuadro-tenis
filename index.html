@@ -1090,7 +1090,8 @@ function armarLlave(orden,K){
 function generarCuadro(S,torneo,cat,modo,rnd=Math.random){
   const n=cat.inscriptos.length; if(n<2) return false;
   const orden=ordenRanking(S,cat,cat.inscriptos,rnd);
-  const K=Math.min(cantSembrados(n),n);
+  let K=Math.min(cantSembrados(n),n);
+  if(modo==='azar'){K=0;for(let i=orden.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[orden[i],orden[j]]=[orden[j],orden[i]]}}
   if(modo==='sorteo'){const resto=orden.slice(K);for(let i=resto.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[resto[i],resto[j]]=[resto[j],resto[i]]}orden.splice(K,resto.length,...resto)}
   cat.cuadro={...armarLlave(orden,K),modo,creado:new Date().toISOString()};
   cat.res={};delete cat.cons;limpiarRP(cat);
@@ -3384,7 +3385,7 @@ const MANUAL=[
   tips:['La app no deja inscribir a alguien de otra categoría, de otra rama ni dos veces en el mismo torneo.','Los pagos son privados: el público no los ve.']},
  {id:'cuadro',t:'Armar el cuadro',d:'El sorteo y la llave, o los grupos del round robin.',pasos:[
   'Con los inscriptos listos, en <b>Inscripción</b> tocá <b>Generar cuadro</b> (llaves) o <b>Armar round robin</b> (grupos).',
-  'Las llaves ubican a los mejores del ranking como cabezas de serie y completan con byes si hace falta.',
+  'En <b>Ubicación en el cuadro</b> elegís cómo se arma: <b>Todos por ranking</b>, <b>Cabezas de serie por ranking y el resto por sorteo</b>, o <b>Sorteo</b> (todos al azar, sin cabezas de serie). Si hace falta, se completa con byes.',
   'En round robin, cuando se juegan todos los partidos de los grupos, <b>las llaves se arman solas</b> con los clasificados (sin cruzar a dos del mismo grupo en primera ronda).',
   'Cuando termina la primera ronda, podés armar un <b>cuadro de consolación</b> para los que perdieron su primer partido.',
   'Si el torneo tiene <b>rondas de perdedores</b> (se marca al crearlo en <b>Más opciones</b>, con su costo), al generar el cuadro elegís cuántos lugares libres quedan como <b>RP1</b> y <b>RP2</b>. Después de la 1.ª ronda, en <b>Llaves → Rondas de perdedores</b> marcás quiénes juegan la RP y si pagaron, y tocás <b>Armar RP1</b>. Los ganadores entran solos a los lugares RP1; los que pierden la RP1 juegan la <b>RP2</b> sin volver a pagar.'],
@@ -3555,12 +3556,13 @@ function seccionInscriptos(t,c,cb){
     cuerpo+=`<div class="panel" style="display:flex;flex-direction:column;gap:10px;background:var(--soft);border:none">
       <div class="grid2"><div class="field"><label for="modoCuadro">Ubicación en el cuadro</label><select id="modoCuadro">
         <option value="ranking" ${ui.modoCuadro==='ranking'?'selected':''}>Todos por ranking</option>
-        <option value="sorteo" ${ui.modoCuadro==='sorteo'?'selected':''}>Cabezas de serie por ranking, resto por sorteo</option></select></div></div>
+        <option value="sorteo" ${ui.modoCuadro==='sorteo'?'selected':''}>Cabezas de serie por ranking, resto por sorteo</option>
+        <option value="azar" ${ui.modoCuadro==='azar'?'selected':''}>Sorteo (todos al azar, sin cabezas de serie)</option></select></div></div>
       ${c.formato==='rr'?`<div class="btns"><button class="btn pri" data-act="armar-rr" ${n<3?'disabled':''}>Armar round robin</button></div>`
         :c.formato==='grupos'?`<div class="btns"><button class="btn pri" data-act="armar-grupos" ${n<4?'disabled':''}>Armar round robin</button>${c.grupos?'<span class="small muted">Los grupos ya están armados: volver a armarlos borra sus resultados.</span>':''}</div>`
         :`${c.conRP&&n>=2?(()=>{const B=tamCuadro(n)-n;const d2=Math.floor(B/3),d1=B-d2;return B?`<div class="grid2 rp-gen"><div class="field"><label for="rp-n1">Lugares RP1</label><input type="number" id="rp-n1" min="0" max="${B}" value="${d1}"></div><div class="field"><label for="rp-n2">Lugares RP2</label><input type="number" id="rp-n2" min="0" max="${B}" value="${d2}"></div></div><span class="small muted">Con ${n} inscriptos el cuadro es de ${tamCuadro(n)}: hay ${B} lugar${B===1?'':'es'} libre${B===1?'':'s'} para repartir entre RP1 y RP2. Los que no uses quedan como libres (bye).</span>`:`<div class="note warn">Con ${n} inscriptos el cuadro de ${tamCuadro(n)} queda completo: no hay lugares para RP. Con menos inscriptos (o más lugares) quedan huecos para RP1 y RP2.</div>`})():''}
           <div class="btns"><button class="btn pri" data-act="generar" ${n<2?'disabled':''}>Generar cuadro</button></div>`}
-      <span class="small muted">${c.formato==='rr'?(n<3?'Necesitás al menos 3 inscriptos para un round robin.':`Todos contra todos: ${n*(n-1)/2} partidos. Gana quien termine primero en la tabla (partidos ganados, después el partido entre ellos, sets y games).`):c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para el round robin.':`Round robin: ${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. En cada grupo juegan todos contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`}</span></div>`;
+      <span class="small muted">${c.formato==='rr'?(n<3?'Necesitás al menos 3 inscriptos para un round robin.':`Todos contra todos: ${n*(n-1)/2} partidos. Gana quien termine primero en la tabla (partidos ganados, después el partido entre ellos, sets y games).`):c.formato==='grupos'?(n<4?'Necesitás al menos 4 inscriptos para el round robin.':`Round robin: ${Math.max(2,Math.ceil(n/(c.gtam||4)))} grupos de hasta ${c.gtam||4}, repartidos por ranking. En cada grupo juegan todos contra todos y pasan ${(c.gpasan||2)===1?'el primero':'los '+(c.gpasan||2)+' primeros'} de cada grupo al cuadro.`):n<2?'Necesitás al menos 2 inscriptos.':(ui.modoCuadro==='azar'?`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. Sorteo puro: no hay cabezas de serie y todos los lugares (incluidos los bye) se reparten al azar, sin mirar el ranking.`:ui.modoCuadro==='sorteo'?`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}; el resto de los lugares se sortea.`:`Cuadro de ${tamCuadro(n)} con ${tamCuadro(n)-n} bye. ${Math.min(cantSembrados(n),n)} cabezas de serie, ordenados por el ranking acumulado de los demás torneos de la misma modalidad${conPts?'':' (todavía sin puntos)'}, después por categoría del jugador y, si empatan, por sorteo.`)}</span></div>`;
   } else {
     cuerpo=(emp&&puedeEditar?`<div class="note">${ICO_LOCK}El torneo ya tiene resultados cargados: no se pueden cambiar los inscriptos ni rehacer ${c.grupos&&!cb?'el round robin':'el cuadro'}. ${(()=>{const d=dondeHayResultados(c);return d.length?` Hay resultados en: <b>${d.join(', ')}</b>.`:''})()} Si cargaste un resultado por error, abrí ese partido y tocá "Borrar resultado"${c.rp1||c.rp2?', o deshacé las rondas de perdedores en Llaves':''}.</div>`:'')+(n?`<div class="small muted">${lista.map(e=>esc(etiqueta(S,c,e.id))).join(' · ')}</div>`:'<div class="small muted">Sin inscriptos.</div>');
   }
@@ -4547,7 +4549,7 @@ document.addEventListener('change',ev=>{
   if(t.dataset.act==='insc'){const c=T().categorias.find(x=>x.id===ui.cat);const pid=t.dataset.pid;desarmar(c);
     if(t.checked){if(!c.inscriptos.some(e=>e.id===pid))c.inscriptos.push({id:pid,j:[pid]})}else c.inscriptos=c.inscriptos.filter(e=>e.id!==pid);
     const y=window.scrollY;cambiar();window.scrollTo({top:y});}
-  if(t.id==='modoCuadro')ui.modoCuadro=t.value;
+  if(t.id==='modoCuadro'){ui.modoCuadro=t.value;render()}
   if(t.id==='c-rp'){const f=document.getElementById('c-rp-costo');if(f)f.hidden=!t.checked}
   if(t.id==='tmp-anio'&&ui.sheet){ui.sheet.anio=t.value;renderSheet()}
   if(t.id==='fin-anio'){ui.finAnio=t.value;render()}
