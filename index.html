@@ -294,6 +294,8 @@ button.hrow:hover b{color:var(--link)}
 .adm .btns{gap:14px}
 .tb-r{display:flex;gap:8px;align-items:center;min-width:0;max-width:64%}
 .tb-r .evpill{max-width:100%}
+.tb-l{display:flex;align-items:center;gap:10px;min-width:0}
+.topbar .tb-atras .ic{width:20px;height:20px;stroke-width:2.4}
 .tbtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:var(--court-ink);border-radius:999px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;flex:none}
 .tbtn svg.ic{width:18px;height:18px}
 .tbtn.on{background:var(--ball);color:var(--ball-ink);border-color:var(--ball)}
@@ -1835,8 +1837,35 @@ const ICONOS={
 const SECCIONES=[['resumen','Inicio'],['categorias','Torneos'],['partidos','Partidos'],['vivo','En vivo'],['jugadores','Jugadores'],['ranking','Ranking'],['campeones','Campeones'],['tienda','Tienda']];
 const ico=k=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[k]}</svg>`;
 
+/* ---- Historial de navegación: botón Atrás y la flecha del celular ---- */
+const VISTA=['tab','cat','jug','sub','pv','torneo'];
+let navPila=[],navUlt=null,navRest=false;
+function claveVista(){return JSON.stringify(VISTA.map(k=>ui[k]??null))}
+function registrarNav(){
+  const k=claveVista();
+  if(navUlt===null){navUlt=k;try{history.replaceState({cdt:1},'')}catch(e){}return}
+  if(k===navUlt)return;
+  if(navRest){navRest=false;navUlt=k;return}
+  navPila.push(navUlt);if(navPila.length>40)navPila.shift();navUlt=k;
+  try{history.pushState({cdt:1},'')}catch(e){}
+}
+function volverAtras(){
+  if(ui.sheet){ui.sheet=null;ui.msg=null;renderSheet();return}
+  if(!navPila.length)return;
+  try{history.back()}catch(e){aplicarAtras()}
+}
+function aplicarAtras(){
+  const prev=navPila.pop();if(!prev)return;
+  const v=JSON.parse(prev);VISTA.forEach((k,i)=>{ui[k]=v[i]});
+  navRest=true;navUlt=prev;ui.entra=true;ui.gsel=null;render();window.scrollTo({top:0});
+}
+window.addEventListener('popstate',()=>{
+  if(ui.sheet){ui.sheet=null;ui.msg=null;renderSheet();try{history.pushState({cdt:1},'')}catch(e){}return}
+  aplicarAtras();
+});
 function render(){
   actualizarPermisos();
+  if(S)registrarNav();
   if(S&&!(ui.sheet&&ui.sheet.t==='login'))aplicarFondo(S.fondo,S.fondoVelo);
   if(S||clubInfo.nombre)actualizarIdentidad();
   if(!S&&cargado&&logueado&&clubInfo.existe){S=nuevoEstado();if(clubInfo.nombre)S.club=clubInfo.nombre}
@@ -1884,7 +1913,7 @@ function renderShell(){
       <div class="adm-acc"><button class="sbtn" data-act="login">${ICO_GEAR}Club y cuenta</button><button class="sbtn ico-only" data-act="logout" aria-label="Cerrar sesión" title="Cerrar sesión">${ICO_SALIR}</button></div>
       <span class="adm-st"><i class="dot ${/Guardado/.test(statusTxt)?'ok':statusTxt?'wait':''}"></i><span class="stx">${esc(statusTxt||'Sin cambios')}</span></span></div>`
       :`<button class="sbtn wide" data-act="login">${ICO_LOCK}Ingresar como administrador</button>`}</div>`;
-  document.getElementById('topbar').innerHTML=`${brand}${S?`<div class="tb-r">${vivos().length&&ui.tab!=='vivo'?`<button class="vivo-pill" data-act="tab" data-k="vivo"><i class="vdot"></i>EN VIVO</button>`:''}${!enApp()?'<button class="tbtn" data-act="instalar" aria-label="Descargar la app" title="Descargar la app">'+ICO_PDF+'</button>':''}${permisoPlat||logueado?`<button class="tbtn ${logueado?'on':''}" data-act="login" aria-label="${logueado?'Cuenta de administrador':'Ingresar como administrador'}">${ICO_LOCK}</button>`:''}</div>`:''}`;
+  document.getElementById('topbar').innerHTML=`<div class="tb-l">${navPila.length?'<button class="tbtn tb-atras" data-act="atras" aria-label="Atrás" title="Atrás"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>':''}${brand}</div>${S?`<div class="tb-r">${vivos().length&&ui.tab!=='vivo'?`<button class="vivo-pill" data-act="tab" data-k="vivo"><i class="vdot"></i>EN VIVO</button>`:''}${!enApp()?'<button class="tbtn" data-act="instalar" aria-label="Descargar la app" title="Descargar la app">'+ICO_PDF+'</button>':''}${permisoPlat||logueado?`<button class="tbtn ${logueado?'on':''}" data-act="login" aria-label="${logueado?'Cuenta de administrador':'Ingresar como administrador'}">${ICO_LOCK}</button>`:''}</div>`:''}`;
   const bn=document.getElementById('bnav');
   bn.hidden=!S;
   const MAS=['campeones','vivo','tienda','agenda','finanzas','manual'];
@@ -4295,6 +4324,7 @@ document.addEventListener('click',ev=>{
     case 'jug-ejemplo':cargarJugadoresEjemplo();ui.msg=null;cambiar();break;
     case 'nueva-cat':abrir({t:'cat'});setTimeout(()=>{const n=document.getElementById('c-nom');if(n&&n.dataset.auto)n.value=nombreSugerido()},40);break;
     case 'edit-cat':abrir({t:'cat',id:t.dataset.id});break;
+    case 'atras':volverAtras();break;
     case 'volver':ui.cat=null;render();window.scrollTo({top:0});break;
     case 'sub':ui.entra=ui.sub!==t.dataset.k;ui.sub=t.dataset.k;ui.armado=null;ui.msg=null;render();break;
     case 'ver-jugados':ui.tab='partidos';ui.pf='jugados';render();window.scrollTo({top:0});break;
