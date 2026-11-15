@@ -849,11 +849,10 @@ a.red:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
 .side .brand .red{width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.1);color:#fff}
 .side .brand .red svg{width:18px;height:18px}
 .side .brand a.red:hover{background:rgba(255,255,255,.2)}
-.pie-redes{display:flex;flex-direction:column;align-items:center;gap:10px;margin:28px 0 4px;padding:18px 14px;border-radius:var(--r-sm);background:var(--court);color:#fff}
-.pie-redes>span{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.pie-redes{display:flex;flex-direction:column;align-items:center;gap:10px;margin:28px 0 4px;padding:4px 14px}
+.pie-redes>span{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .pie-redes .redes{justify-content:center;gap:12px}
-.pie-redes .red{width:44px;height:44px;border-radius:11px;background:rgba(255,255,255,.12);color:#fff}
-.pie-redes a.red:hover{background:rgba(255,255,255,.22)}
+.pie-redes .red{width:44px;height:44px;border-radius:11px}
 @media (min-width:900px){.pie-redes{display:none}}
 .segui{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 16px;padding:12px 14px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line)}
 .segui>span{font-weight:700;font-size:14px}
@@ -1880,9 +1879,9 @@ function renderShell(){
   const bn=document.getElementById('bnav');
   bn.hidden=!S;
   const MAS=['campeones','vivo','tienda','agenda','finanzas','manual'];
-  const base=SECCIONES.filter(([k])=>k!=='eventos'&&k!=='reportes'&&k!=='vivo'&&k!=='tienda'&&!(puedeEditar&&k==='campeones'));
+  const base=SECCIONES.filter(([k])=>k!=='eventos'&&k!=='reportes'&&k!=='vivo'&&k!=='tienda'&&k!=='campeones');
   bn.innerHTML=S?base.map(([k,l])=>`<button data-act="tab" data-k="${k}" ${ui.tab===k?'aria-current="page"':''}><span class="ico">${ico(k)}</span>${l}</button>`).join('')
-    +(puedeEditar?`<button data-act="mas" ${MAS.includes(ui.tab)?'aria-current="page"':''}><span class="ico">${ICO_MAS}</span>Más</button>`:''):'';
+    +`<button data-act="mas" ${MAS.includes(ui.tab)?'aria-current="page"':''}><span class="ico">${ICO_MAS}</span>Más</button>`:'';
 }
 function encabezado(titulo,{ey='',sb='',acc=''}={}){
   return `<div class="ph"><div style="min-width:0">${ey?`<div class="ey">${ey}</div>`:''}<h1>${titulo}</h1>${sb?`<div class="sb">${sb}</div>`:''}</div>${acc?`<div class="btns">${acc}</div>`:''}</div>`;
@@ -2128,10 +2127,9 @@ function vistaResumen(){
   const hoy=hoyISO();
   const proxT=todasCats().filter(c=>estadoTorneo(c,hoy)==='prox').sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
   const diasA=f=>Math.round((Date.parse(f)-Date.parse(hoy))/86400000);
-  const nTi=artsVenta().length;const tiendaM=nTi?`<button class="tienda-m" data-act="tab" data-k="tienda">${ico('tienda')}<span><b>Tienda del club</b><small>${nTi} artículo${nTi===1?'':'s'} usado${nTi===1?'':'s'} en venta</small></span><span class="vivo-go">Ver ›</span></button>`:'';
   const appM=!enApp()?`<button class="tienda-m app-m" data-act="instalar">${ICO_PDF}<span><b>Descargá la app</b><small>Tené el club en tu pantalla de inicio</small></span><span class="vivo-go">Instalar ›</span></button>`
-    :`<button class="tienda-m app-m" data-act="compartir-app">${ICO_SHARE}<span><b>Compartí la app</b><small>Mandá el enlace para que otros la descarguen</small></span><span class="vivo-go">Compartir ›</span></button>`;
-  return `${resumenClub()}${appM}${tiendaM}<div class="dash">
+    :'';
+  return `${resumenClub()}${appM}<div class="dash">
       <div class="dcol">
         ${seccionSiguiendo()}
         ${destacados(t)}
@@ -4064,11 +4062,11 @@ function renderSheet(){
     h=`<div class="sheet-hd"><h2>Más</h2>${cerrarBtn}</div><div class="list">
       ${it('campeones','Campeones','Historial del club, año por año')}
       ${it('vivo','En vivo','Transmisiones de los partidos')}
-      ${it('tienda','Tienda','Artículos usados y pedidos de publicación')}
-      ${it('agenda','Agenda del día','Reservas, clases y partidos para compartir')}
+      ${it('tienda','Tienda',puedeEditar?'Artículos usados y pedidos de publicación':'Artículos usados en venta de los jugadores')}
+      ${puedeEditar?`${it('agenda','Agenda del día','Reservas, clases y partidos para compartir')}
       ${it('finanzas','Finanzas','Ingresos, gastos y rentabilidad')}
       ${it('manual','Manual del usuario','Cómo usar la app paso a paso')}
-      <button class="rowbtn mas-it" data-act="login"><span class="mas-ico">${ICO_GEAR}</span><span class="n">Club y cuenta</span><span class="d">Logo, moneda, contraseña, auspiciantes y clubes</span></button></div>`}
+      <button class="rowbtn mas-it" data-act="login"><span class="mas-ico">${ICO_GEAR}</span><span class="n">Club y cuenta</span><span class="d">Logo, moneda, contraseña, auspiciantes y clubes</span></button>`:''}</div>`}
   if(s.t==='temporada'){const an=aniosTemporada();if(s.anio===undefined)s.anio=an[0]||'';const d=datosTemporada(s.anio);
     h=`<div class="sheet-hd"><div><h2>Resumen de temporada</h2><div class="sub small muted">Para la comisión directiva</div></div>${cerrarBtn}</div>
     <div class="field"><label for="tmp-anio">Temporada</label><select id="tmp-anio" data-act-change="tmp-anio">${an.map(a=>`<option value="${a}" ${s.anio===a?'selected':''}>${a}</option>`).join('')}<option value="" ${s.anio===''?'selected':''}>Todos los torneos</option></select></div>
