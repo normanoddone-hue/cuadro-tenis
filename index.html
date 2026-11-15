@@ -3254,7 +3254,7 @@ function camposArt(d){d=d||{};
 function hojaPubArt(s,cerrarBtn,err){
   if(s.ok)return `<div class="sheet-hd"><h2>¡Pedido enviado!</h2>${cerrarBtn}</div><div class="note">El club recibió tu artículo. Cuando el administrador lo apruebe, va a aparecer en la Tienda y los interesados te van a escribir por WhatsApp.</div><div class="btns"><button class="btn pri" data-act="cerrar">Listo</button></div>`;
   const fotos=ui.artFotos||[];
-  return `<div class="sheet-hd"><h2>${puedeEditar?'Publicar artículo':'Vender un artículo'}</h2>${cerrarBtn}</div>
+  return `<div class="sheet-hd"><div>${s.n?`<h3>${s.n} ${puedeEditar?(s.n===1?'publicado':'publicados'):(s.n===1?'enviado':'enviados')} · cargando el siguiente</h3>`:''}<h2>${puedeEditar?'Publicar artículo':'Vender un artículo'}</h2></div>${cerrarBtn}</div>
     ${camposArt(s.d)}
     <div class="field"><label>Fotos (hasta 4)</label><div class="art-fotos">${fotos.map((u,i)=>`<span class="art-th"><img src="${esc(u)}" alt=""><button type="button" class="art-thx" data-act="ta-quitar-foto" data-i="${i}" aria-label="Quitar foto ${i+1}">×</button></span>`).join('')}
       ${fotos.length<4?`<button type="button" class="art-add" data-act="ta-fotos">${ICO_CAM}<span>Agregar</span></button>`:''}</div>
@@ -3262,8 +3262,9 @@ function hojaPubArt(s,cerrarBtn,err){
       <span class="small muted">La primera foto es la portada. Sacalas con buena luz.</span></div>
     <div class="grid2"><div class="field"><label for="ta-ven">Tu nombre</label><input type="text" id="ta-ven" maxlength="60" autocomplete="name" value="${esc(s.d?.vendedor||'')}"></div>
       <div class="field"><label for="ta-tel">WhatsApp para que te contacten</label><input type="text" id="ta-tel" inputmode="tel" autocomplete="tel" value="${esc(s.d?.tel||'')}" placeholder="Ej.: 0981 123 456"></div></div>
-    ${puedeEditar?'':`<label class="check priv-ok"><input type="checkbox" id="ta-ok"> <span>Acepto que mi nombre y mi WhatsApp se muestren en la publicación para que me contacten.</span></label>`}
-    ${err}<div class="btns"><button class="btn pri" data-act="ta-enviar" data-primary ${s.enviando?'disabled':''}>${s.enviando?'Enviando…':puedeEditar?'Publicar':'Enviar para aprobar'}</button></div>`;
+    ${puedeEditar||s.okPriv?'':`<label class="check priv-ok"><input type="checkbox" id="ta-ok"> <span>Acepto que mi nombre y mi WhatsApp se muestren en la publicación para que me contacten.</span></label>`}
+    ${err}<div class="btns"><button class="btn pri" data-act="ta-enviar" data-primary ${s.enviando?'disabled':''}>${s.enviando?'Enviando…':puedeEditar?'Publicar':'Enviar para aprobar'}</button><button class="btn" data-act="ta-enviar" data-otro="1" ${s.enviando?'disabled':''}>${puedeEditar?'Publicar y cargar otro':'Enviar y cargar otro'}</button></div>
+    <span class="small muted">Con <b>${puedeEditar?'Publicar':'Enviar'} y cargar otro</b> el formulario queda abierto para el siguiente artículo, con tu nombre y WhatsApp ya puestos.</span>`;
 }
 function hojaPedArt(s,cerrarBtn,err){
   const r=(Array.isArray(pedTienda)?pedTienda:[]).find(x=>x.id===s.id);if(!r)return '';const d=r.data||{};
@@ -4344,13 +4345,14 @@ document.addEventListener('click',ev=>{
       if(!(ui.artFotos||[]).length){avisar('Agregá al menos una foto.');break}
       if(!d.vendedor){avisar('Escribí tu nombre.');break}
       if(String(d.tel).replace(/\D/g,'').length<6){avisar('Dejá tu WhatsApp para que te puedan contactar.');break}
-      if(!puedeEditar&&!document.getElementById('ta-ok')?.checked){avisar('Para publicar, aceptá que se muestren tu nombre y tu WhatsApp.');break}
+      if(!puedeEditar&&!sh.okPriv&&!document.getElementById('ta-ok')?.checked){avisar('Para publicar, aceptá que se muestren tu nombre y tu WhatsApp.');break}
+      const otro=!!t.dataset.otro;const sig=()=>{ui.artFotos=[];ui.sheet={t:'pub-art',n:(sh.n||0)+1,okPriv:!puedeEditar||sh.okPriv,d:{vendedor:d.vendedor,tel:d.tel,cat:d.cat,estado:d.estado}};ui.msg=null;renderSheet();setTimeout(()=>{document.querySelector('.sheet')?.scrollTo({top:0,behavior:'smooth'});document.getElementById('ta-tit')?.focus()},50)};
       if(!sb&&!puedeEditar){avisar('La tienda necesita conexión con el servidor del club.');break}
       sh.enviando=true;ui.msg=null;renderSheet();
       (async()=>{try{
-        if(puedeEditar){const fotos=await subirFotosArt(ui.artFotos);S.tienda=S.tienda||[];S.tienda.push({id:uid(),...d,fotos,t:Date.now(),vendido:false});ui.artFotos=[];ui.sheet=null;toast('Artículo publicado.');cambiar();return}
+        if(puedeEditar){const fotos=await subirFotosArt(ui.artFotos);S.tienda=S.tienda||[];S.tienda.push({id:uid(),...d,fotos,t:Date.now(),vendido:false});toast('Artículo publicado.');cambiar();if(otro)sig();else{ui.artFotos=[];ui.sheet=null;render()}return}
         const {error}=await sb.from('tenis_tienda_pedidos').insert({club:CLUB,data:{...d,fotos:ui.artFotos}});
-        if(error)throw error;ui.artFotos=[];sh.ok=true;sh.enviando=false;renderSheet();
+        if(error)throw error;if(otro){toast('Artículo enviado para aprobar.');sig();return}ui.artFotos=[];sh.ok=true;sh.enviando=false;renderSheet();
       }catch(e){console.error('tienda',e);sh.enviando=false;ui.msg=/row-level|42501|PGRST205|42P01/i.test(String(e.message||e.code||''))?'La tienda todavía no está activada en el servidor del club. Avisale al administrador.':'No se pudo enviar. Revisá la conexión y probá de nuevo.';renderSheet()}})();
       break}
     case 'ped-recargar':cargarPedTienda();break;
